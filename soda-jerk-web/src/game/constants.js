@@ -69,6 +69,6 @@ export const DRINK_TYPES = [
 // goes cold for a bonus. Purely optional: ignoring one costs nothing.
 export const BONUS_SPAWN_INTERVAL_MIN_MS = 9000
 export const BONUS_SPAWN_INTERVAL_MAX_MS = 18000
-export const BONUS_LIFETIME_MS = 4500
-export const BONUS_REACH_X = 6
+export const BONUS_LIFETIME_MS = 6000
+export const BONUS_REACH_X = 14
 export const POINTS_PER_BONUS = 50

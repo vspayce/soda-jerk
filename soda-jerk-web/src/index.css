@@ -78,6 +78,26 @@ body {
   animation: player-flinch 500ms ease-in-out;
 }
 
+/* Hot dog grabbed — a little celebration: points float up and fade,
+   confetti bits burst outward and fall. */
+@keyframes celebrate-points {
+  0% { opacity: 0; transform: translateY(0) scale(0.7); }
+  20% { opacity: 1; transform: translateY(-6px) scale(1.1); }
+  35% { transform: translateY(-10px) scale(1); }
+  100% { opacity: 0; transform: translateY(-34px) scale(1); }
+}
+.celebrate-points {
+  animation: celebrate-points 800ms ease-out forwards;
+}
+
+@keyframes confetti-burst {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
+}
+.confetti-bit {
+  animation: confetti-burst 700ms ease-out forwards;
+}
+
 @media (min-width: 460px) {
   .phone-frame {
     height: 900px;

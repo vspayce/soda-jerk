@@ -28,6 +28,9 @@ function createInitialSim() {
     mugs: [],
     glasses: [],
     bonus: null,
+    celebrateCount: 0, // bumped whenever a hot dog is grabbed — App.jsx
+    // watches this to fire a little confetti-and-points celebration.
+    lastCelebrate: null, // { lane, x } of the most recent hot dog grab
     spillCount: 0, // bumped whenever an unserved customer reaches the end
     // of the bar in the player's own lane — App.jsx watches this to fire
     // the seltzer-in-the-face reaction.
@@ -232,6 +235,8 @@ export function useGameEngine() {
     // doesn't block serving.
     if (sim.bonus && sim.bonus.lane === lane && Math.abs(sim.bonus.x - sim.playerX) <= C.BONUS_REACH_X) {
       sim.score += C.POINTS_PER_BONUS
+      sim.lastCelebrate = { lane: sim.bonus.lane, x: sim.bonus.x }
+      sim.celebrateCount++
       sim.bonus = null
     }
 

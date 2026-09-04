@@ -1,7 +1,8 @@
 import Customer from './Customer.jsx'
 import Player from './Player.jsx'
+import Celebration from './Celebration.jsx'
 import { MugGlyph, DoorGlyph, TapGlyph, HotDogGlyph } from './sprites.jsx'
-import { PLAYER_X, COUNTER_HEIGHT_PX } from '../game/constants.js'
+import { PLAYER_X, COUNTER_HEIGHT_PX, POINTS_PER_BONUS } from '../game/constants.js'
 
 // Mugs and glasses ride along the counter's top edge, not its vertical
 // center, so they read as sliding on the surface rather than passing
@@ -14,7 +15,7 @@ const FIXTURE_Y = `calc(50% + ${COUNTER_HEIGHT_PX / 2}px)`
 const DOOR_X = 95
 const TAP_X = PLAYER_X + 5
 
-export default function Lane({ customers, mugs, glasses, bonus, isPlayerLane, playerX, spraying }) {
+export default function Lane({ customers, mugs, glasses, bonus, celebrate, isPlayerLane, playerX, spraying }) {
   return (
     <div className="relative flex-1 min-h-0">
       {/* aisle floor beneath the counter, so the lane reads as a distinct row */}
@@ -87,6 +88,15 @@ export default function Lane({ customers, mugs, glasses, bonus, isPlayerLane, pl
           style={{ left: `${bonus.x}%`, top: COUNTER_SURFACE_Y }}
         >
           <HotDogGlyph />
+        </div>
+      )}
+
+      {celebrate && (
+        <div
+          className="absolute z-30 -translate-x-1/2"
+          style={{ left: `${celebrate.x}%`, top: COUNTER_SURFACE_Y }}
+        >
+          <Celebration points={POINTS_PER_BONUS} />
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameEngine } from './game/useGameEngine.js'
 import { useMusic } from './audio/useMusic.js'
-import { playSeltzerSpray } from './audio/sfx.js'
+import { playSeltzerSpray, playCelebration } from './audio/sfx.js'
 import { LANE_COUNT } from './game/constants.js'
 import Lane from './components/Lane.jsx'
 import HUD from './components/HUD.jsx'
@@ -18,7 +18,9 @@ export default function App() {
   const { state, changeLane, serveOrCatch, startRun, stopRun, selectDrink, startGame, restart } = useGameEngine()
   const music = useMusic(MUSIC_SRC, { volume: 0.45 })
   const [spraying, setSpraying] = useState(false)
+  const [celebrate, setCelebrate] = useState(null)
   const prevSpillRef = useRef(state.spillCount)
+  const prevCelebrateRef = useRef(state.celebrateCount)
 
   // Wrap each control so the very first tap also starts the music —
   // satisfies the browser's "needs a real user gesture" rule for audio.
@@ -44,6 +46,17 @@ export default function App() {
     }
   }, [state.spillCount])
 
+  // Confetti + points celebration whenever a hot dog is grabbed.
+  useEffect(() => {
+    if (state.celebrateCount !== prevCelebrateRef.current) {
+      prevCelebrateRef.current = state.celebrateCount
+      playCelebration()
+      setCelebrate(state.lastCelebrate)
+      const t = setTimeout(() => setCelebrate(null), 800)
+      return () => clearTimeout(t)
+    }
+  }, [state.celebrateCount])
+
   return (
     <div
       className="phone-frame select-none relative"
@@ -67,6 +80,7 @@ export default function App() {
             mugs={state.mugs.filter((m) => m.lane === laneIndex)}
             glasses={state.glasses.filter((g) => g.lane === laneIndex)}
             bonus={state.bonus && state.bonus.lane === laneIndex ? state.bonus : null}
+            celebrate={celebrate && celebrate.lane === laneIndex ? celebrate : null}
           />
         ))}
       </div>

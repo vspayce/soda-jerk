@@ -39,3 +39,27 @@ export function playSeltzerSpray() {
   noise.start()
   noise.stop(audioCtx.currentTime + duration)
 }
+
+// A quick cheerful arpeggio — hot dog grabbed.
+export function playCelebration() {
+  const audioCtx = getCtx()
+  if (audioCtx.state === 'suspended') audioCtx.resume()
+
+  const notes = [523.25, 659.25, 783.99, 1046.5] // C5 E5 G5 C6
+  notes.forEach((freq, i) => {
+    const start = audioCtx.currentTime + i * 0.07
+    const osc = audioCtx.createOscillator()
+    osc.type = 'triangle'
+    osc.frequency.value = freq
+
+    const gain = audioCtx.createGain()
+    gain.gain.setValueAtTime(0.0001, start)
+    gain.gain.exponentialRampToValueAtTime(0.3, start + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22)
+
+    osc.connect(gain)
+    gain.connect(audioCtx.destination)
+    osc.start(start)
+    osc.stop(start + 0.24)
+  })
+}
