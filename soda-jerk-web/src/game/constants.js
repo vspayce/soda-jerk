@@ -53,15 +53,15 @@ export const POINTS_PER_SERVE = 100
 export const POINTS_PER_CAUGHT_GLASS = 25
 
 // Selectable drink types — pick one with the selector between the
-// joystick and the JERK button before pouring. Each customer's speech
-// bubble shows which one they want (matching their outfit color too);
-// the wrong drink just sails past them uncaught, same as throwing with
-// no one there — it has to match to serve them.
+// joystick and the JERK button before pouring. A customer's outfit color
+// shows which one they want; the wrong drink just sails past them
+// uncaught, same as throwing with no one there — it has to match to
+// serve them.
 export const DRINK_TYPES = [
   { name: 'Orange Creme', color: '#D9822B' },
   { name: 'In the Hay', color: '#D9668A' },
   { name: 'Egg Cream', color: '#6B4226' },
-  { name: 'Black Cow', color: '#4A2F1C' },
+  { name: 'Blue Moon', color: '#2E7CA6' },
 ]
 
 // A hot dog drops on the counter every so often, somewhere within the

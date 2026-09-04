@@ -114,6 +114,35 @@ export function HotDogGlyph({ size = 30 }) {
   )
 }
 
+// A literal hot dog — scurries across the counter as the little
+// celebration for grabbing a bonus.
+export function DachshundGlyph() {
+  return (
+    <svg viewBox="0 0 64 32" width="56" height="28">
+      <ellipse cx="32" cy="29" rx="24" ry="2" fill="#000" opacity="0.3" />
+      {/* legs */}
+      <rect x="10" y="21" width="4" height="7" rx="2" fill="#5C3A21" />
+      <rect x="22" y="21" width="4" height="7" rx="2" fill="#5C3A21" />
+      <rect x="38" y="21" width="4" height="7" rx="2" fill="#5C3A21" />
+      <rect x="50" y="21" width="4" height="7" rx="2" fill="#5C3A21" />
+      {/* tail */}
+      <path d="M6 15 Q0 11 2 7" stroke="#8A5A2E" strokeWidth="3" fill="none" strokeLinecap="round" />
+      {/* body */}
+      <ellipse cx="32" cy="18" rx="26" ry="9" fill="#8A5A2E" stroke="#151014" strokeWidth="1.2" />
+      {/* head */}
+      <circle cx="56" cy="12" r="8" fill="#8A5A2E" stroke="#151014" strokeWidth="1.2" />
+      {/* snout */}
+      <ellipse cx="62" cy="14" rx="4" ry="3" fill="#6B4226" />
+      {/* ear */}
+      <path d="M52 8 Q46 12 50 20 Q54 18 54 10Z" fill="#5C3A21" stroke="#151014" strokeWidth="1" />
+      {/* eye */}
+      <circle cx="58" cy="10" r="1" fill="#151014" />
+      {/* bow collar, matching the bartender's */}
+      <path d="M50 16 L53 18 L56 16 L56 14 L53 15.5 L50 14 Z" fill="#7A1F2B" />
+    </svg>
+  )
+}
+
 // Small stylized soda mug used for both the outgoing mug (tinted by drink
 // type) and the returning empty-glass sprite.
 export function MugGlyph({ empty = false, size = 26, color = '#EDE3D0' }) {
