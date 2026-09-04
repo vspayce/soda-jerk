@@ -1,13 +1,14 @@
 import Customer from './Customer.jsx'
 import Player from './Player.jsx'
-import Celebration from './Celebration.jsx'
 import { MugGlyph, DoorGlyph, TapGlyph, HotDogGlyph } from './sprites.jsx'
-import { PLAYER_X, COUNTER_HEIGHT_PX, POINTS_PER_BONUS } from '../game/constants.js'
+import { PLAYER_X, COUNTER_HEIGHT_PX, DRINK_TYPES } from '../game/constants.js'
 
 // Mugs and glasses ride along the counter's top edge, not its vertical
 // center, so they read as sliding on the surface rather than passing
 // through the middle of the counter block.
 const COUNTER_SURFACE_Y = `calc(50% - ${COUNTER_HEIGHT_PX / 2}px)`
+
+const DRINK_ICON_SRC = (icon) => `${import.meta.env.BASE_URL}art/${icon}`
 
 // Where the door and tap sit, anchored the same way characters are — feet
 // (or base) at the counter's bottom edge, extending upward from there.
@@ -15,7 +16,7 @@ const FIXTURE_Y = `calc(50% + ${COUNTER_HEIGHT_PX / 2}px)`
 const DOOR_X = 95
 const TAP_X = PLAYER_X + 5
 
-export default function Lane({ customers, mugs, glasses, bonus, celebrate, isPlayerLane, playerX, spraying }) {
+export default function Lane({ customers, mugs, glasses, bonus, isPlayerLane, playerX, moveDir, spraying }) {
   return (
     <div className="relative flex-1 min-h-0">
       {/* aisle floor beneath the counter, so the lane reads as a distinct row */}
@@ -56,7 +57,7 @@ export default function Lane({ customers, mugs, glasses, bonus, celebrate, isPla
         <TapGlyph />
       </div>
 
-      {isPlayerLane && <Player x={playerX} spraying={spraying} />}
+      {isPlayerLane && <Player x={playerX} spraying={spraying} moveDir={moveDir} />}
 
       {customers.map((c) => (
         <Customer key={c.id} id={c.id} x={c.x} color={c.color} status={c.status} drinkName={c.drinkName} />
@@ -68,7 +69,11 @@ export default function Lane({ customers, mugs, glasses, bonus, celebrate, isPla
           className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
           style={{ left: `${m.x}%`, top: COUNTER_SURFACE_Y }}
         >
-          <MugGlyph color={m.color} size={31} />
+          <img
+            src={DRINK_ICON_SRC(DRINK_TYPES[m.drinkType].icon)}
+            alt=""
+            style={{ height: 30, width: 'auto', display: 'block' }}
+          />
         </div>
       ))}
 
@@ -88,15 +93,6 @@ export default function Lane({ customers, mugs, glasses, bonus, celebrate, isPla
           style={{ left: `${bonus.x}%`, top: COUNTER_SURFACE_Y }}
         >
           <HotDogGlyph />
-        </div>
-      )}
-
-      {celebrate && (
-        <div
-          className="absolute z-30 -translate-x-1/2"
-          style={{ left: `${celebrate.x}%`, top: COUNTER_SURFACE_Y }}
-        >
-          <Celebration points={POINTS_PER_BONUS} />
         </div>
       )}
     </div>

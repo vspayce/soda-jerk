@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useGameEngine } from './game/useGameEngine.js'
 import { useMusic } from './audio/useMusic.js'
 import { playSeltzerSpray, playCelebration } from './audio/sfx.js'
-import { LANE_COUNT } from './game/constants.js'
+import { LANE_COUNT, POINTS_PER_BONUS } from './game/constants.js'
 import Lane from './components/Lane.jsx'
 import HUD from './components/HUD.jsx'
 import Controls from './components/Controls.jsx'
 import GameOverScreen from './components/GameOverScreen.jsx'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
+import Celebration from './components/Celebration.jsx'
 
 // BASE_URL respects the vite.config.js `base` setting, so this still
 // resolves correctly once deployed under /soda-jerk/ on GitHub Pages.
@@ -52,7 +53,7 @@ export default function App() {
       prevCelebrateRef.current = state.celebrateCount
       playCelebration()
       setCelebrate(state.lastCelebrate)
-      const t = setTimeout(() => setCelebrate(null), 800)
+      const t = setTimeout(() => setCelebrate(null), 1200)
       return () => clearTimeout(t)
     }
   }, [state.celebrateCount])
@@ -75,12 +76,12 @@ export default function App() {
             key={laneIndex}
             isPlayerLane={state.playerLane === laneIndex}
             playerX={state.playerX}
+            moveDir={state.playerLane === laneIndex ? state.moveDir : 0}
             spraying={state.playerLane === laneIndex && spraying}
             customers={state.customers.filter((c) => c.lane === laneIndex)}
             mugs={state.mugs.filter((m) => m.lane === laneIndex)}
             glasses={state.glasses.filter((g) => g.lane === laneIndex)}
             bonus={state.bonus && state.bonus.lane === laneIndex ? state.bonus : null}
-            celebrate={celebrate && celebrate.lane === laneIndex ? celebrate : null}
           />
         ))}
       </div>
@@ -109,6 +110,8 @@ export default function App() {
           }}
         />
       )}
+
+      {celebrate && <Celebration points={POINTS_PER_BONUS} />}
     </div>
   )
 }

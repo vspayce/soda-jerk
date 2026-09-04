@@ -79,7 +79,7 @@ body {
 }
 
 /* Hot dog grabbed — a little celebration: points float up and fade while
-   a dachshund scurries through (hot dog -> literal dog, the whole joke). */
+   a dachshund pops up top-center and dances (hot dog -> literal dog). */
 @keyframes celebrate-points {
   0% { opacity: 0; transform: translateY(0) scale(0.7); }
   20% { opacity: 1; transform: translateY(-6px) scale(1.1); }
@@ -90,16 +90,20 @@ body {
   animation: celebrate-points 800ms ease-out forwards;
 }
 
-@keyframes dachshund-scurry {
-  0% { opacity: 0; transform: translateX(46px) scaleX(-1); }
-  15% { opacity: 1; transform: translateX(0) scaleX(-1) translateY(0); }
-  25% { transform: translateX(-3px) scaleX(-1) translateY(-3px); }
-  35% { transform: translateX(-6px) scaleX(-1) translateY(0); }
-  75% { opacity: 1; transform: translateX(-6px) scaleX(-1) translateY(0); }
-  100% { opacity: 0; transform: translateX(-46px) scaleX(-1) translateY(0); }
+@keyframes dachshund-dance {
+  0% { opacity: 0; transform: translateY(10px) scale(0.7) rotate(0deg); }
+  10% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+  20% { transform: translateY(-6px) rotate(-10deg); }
+  30% { transform: translateY(0) rotate(10deg); }
+  40% { transform: translateY(-6px) rotate(-10deg); }
+  50% { transform: translateY(0) rotate(10deg); }
+  60% { transform: translateY(-6px) rotate(-8deg); }
+  70% { transform: translateY(0) rotate(8deg); }
+  85% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(-10px) scale(0.8) rotate(0deg); }
 }
-.dachshund-scurry {
-  animation: dachshund-scurry 1000ms ease-in-out forwards;
+.dachshund-dance {
+  animation: dachshund-dance 1200ms ease-in-out forwards;
 }
 
 @media (min-width: 460px) {

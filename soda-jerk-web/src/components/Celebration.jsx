@@ -1,16 +1,20 @@
 import { DachshundGlyph } from './sprites.jsx'
 
-// A dachshund scurries through, and the points float up and fade — fired
-// briefly wherever a hot dog just got grabbed.
+// A dachshund pops up top-center and dances, while the points float up
+// and fade — fired briefly whenever a hot dog gets grabbed, wherever on
+// the bar it happened.
 export default function Celebration({ points }) {
   return (
-    <div className="absolute pointer-events-none" style={{ left: '50%', top: 0 }}>
-      <div className="absolute dachshund-scurry" style={{ left: 0, top: -14, transform: 'translate(-50%, -50%)' }}>
+    <div
+      className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none"
+      style={{ top: '6%' }}
+    >
+      <div className="dachshund-dance">
         <DachshundGlyph />
       </div>
       <div
-        className="absolute celebrate-points font-display text-sm whitespace-nowrap"
-        style={{ left: 0, top: 0, transform: 'translateX(-50%)', color: '#EDE3D0', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+        className="celebrate-points font-display text-sm whitespace-nowrap"
+        style={{ color: '#EDE3D0', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
       >
         +{points}
       </div>

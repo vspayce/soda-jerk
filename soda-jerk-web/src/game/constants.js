@@ -58,10 +58,8 @@ export const POINTS_PER_CAUGHT_GLASS = 25
 // uncaught, same as throwing with no one there — it has to match to
 // serve them.
 export const DRINK_TYPES = [
-  { name: 'Orange Creme', color: '#D9822B' },
-  { name: 'In the Hay', color: '#D9668A' },
-  { name: 'Egg Cream', color: '#6B4226' },
-  { name: 'Blue Moon', color: '#2E7CA6' },
+  { name: 'Orange Creme', color: '#D9822B', icon: 'drink-orange.png' },
+  { name: 'In the Hay', color: '#D9668A', icon: 'drink-pink.png' },
 ]
 
 // A hot dog drops on the counter every so often, somewhere within the

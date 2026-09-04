@@ -1,7 +1,12 @@
-import { PlayerSprite, SeltzerSprayGlyph } from './sprites.jsx'
+import { SeltzerSprayGlyph } from './sprites.jsx'
 import { COUNTER_HEIGHT_PX } from '../game/constants.js'
 
-export default function Player({ x, spraying }) {
+const STAND_SRC = `${import.meta.env.BASE_URL}art/player-stand.png`
+const RUN_SRC = `${import.meta.env.BASE_URL}art/player-run.png`
+
+export default function Player({ x, spraying, moveDir }) {
+  const running = moveDir !== 0
+
   return (
     <div
       className="absolute z-20"
@@ -12,7 +17,16 @@ export default function Player({ x, spraying }) {
       }}
     >
       <div className={`relative ${spraying ? 'player-flinch' : ''}`}>
-        <PlayerSprite />
+        <img
+          src={running ? RUN_SRC : STAND_SRC}
+          alt=""
+          style={{
+            height: 52,
+            width: 'auto',
+            display: 'block',
+            transform: moveDir === -1 ? 'scaleX(-1)' : 'none',
+          }}
+        />
         {spraying && (
           <div
             className="absolute seltzer-spray"

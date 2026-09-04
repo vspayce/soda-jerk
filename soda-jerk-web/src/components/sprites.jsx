@@ -150,11 +150,11 @@ export function MugGlyph({ empty = false, size = 26, color = '#EDE3D0' }) {
     <svg viewBox="0 0 16 16" width={size} height={size}>
       <path
         d="M4 3h6l-0.6 8.5a2.7 2.7 0 0 1-2.4 2.5 2.7 2.7 0 0 1-2.4-2.5L4 3z"
-        fill={empty ? 'transparent' : color}
-        stroke={empty ? '#7A1F2B' : '#151014'}
+        fill={empty ? 'rgba(201,207,214,0.4)' : color}
+        stroke={empty ? '#C9CFD6' : '#151014'}
         strokeWidth="1.1"
       />
-      <path d="M10 4.5h1.6a1.7 1.7 0 0 1 0 3.4H9.7" fill="none" stroke={empty ? '#7A1F2B' : '#151014'} strokeWidth="1" />
+      <path d="M10 4.5h1.6a1.7 1.7 0 0 1 0 3.4H9.7" fill="none" stroke={empty ? '#C9CFD6' : '#151014'} strokeWidth="1" />
     </svg>
   )
 }
