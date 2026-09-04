@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+#root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Keeps the game feeling like a phone screen even in a wide desktop
+   browser window, since the real target is a portrait iOS app. */
+.phone-frame {
+  width: 100%;
+  max-width: 430px;
+  height: 100vh;
+  max-height: 932px;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Returning glass — pulses so it reads clearly against the counter as it
+   drifts back, distinct from the solid outgoing mug. */
+@keyframes glass-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 3px rgba(198, 161, 91, 0.5));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(198, 161, 91, 0.95));
+    transform: scale(1.12);
+  }
+}
+.glass-return {
+  animation: glass-pulse 0.7s ease-in-out infinite;
+}
+
+/* Splash-screen "TAP TO START" button glow. */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(198, 161, 91, 0); }
+  50% { box-shadow: 0 0 14px 2px rgba(198, 161, 91, 0.45); }
+}
+
+/* Seltzer-in-the-face reaction, when an unserved customer reaches the
+   bartender's own lane. The spray overlay fades in/out; the sprite
+   itself gets a quick recoil jitter, both on a plain child transform so
+   they don't fight the parent's positioning transform. */
+@keyframes seltzer-spray {
+  0% { opacity: 0; transform: translateX(16px) scale(0.6); }
+  18% { opacity: 1; transform: translateX(0) scale(1); }
+  72% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-8px) scale(1.05); }
+}
+.seltzer-spray {
+  animation: seltzer-spray 550ms ease-out;
+}
+
+@keyframes player-flinch {
+  0%, 100% { transform: rotate(0deg) translateX(0); }
+  20% { transform: rotate(-7deg) translateX(-3px); }
+  45% { transform: rotate(5deg) translateX(2px); }
+  70% { transform: rotate(-3deg) translateX(-1px); }
+}
+.player-flinch {
+  animation: player-flinch 500ms ease-in-out;
+}
+
+@media (min-width: 460px) {
+  .phone-frame {
+    height: 900px;
+    margin: 16px 0;
+    border-radius: 32px;
+    box-shadow: 0 0 0 10px #000, 0 20px 60px rgba(0,0,0,0.6);
+  }
+}
