@@ -21,6 +21,43 @@ const SCONCE_YS = [32, 66]
 
 const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 
+// A repeating ogee/swirl damask, echoing the wallpaper behind the counter
+// in the splash art — replaces the old straight brass fluting lines.
+const SWIRL_PATTERN =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M15 30c0-10 8-16 15-16s15 6 15 16-8 16-15 16-15-6-15-16z' stroke='%23EDE3D0' stroke-width='1' fill='none' opacity='0.6'/%3E%3Cpath d='M0 0c15 0 15 15 30 15s15-15 30-15M0 60c15 0 15-15 30-15s15 15 30 15' stroke='%23EDE3D0' stroke-width='1' fill='none' opacity='0.6'/%3E%3C/svg%3E"
+
+// Corner flourish — a curling scroll, replacing the old geometric
+// sunburst fan, to match the swirl filigree on the "SODA JERK" sign.
+function CornerSwirl({ corner }) {
+  const isLeft = corner.includes('l')
+  const isTop = corner.includes('t')
+  return (
+    <svg
+      className="absolute opacity-[0.16]"
+      style={{
+        top: isTop ? 0 : undefined,
+        bottom: isTop ? undefined : 0,
+        left: isLeft ? 0 : undefined,
+        right: isLeft ? undefined : 0,
+        width: 70,
+        height: 70,
+        transform: `scale(${isLeft ? 1 : -1}, ${isTop ? 1 : -1})`,
+      }}
+      viewBox="0 0 70 70"
+      fill="none"
+    >
+      <path
+        d="M2 2c0 24 4 40 12 48M2 2c24 0 40 4 48 12M14 14c8 5 11 13 8 20-2 5-8 7-12 4-3-2-4-6-1-8"
+        stroke="#C6A15B"
+        strokeWidth="1.6"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <circle cx="2" cy="2" r="2.2" fill="#C6A15B" />
+    </svg>
+  )
+}
+
 export default function PerspectiveBackdrop() {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -46,12 +83,13 @@ export default function PerspectiveBackdrop() {
           background: 'linear-gradient(180deg, #8A6E37 0%, #151014 70%)',
         }}
       />
-      {/* left wall fluting — thin vertical brass lines, same slant as the wall */}
+      {/* left wall — swirl damask, same slant as the wall */}
       <div
         className="absolute inset-0 opacity-[0.14]"
         style={{
           clipPath: 'polygon(46% 0%, 50% 0%, 6% 100%, -6% 100%)',
-          background: 'repeating-linear-gradient(90deg, #EDE3D0 0 1px, transparent 1px 5%)',
+          backgroundImage: `url("${SWIRL_PATTERN}")`,
+          backgroundSize: '60px 60px',
         }}
       />
 
@@ -63,12 +101,13 @@ export default function PerspectiveBackdrop() {
           background: 'linear-gradient(180deg, #8A6E37 0%, #151014 70%)',
         }}
       />
-      {/* right wall fluting */}
+      {/* right wall — swirl damask */}
       <div
         className="absolute inset-0 opacity-[0.14]"
         style={{
           clipPath: 'polygon(50% 0%, 54% 0%, 106% 100%, 94% 100%)',
-          background: 'repeating-linear-gradient(90deg, #EDE3D0 0 1px, transparent 1px 5%)',
+          backgroundImage: `url("${SWIRL_PATTERN}")`,
+          backgroundSize: '60px 60px',
         }}
       />
 
@@ -102,43 +141,11 @@ export default function PerspectiveBackdrop() {
         }}
       />
 
-      {/* corner fans, top and bottom */}
-      <div
-        className="absolute top-0 left-0 opacity-[0.12]"
-        style={{
-          width: 90,
-          height: 90,
-          clipPath: 'circle(100% at 0 0)',
-          background: 'repeating-conic-gradient(from 0deg at 0 0, #C6A15B 0deg 3deg, transparent 3deg 9deg)',
-        }}
-      />
-      <div
-        className="absolute top-0 right-0 opacity-[0.12]"
-        style={{
-          width: 90,
-          height: 90,
-          clipPath: 'circle(100% at 100% 0)',
-          background: 'repeating-conic-gradient(from 0deg at 100% 0, #C6A15B 0deg 3deg, transparent 3deg 9deg)',
-        }}
-      />
-      <div
-        className="absolute bottom-0 left-0 opacity-[0.12]"
-        style={{
-          width: 90,
-          height: 90,
-          clipPath: 'circle(100% at 0 100%)',
-          background: 'repeating-conic-gradient(from 0deg at 0 100%, #C6A15B 0deg 3deg, transparent 3deg 9deg)',
-        }}
-      />
-      <div
-        className="absolute bottom-0 right-0 opacity-[0.12]"
-        style={{
-          width: 90,
-          height: 90,
-          clipPath: 'circle(100% at 100% 100%)',
-          background: 'repeating-conic-gradient(from 0deg at 100% 100%, #C6A15B 0deg 3deg, transparent 3deg 9deg)',
-        }}
-      />
+      {/* corner swirl flourishes, top and bottom */}
+      <CornerSwirl corner="tl" />
+      <CornerSwirl corner="tr" />
+      <CornerSwirl corner="bl" />
+      <CornerSwirl corner="br" />
 
       {/* stepped cove molding beneath the vanishing point, framing the sign */}
       <div className="absolute left-1/2 top-0 -translate-x-1/2 flex flex-col items-center">

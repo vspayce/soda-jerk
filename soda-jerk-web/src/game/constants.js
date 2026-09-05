@@ -53,15 +53,18 @@ export const GLASS_REACH_X = 10
 export const POINTS_PER_SERVE = 100
 export const POINTS_PER_CAUGHT_GLASS = 25
 
-// Selectable drink types — pick one with the selector between the
-// joystick and the JERK button before pouring. A customer's outfit color
-// shows which one they want; the wrong drink just sails past them
-// uncaught, same as throwing with no one there — it has to match to
-// serve them.
+// Selectable drink types — tap one of the taps to pour it. A customer's
+// outfit color shows which one they want; the wrong drink just sails
+// past them uncaught, same as throwing with no one there — it has to
+// match to serve them.
 export const DRINK_TYPES = [
   { name: 'Orange Creme', color: '#D9822B', icon: 'drink-orange.png', tapIcon: 'tap-orange.png' },
   { name: 'In the Hay', color: '#D9668A', icon: 'drink-pink.png', tapIcon: 'tap-pink.png' },
 ]
+
+// How many different patron illustrations exist per drink color — purely
+// cosmetic variety, picked at random when a customer spawns.
+export const PATRON_TYPE_COUNT = 2
 
 // A hot dog drops on the counter every so often, somewhere within the
 // bartender's run range — reach it (JERK while close enough) before it

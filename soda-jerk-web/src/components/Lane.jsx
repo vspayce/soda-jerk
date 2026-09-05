@@ -73,7 +73,15 @@ export default function Lane({
       )}
 
       {customers.map((c) => (
-        <Customer key={c.id} id={c.id} x={c.x} drinkType={c.drinkType} status={c.status} drinkName={c.drinkName} />
+        <Customer
+          key={c.id}
+          id={c.id}
+          x={c.x}
+          drinkType={c.drinkType}
+          patronType={c.patronType}
+          status={c.status}
+          drinkName={c.drinkName}
+        />
       ))}
 
       {mugs.map((m) => (

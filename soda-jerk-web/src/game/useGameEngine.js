@@ -74,6 +74,7 @@ function trySpawnCustomer(sim, travelMs) {
   const lane = pick(openLanes)
   const speed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (travelMs / 1000)
   const drinkType = Math.floor(Math.random() * C.DRINK_TYPES.length)
+  const patronType = Math.floor(Math.random() * C.PATRON_TYPE_COUNT)
 
   sim.customers.push({
     id: sim.nextId++,
@@ -82,6 +83,7 @@ function trySpawnCustomer(sim, travelMs) {
     status: 'walking', // walking -> leaving-happy (served) | removed (reached end of bar)
     speed,
     drinkType,
+    patronType, // which illustration to use — purely cosmetic variety
     drinkName: C.DRINK_TYPES[drinkType].name,
     color: C.DRINK_TYPES[drinkType].color,
   })
