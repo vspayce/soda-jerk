@@ -8,7 +8,7 @@ export const STARTING_LIVES = 5
 // counter, and how far right they can run along it (left/right controls),
 // at what speed (%/s).
 export const PLAYER_X = 12
-export const PLAYER_MAX_X = 55
+export const PLAYER_MAX_X = 85
 export const PLAYER_RUN_SPEED_X = 70
 
 // If an unserved customer's x reaches this point, they've made it all
@@ -22,7 +22,7 @@ export const OFFSCREEN_X = 108
 // anchor their feet to its bottom edge (so heads clear the top); mugs and
 // glasses ride along its top edge (so they read as sliding on the surface,
 // not passing through the middle of it).
-export const COUNTER_HEIGHT_PX = 34
+export const COUNTER_HEIGHT_PX = 44
 
 // Time (ms) for a mug to cross the full bar length if nothing's in the way.
 export const MUG_TRAVEL_MS = 250
@@ -34,9 +34,10 @@ export const CUSTOMER_WALK_OUT_MS = 900
 
 // How long, at the very start vs. at max difficulty, an unserved
 // customer takes to walk the full bar length before reaching the end.
-// 20% slower than the original 6000/2600ms.
-export const CUSTOMER_TRAVEL_MS_START = 7500
-export const CUSTOMER_TRAVEL_MS_MIN = 3250
+// A third 20% cut on top of the previous two (~49% slower overall than
+// the original 6000/2600ms).
+export const CUSTOMER_TRAVEL_MS_START = 11719
+export const CUSTOMER_TRAVEL_MS_MIN = 5079
 
 // Spawn interval (ms) between new customers, decreases as difficulty ramps.
 export const SPAWN_INTERVAL_START_MS = 2200

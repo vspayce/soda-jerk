@@ -1,4 +1,4 @@
-export default function HUD({ score, lives, isMuted, onToggleMute }) {
+export default function HUD({ score, lives, isMuted, onToggleMute, onOpenSettings }) {
   return (
     <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pt-3 pb-2">
       <div
@@ -9,15 +9,14 @@ export default function HUD({ score, lives, isMuted, onToggleMute }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="flex gap-1 pointer-events-none">
-          {Array.from({ length: lives }).map((_, i) => (
-            <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M6 3h12l-1.2 8.5a5 5 0 0 1-4.8 4.3v3.2h3v2H9v-2h3v-3.2a5 5 0 0 1-4.8-4.3L6 3z"
-                fill="#C6A15B"
-              />
-            </svg>
-          ))}
+        <div className="flex items-center gap-1.5 pointer-events-none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M6 3h12l-1.2 8.5a5 5 0 0 1-4.8 4.3v3.2h3v2H9v-2h3v-3.2a5 5 0 0 1-4.8-4.3L6 3z"
+              fill="#C6A15B"
+            />
+          </svg>
+          <span className="font-display text-brass text-sm tracking-wide">×{lives}</span>
         </div>
 
         {onToggleMute && (
@@ -45,6 +44,31 @@ export default function HUD({ score, lives, isMuted, onToggleMute }) {
                 />
               </svg>
             )}
+          </button>
+        )}
+
+        {onOpenSettings && (
+          <button
+            onPointerDown={(e) => {
+              e.preventDefault()
+              onOpenSettings()
+            }}
+            className="text-brass opacity-80 active:opacity-100"
+            aria-label="Settings"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+              <path
+                d="M12 2.5v2.4M12 19.1v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         )}
       </div>

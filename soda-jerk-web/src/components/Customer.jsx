@@ -29,16 +29,18 @@ export default function Customer({ x, drinkType, status, drinkName }) {
       }}
       title={drinkName}
     >
-      <img
-        src={PATRON_SRC[drinkType]}
-        alt=""
-        style={{
-          height: 50,
-          width: 'auto',
-          display: 'block',
-          transform: status === 'leaving-happy' ? 'scaleX(-1)' : 'none',
-        }}
-      />
+      <div className="patron-walk">
+        <img
+          src={PATRON_SRC[drinkType]}
+          alt=""
+          style={{
+            height: 65,
+            width: 'auto',
+            display: 'block',
+            transform: status === 'leaving-happy' ? 'scaleX(-1)' : 'none',
+          }}
+        />
+      </div>
     </div>
   )
 }

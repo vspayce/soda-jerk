@@ -1,26 +1,41 @@
 import Customer from './Customer.jsx'
 import Player from './Player.jsx'
-import { TapGlyph, HotDogGlyph } from './sprites.jsx'
 import { PLAYER_X, COUNTER_HEIGHT_PX, DRINK_TYPES } from '../game/constants.js'
 
-// Mugs and glasses ride along the counter's top edge, not its vertical
-// center, so they read as sliding on the surface rather than passing
-// through the middle of the counter block.
-const COUNTER_SURFACE_Y = `calc(50% - ${COUNTER_HEIGHT_PX / 2}px)`
+// Mugs, glasses, and the hot dog ride along the counter's top surface,
+// not its vertical center — otherwise they read as embedded in the middle
+// of the wood texture instead of resting on top of it. The bar-counter
+// art's visible rail sits a bit above the image's geometric top edge, so
+// this nudges up past that edge rather than sitting exactly on it.
+const COUNTER_SURFACE_Y = `calc(50% - ${COUNTER_HEIGHT_PX / 2 + 10}px)`
 
 const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 const DRINK_ICON_SRC = (icon) => ART_SRC(icon)
 const BAR_COUNTER_SRC = ART_SRC('bar-counter.png')
 const SALOON_DOOR_SRC = ART_SRC('saloon-door.png')
 const GLASS_EMPTY_SRC = ART_SRC('glass-empty.png')
+const HOTDOG_SRC = ART_SRC('hotdog.png')
+const FOUNTAIN_SRC = ART_SRC('fountain.png')
 
-// Where the door and tap sit, anchored the same way characters are — feet
-// (or base) at the counter's bottom edge, extending upward from there.
+// Where the door and fountain sit, anchored the same way characters are —
+// feet (or base) at the counter's bottom edge, extending upward from
+// there. The fountain sits right behind the bartender's home spot.
 const FIXTURE_Y = `calc(50% + ${COUNTER_HEIGHT_PX / 2}px)`
 const DOOR_X = 95
-const TAP_X = PLAYER_X + 5
+const FOUNTAIN_X = PLAYER_X - 3
 
-export default function Lane({ customers, mugs, glasses, bonus, isPlayerLane, playerX, moveDir, spraying, sprayDrinkType }) {
+export default function Lane({
+  customers,
+  mugs,
+  glasses,
+  bonus,
+  isPlayerLane,
+  playerX,
+  moveDir,
+  spraying,
+  sprayDrinkType,
+  onGrabBonus,
+}) {
   return (
     <div className="relative flex-1 min-h-0">
       {/* aisle floor beneath the counter, so the lane reads as a distinct row */}
@@ -40,16 +55,16 @@ export default function Lane({ customers, mugs, glasses, bonus, isPlayerLane, pl
         src={SALOON_DOOR_SRC}
         alt=""
         className="absolute z-0"
-        style={{ left: `${DOOR_X}%`, top: FIXTURE_Y, height: 42, width: 'auto', transform: 'translate(-50%, -100%)' }}
+        style={{ left: `${DOOR_X}%`, top: FIXTURE_Y, height: 55, width: 'auto', transform: 'translate(-50%, -100%)' }}
       />
 
-      {/* soda tap — where mugs are filled from */}
-      <div
-        className="absolute z-10"
-        style={{ left: `${TAP_X}%`, top: FIXTURE_Y, transform: 'translate(-50%, -100%)' }}
-      >
-        <TapGlyph />
-      </div>
+      {/* the fountain machine, behind the bartender at the start of the bar */}
+      <img
+        src={FOUNTAIN_SRC}
+        alt=""
+        className="absolute z-0"
+        style={{ left: `${FOUNTAIN_X}%`, top: FIXTURE_Y, height: 60, width: 'auto', transform: 'translate(-50%, -100%)' }}
+      />
 
       {isPlayerLane && (
         <Player x={playerX} spraying={spraying} sprayDrinkType={sprayDrinkType} moveDir={moveDir} />
@@ -68,7 +83,7 @@ export default function Lane({ customers, mugs, glasses, bonus, isPlayerLane, pl
           <img
             src={DRINK_ICON_SRC(DRINK_TYPES[m.drinkType].icon)}
             alt=""
-            style={{ height: 30, width: 'auto', display: 'block' }}
+            style={{ height: 39, width: 'auto', display: 'block' }}
           />
         </div>
       ))}
@@ -79,16 +94,20 @@ export default function Lane({ customers, mugs, glasses, bonus, isPlayerLane, pl
           className="absolute z-20 -translate-x-1/2 -translate-y-1/2 glass-return"
           style={{ left: `${g.x}%`, top: COUNTER_SURFACE_Y }}
         >
-          <img src={GLASS_EMPTY_SRC} alt="" style={{ height: 34, width: 'auto', display: 'block' }} />
+          <img src={GLASS_EMPTY_SRC} alt="" style={{ height: 44, width: 'auto', display: 'block' }} />
         </div>
       ))}
 
       {bonus && (
         <div
-          className="absolute z-20 -translate-x-1/2 -translate-y-1/2 glass-return"
-          style={{ left: `${bonus.x}%`, top: COUNTER_SURFACE_Y }}
+          className="absolute z-20 -translate-x-1/2 -translate-y-1/2 glass-return flex items-center justify-center"
+          style={{ left: `${bonus.x}%`, top: COUNTER_SURFACE_Y, padding: 14 }}
+          onPointerDown={(e) => {
+            e.preventDefault()
+            onGrabBonus()
+          }}
         >
-          <HotDogGlyph />
+          <img src={HOTDOG_SRC} alt="" style={{ height: 13, width: 'auto', display: 'block' }} />
         </div>
       )}
     </div>

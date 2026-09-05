@@ -26,7 +26,7 @@ export default function DrinkSelector({ selected, onSelect }) {
           aria-label={`Pour ${drink.name}`}
           title={drink.name}
         >
-          <img src={ICON_SRC(drink.icon)} alt="" className="w-full h-full object-cover" />
+          <img src={ICON_SRC(drink.icon)} alt="" className="w-full h-full object-contain p-1" />
         </button>
       ))}
     </div>

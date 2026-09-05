@@ -10,16 +10,19 @@ import GameOverScreen from './components/GameOverScreen.jsx'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
 import Celebration from './components/Celebration.jsx'
+import SettingsScreen from './components/SettingsScreen.jsx'
 
 // BASE_URL respects the vite.config.js `base` setting, so this still
 // resolves correctly once deployed under /soda-jerk/ on GitHub Pages.
 const MUSIC_SRC = `${import.meta.env.BASE_URL}audio/wurlitzer-loop.mp3`
 
 export default function App() {
-  const { state, changeLane, serveOrCatch, startRun, stopRun, selectDrink, startGame, restart } = useGameEngine()
-  const music = useMusic(MUSIC_SRC, { volume: 0.45 })
+  const { state, changeLane, serveOrCatch, startRun, stopRun, selectDrink, grabBonus, startGame, restart } =
+    useGameEngine()
+  const music = useMusic(MUSIC_SRC, { volume: 0.22 })
   const [spraying, setSpraying] = useState(false)
   const [celebrate, setCelebrate] = useState(null)
+  const [showSettings, setShowSettings] = useState(false)
   const prevSpillRef = useRef(state.spillCount)
   const prevCelebrateRef = useRef(state.celebrateCount)
 
@@ -42,7 +45,7 @@ export default function App() {
       prevSpillRef.current = state.spillCount
       playSeltzerSpray()
       setSpraying(true)
-      const t = setTimeout(() => setSpraying(false), 550)
+      const t = setTimeout(() => setSpraying(false), 1100)
       return () => clearTimeout(t)
     }
   }, [state.spillCount])
@@ -68,9 +71,15 @@ export default function App() {
     >
       <PerspectiveBackdrop />
 
-      <HUD score={state.score} lives={state.lives} isMuted={music.isMuted} onToggleMute={music.toggleMute} />
+      <HUD
+        score={state.score}
+        lives={state.lives}
+        isMuted={music.isMuted}
+        onToggleMute={music.toggleMute}
+        onOpenSettings={() => setShowSettings(true)}
+      />
 
-      <div className="absolute inset-0 flex flex-col justify-end gap-4 px-4 pt-28 pb-32">
+      <div className="absolute inset-0 flex flex-col justify-end gap-1 px-4 pt-28 pb-32">
         {Array.from({ length: LANE_COUNT }).map((_, laneIndex) => (
           <Lane
             key={laneIndex}
@@ -83,6 +92,7 @@ export default function App() {
             mugs={state.mugs.filter((m) => m.lane === laneIndex)}
             glasses={state.glasses.filter((g) => g.lane === laneIndex)}
             bonus={state.bonus && state.bonus.lane === laneIndex ? state.bonus : null}
+            onGrabBonus={withAudio(grabBonus)}
           />
         ))}
       </div>
@@ -113,6 +123,14 @@ export default function App() {
       )}
 
       {celebrate && <Celebration points={POINTS_PER_BONUS} />}
+
+      {showSettings && (
+        <SettingsScreen
+          volume={music.volume}
+          onVolumeChange={music.setVolume}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   )
 }

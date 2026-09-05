@@ -35,6 +35,8 @@ function createInitialSim() {
     // of the bar in the player's own lane — App.jsx watches this to fire
     // the seltzer-in-the-face reaction.
     lastSpillDrinkType: 0, // whose drink they wanted — picks which patron sprays
+    pendingSprayDrinkType: null, // set while the bartender is being
+    // recalled to the counter after a spill, until he's actually back
     nextSpawnInMs: C.SPAWN_INTERVAL_START_MS,
     nextBonusInMs: randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS),
     nextId: 1,
@@ -99,6 +101,16 @@ function step(sim, dt) {
     if (sim.playerX > C.PLAYER_MAX_X) sim.playerX = C.PLAYER_MAX_X
   }
 
+  // A spill from last frame recalls the bartender to the counter (see
+  // below) — the spray itself only fires once he's actually back, so
+  // it's never shown happening off in the middle of the bar somewhere.
+  if (sim.pendingSprayDrinkType !== null && sim.playerX <= C.PLAYER_X) {
+    sim.spillCount++
+    sim.lastSpillDrinkType = sim.pendingSprayDrinkType
+    sim.pendingSprayDrinkType = null
+    sim.moveDir = 0
+  }
+
   // A hot dog drops on the counter now and then, within run range — grab
   // it before it goes cold and disappears, or don't; no penalty either way.
   sim.nextBonusInMs -= dt * 1000
@@ -146,7 +158,11 @@ function step(sim, dt) {
       target.status = 'leaving-happy'
       target.speed = (C.OFFSCREEN_X - target.x) / (C.CUSTOMER_WALK_OUT_MS / 1000)
 
-      if (Math.random() < C.GLASS_RETURN_CHANCE) {
+      // One returning glass per lane at a time — otherwise catching the
+      // only one you can see still leaves a second one uncaught to be
+      // missed later, costing a life despite having "gotten the glass".
+      const laneHasGlass = sim.glasses.some((g) => g.lane === m.lane)
+      if (!laneHasGlass && Math.random() < C.GLASS_RETURN_CHANCE) {
         sim.glasses.push({
           id: sim.nextId++,
           lane: m.lane,
@@ -172,10 +188,13 @@ function step(sim, dt) {
       c._remove = true
       loseLife(sim)
       // Only the bartender's own lane gets the seltzer in the face — the
-      // player isn't even standing in the others.
+      // player isn't even standing in the others. The life is lost right
+      // now regardless; the spray itself waits until he's recalled back
+      // to the counter (see the pending-spray check above) so it's slow
+      // enough to actually see.
       if (c.lane === sim.playerLane) {
-        sim.spillCount++
-        sim.lastSpillDrinkType = c.drinkType
+        sim.pendingSprayDrinkType = c.drinkType
+        sim.moveDir = -1
       }
     } else if (c.status === 'leaving-happy' && c.x >= C.OFFSCREEN_X) {
       c._remove = true
@@ -260,6 +279,17 @@ export function useGameEngine() {
     })
   }, [])
 
+  // Tapping the hot dog directly grabs it outright — no need to line up
+  // with it first, since the tap itself is the targeting.
+  const grabBonus = useCallback(() => {
+    const sim = simRef.current
+    if (sim.gameOver || !sim.bonus) return
+    sim.score += C.POINTS_PER_BONUS
+    sim.lastCelebrate = { lane: sim.bonus.lane, x: sim.bonus.x }
+    sim.celebrateCount++
+    sim.bonus = null
+  }, [])
+
   const selectDrink = useCallback((index) => {
     simRef.current.selectedDrink = index
   }, [])
@@ -286,5 +316,15 @@ export function useGameEngine() {
     setTick((n) => n + 1)
   }, [])
 
-  return { state: simRef.current, changeLane, serveOrCatch, startRun, stopRun, selectDrink, startGame, restart }
+  return {
+    state: simRef.current,
+    changeLane,
+    serveOrCatch,
+    startRun,
+    stopRun,
+    selectDrink,
+    grabBonus,
+    startGame,
+    restart,
+  }
 }

@@ -129,25 +129,23 @@ export default function PerspectiveBackdrop() {
         ))}
       </div>
 
-      {/* overhead signage banner */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 top-3 px-5 py-1.5 rounded-sm border-2"
-        style={{
-          background: '#7A1F2B',
-          borderColor: '#C6A15B',
-          clipPath: 'polygon(6% 0%, 94% 0%, 100% 50%, 94% 100%, 6% 100%, 0% 50%)',
-        }}
-      >
-        <span className="font-display text-cream text-xs tracking-[0.2em]">SODA JERK</span>
-      </div>
+      {/* overhead signage banner — the same logo lockup as the splash
+          screen, sized to clear the lives icons in the HUD row */}
+      <img
+        src={ART_SRC('soda-jerk-logo.png')}
+        alt="Soda Jerk"
+        className="absolute left-1/2 -translate-x-1/2 top-2"
+        style={{ height: 24, width: 'auto' }}
+      />
 
       {/* Mighty Wurlitzer, front and center up top */}
       <img
         src={ART_SRC('wurlitzer.png')}
         alt=""
         className="absolute left-1/2 -translate-x-1/2 opacity-95"
-        style={{ top: '9%', width: '52%', height: 'auto' }}
+        style={{ top: '9%', width: '24%', height: 'auto' }}
       />
+
     </div>
   )
 }
