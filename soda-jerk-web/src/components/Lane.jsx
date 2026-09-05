@@ -99,15 +99,19 @@ export default function Lane({
       ))}
 
       {bonus && (
+        // The tap target is this outer div — fixed geometry, never
+        // animated, so it stays reliably hit-testable on touch. The
+        // pulsing "notice me" animation lives entirely on the inner
+        // child instead, purely visual.
         <div
-          className="absolute z-20 -translate-x-1/2 -translate-y-1/2 glass-return flex items-center justify-center"
+          className="absolute z-20 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center"
           style={{ left: `${bonus.x}%`, top: COUNTER_SURFACE_Y, padding: 14 }}
           onPointerDown={(e) => {
             e.preventDefault()
             onGrabBonus()
           }}
         >
-          <img src={HOTDOG_SRC} alt="" style={{ height: 13, width: 'auto', display: 'block' }} />
+          <img src={HOTDOG_SRC} alt="" className="glass-return" style={{ height: 13, width: 'auto', display: 'block' }} />
         </div>
       )}
     </div>
