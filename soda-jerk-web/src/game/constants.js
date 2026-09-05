@@ -2,7 +2,7 @@
 // through game logic. Positions are percentages (0-100) along a lane.
 
 export const LANE_COUNT = 4
-export const STARTING_LIVES = 5
+export const STARTING_LIVES = 3
 
 // x-position (%) of the bartender's home spot at the near end of the
 // counter, and how far right they can run along it (left/right controls),

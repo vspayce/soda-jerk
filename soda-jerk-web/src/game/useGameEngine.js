@@ -347,10 +347,9 @@ export function useGameEngine() {
     const lane = sim.playerLane
 
     // One mug in flight per lane at a time, to keep the prototype simple.
+    // No check for a customer actually being there — pouring down an
+    // empty lane is allowed, it just sails through and breaks.
     if (sim.mugs.some((m) => m.lane === lane)) return
-
-    const hasTarget = sim.customers.some((c) => c.lane === lane && c.status === 'walking')
-    if (!hasTarget) return
 
     sim.mugs.push({
       id: sim.nextId++,

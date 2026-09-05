@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { qualifiesForLeaderboard, addLeaderboardEntry, getLeaderboard, getLastInitials } from '../game/leaderboard.js'
 import LeaderboardList from './LeaderboardList.jsx'
 
+const FIRED_SRC = `${import.meta.env.BASE_URL}art/fired.png`
+
 export default function GameOverScreen({ score, onRestart }) {
   const [qualifies] = useState(() => qualifiesForLeaderboard(score))
   const [saved, setSaved] = useState(false)
@@ -21,6 +23,7 @@ export default function GameOverScreen({ score, onRestart }) {
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-ink/90 px-8 text-center overflow-y-auto py-10">
       <div className="font-display text-brass text-3xl mb-2 tracking-wide">GAME OVER, YOU'RE FIRED!</div>
+      <img src={FIRED_SRC} alt="" className="mb-2" style={{ height: 180, width: 'auto' }} />
       <div className="text-cream/80 mb-2">Final score</div>
       <div className="font-display text-cream text-5xl mb-6">{score}</div>
 

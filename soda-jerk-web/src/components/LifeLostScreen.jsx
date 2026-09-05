@@ -4,8 +4,9 @@ const SPRAY_SRC = `${import.meta.env.BASE_URL}art/spray-closeup.png`
 const BROKEN_GLASS_SRC = `${import.meta.env.BASE_URL}art/broken-glass.png`
 
 export default function LifeLostScreen({ score, lives, missReason, onContinue }) {
-  const image = missReason === 'spray' ? SPRAY_SRC : missReason === 'glass' ? BROKEN_GLASS_SRC : null
-  const title = missReason === 'glass' ? 'YOU MISSED A GLASS!' : missReason === 'spray' ? 'YOU GOT SPRAYED!' : null
+  const isBrokenGlass = missReason === 'glass' || missReason === 'mug'
+  const image = missReason === 'spray' ? SPRAY_SRC : isBrokenGlass ? BROKEN_GLASS_SRC : null
+  const title = missReason === 'glass' ? 'YOU MISSED A GLASS!' : missReason === 'mug' ? 'WRONG DRINK!' : missReason === 'spray' ? 'YOU GOT SPRAYED!' : null
   const subtext = `SCORE ${score} · ${lives} ${lives === 1 ? 'LIFE' : 'LIVES'} LEFT`
 
   if (!image) {
