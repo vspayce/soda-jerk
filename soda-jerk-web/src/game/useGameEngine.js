@@ -19,11 +19,16 @@ function createInitialSim() {
     playerLane: 0,
     playerX: C.PLAYER_X,
     moveDir: 0, // -1 left, 0 still, 1 right — set by holding a run button
+    runTargetX: null, // set when the bartender is auto-running to a tapped
+    // hot dog; overridden the instant manual dragging starts
     selectedDrink: 0, // index into C.DRINK_TYPES — what the next mug pours
     lives: C.STARTING_LIVES,
     score: 0,
     survivalMs: 0,
     gameOver: false,
+    awaitingContinue: false, // true right after a life is lost (but the
+    // game isn't over) — freezes the sim until continueAfterDeath() is
+    // called, when the "YOU DIED" button is tapped
     customers: [],
     mugs: [],
     glasses: [],
@@ -35,8 +40,10 @@ function createInitialSim() {
     // of the bar in the player's own lane — App.jsx watches this to fire
     // the seltzer-in-the-face reaction.
     lastSpillDrinkType: 0, // whose drink they wanted — picks which patron sprays
-    pendingSprayDrinkType: null, // set while the bartender is being
-    // recalled to the counter after a spill, until he's actually back
+    pendingSprayDrinkType: null, // set while the bartender is running to
+    // the end of the bar after a spill, until he actually gets there
+    continuePauseInMs: null, // counts down while he's held at the end of
+    // the bar getting sprayed, before awaitingContinue kicks in
     nextSpawnInMs: C.SPAWN_INTERVAL_START_MS,
     nextBonusInMs: randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS),
     nextId: 1,
@@ -81,6 +88,7 @@ function trySpawnCustomer(sim, travelMs) {
 
 function step(sim, dt) {
   if (!sim.started) return
+  if (sim.awaitingContinue) return
 
   sim.survivalMs += dt * 1000
   const t = difficultyFactor(sim.survivalMs)
@@ -94,21 +102,42 @@ function step(sim, dt) {
     sim.nextSpawnInMs = spawnInterval
   }
 
-  // Running left/right along the counter, while a run button is held.
-  if (sim.moveDir !== 0) {
+  // Running left/right along the counter — either manually, while a drag
+  // is held, or automatically toward a tapped hot dog until he arrives.
+  if (sim.runTargetX !== null) {
+    const dir = sim.runTargetX > sim.playerX ? 1 : -1
+    sim.moveDir = dir
+    sim.playerX += dir * C.PLAYER_RUN_SPEED_X * dt
+    if ((dir === 1 && sim.playerX >= sim.runTargetX) || (dir === -1 && sim.playerX <= sim.runTargetX)) {
+      sim.playerX = sim.runTargetX
+      sim.runTargetX = null
+      sim.moveDir = 0
+    }
+  } else if (sim.moveDir !== 0) {
     sim.playerX += sim.moveDir * C.PLAYER_RUN_SPEED_X * dt
-    if (sim.playerX < C.PLAYER_X) sim.playerX = C.PLAYER_X
-    if (sim.playerX > C.PLAYER_MAX_X) sim.playerX = C.PLAYER_MAX_X
   }
+  if (sim.playerX < C.PLAYER_X) sim.playerX = C.PLAYER_X
+  if (sim.playerX > C.PLAYER_MAX_X) sim.playerX = C.PLAYER_MAX_X
 
-  // A spill from last frame recalls the bartender to the counter (see
-  // below) — the spray itself only fires once he's actually back, so
-  // it's never shown happening off in the middle of the bar somewhere.
-  if (sim.pendingSprayDrinkType !== null && sim.playerX <= C.PLAYER_X) {
+  // A spill from last frame sends the bartender running to the end of the
+  // bar (see below) — the spray itself only fires once he's actually
+  // there, so it's shown happening right where the impatient customer was,
+  // not off in the middle of the bar somewhere.
+  if (sim.pendingSprayDrinkType !== null && sim.runTargetX === null && sim.playerX === C.END_OF_BAR_X) {
     sim.spillCount++
     sim.lastSpillDrinkType = sim.pendingSprayDrinkType
     sim.pendingSprayDrinkType = null
-    sim.moveDir = 0
+    // Hold him there getting sprayed for a couple seconds before pausing
+    // for the "YOU DIED" screen — the life was already lost the instant
+    // he reached the end of the bar, this is just letting it play out.
+    sim.continuePauseInMs = C.SPRAY_HOLD_MS
+  }
+  if (sim.continuePauseInMs !== null) {
+    sim.continuePauseInMs -= dt * 1000
+    if (sim.continuePauseInMs <= 0) {
+      sim.continuePauseInMs = null
+      if (!sim.gameOver) sim.awaitingContinue = true
+    }
   }
 
   // A hot dog drops on the counter now and then, within run range — grab
@@ -125,7 +154,25 @@ function step(sim, dt) {
   }
   if (sim.bonus) {
     sim.bonus.remainingMs -= dt * 1000
-    if (sim.bonus.remainingMs <= 0) sim.bonus = null
+    if (sim.bonus.remainingMs <= 0) {
+      sim.bonus = null
+      sim.runTargetX = null
+    }
+  }
+
+  // Running right up to the hot dog auto-grabs it too — no need to stop
+  // and press anything, same as tapping it directly. This is also how a
+  // tap on the hot dog itself resolves, once the auto-run above gets him
+  // there (see grabBonus) — it vanishes instantly and he jumps straight
+  // back to the counter, same as picking a drink.
+  if (sim.bonus && sim.bonus.lane === sim.playerLane && Math.abs(sim.bonus.x - sim.playerX) <= C.BONUS_REACH_X) {
+    sim.score += C.POINTS_PER_BONUS
+    sim.lastCelebrate = { lane: sim.bonus.lane, x: sim.bonus.x }
+    sim.celebrateCount++
+    sim.bonus = null
+    sim.playerX = C.PLAYER_X
+    sim.runTargetX = null
+    sim.moveDir = 0
   }
 
   // Customers move first. Removal is decided afterward (below), once mugs
@@ -176,7 +223,10 @@ function step(sim, dt) {
     }
   }
   const missedMugCount = sim.mugs.filter((m) => m._missed).length
-  if (missedMugCount > 0) loseLife(sim, missedMugCount)
+  if (missedMugCount > 0) {
+    loseLife(sim, missedMugCount)
+    if (!sim.gameOver) sim.awaitingContinue = true
+  }
   sim.mugs = sim.mugs.filter((m) => !m._arrived && !m._missed)
 
   // Now decide removals. An unserved (still 'walking') customer who reached
@@ -189,12 +239,16 @@ function step(sim, dt) {
       loseLife(sim)
       // Only the bartender's own lane gets the seltzer in the face — the
       // player isn't even standing in the others. The life is lost right
-      // now regardless; the spray itself waits until he's recalled back
-      // to the counter (see the pending-spray check above) so it's slow
-      // enough to actually see.
+      // now regardless; the spray itself waits until he's actually run
+      // down to the end of the bar (see the pending-spray check above),
+      // so it's shown happening right there, slow enough to actually see.
       if (c.lane === sim.playerLane) {
         sim.pendingSprayDrinkType = c.drinkType
-        sim.moveDir = -1
+        sim.runTargetX = C.END_OF_BAR_X
+        // Pause is deferred until the spray actually plays out — see the
+        // pendingSprayDrinkType check above.
+      } else if (!sim.gameOver) {
+        sim.awaitingContinue = true
       }
     } else if (c.status === 'leaving-happy' && c.x >= C.OFFSCREEN_X) {
       c._remove = true
@@ -202,14 +256,25 @@ function step(sim, dt) {
   }
   sim.customers = sim.customers.filter((c) => !c._remove)
 
-  // Returning glasses
+  // Returning glasses — missed if one slides all the way back to the
+  // counter's edge uncaught, but running over one anywhere along the way
+  // auto-grabs it, same as tapping it directly.
   for (const g of sim.glasses) {
     g.x -= g.speed * dt
-    if (g.x <= C.PLAYER_X) g._missed = true
+    if (g.lane === sim.playerLane && Math.abs(g.x - sim.playerX) <= C.GLASS_REACH_X) {
+      g._caught = true
+    } else if (g.x <= C.PLAYER_X) {
+      g._missed = true
+    }
   }
   const missedCount = sim.glasses.filter((g) => g._missed).length
-  if (missedCount > 0) loseLife(sim, missedCount)
-  sim.glasses = sim.glasses.filter((g) => !g._missed)
+  if (missedCount > 0) {
+    loseLife(sim, missedCount)
+    if (!sim.gameOver) sim.awaitingContinue = true
+  }
+  const autoCaughtCount = sim.glasses.filter((g) => g._caught).length
+  if (autoCaughtCount > 0) sim.score += autoCaughtCount * C.POINTS_PER_CAUGHT_GLASS
+  sim.glasses = sim.glasses.filter((g) => !g._missed && !g._caught)
 }
 
 export function useGameEngine() {
@@ -290,15 +355,14 @@ export function useGameEngine() {
     sim.score += C.POINTS_PER_CAUGHT_GLASS
   }, [])
 
-  // Tapping the hot dog directly grabs it outright — no need to line up
-  // with it first, since the tap itself is the targeting.
+  // Tapping the hot dog sends the bartender running down the bar to it —
+  // the run-over auto-catch above is what actually grabs it once he's
+  // close enough.
   const grabBonus = useCallback(() => {
     const sim = simRef.current
     if (sim.gameOver || !sim.bonus) return
-    sim.score += C.POINTS_PER_BONUS
-    sim.lastCelebrate = { lane: sim.bonus.lane, x: sim.bonus.x }
-    sim.celebrateCount++
-    sim.bonus = null
+    sim.playerLane = sim.bonus.lane
+    sim.runTargetX = sim.bonus.x
   }, [])
 
   const selectDrink = useCallback((index) => {
@@ -308,16 +372,37 @@ export function useGameEngine() {
     // jump straight back to the home spot, wherever he'd run off to.
     sim.playerX = C.PLAYER_X
     sim.moveDir = 0
+    sim.runTargetX = null
   }, [])
 
   const startRun = useCallback((direction) => {
     const sim = simRef.current
     if (sim.gameOver) return
+    sim.runTargetX = null // manual control cancels any auto-run to the hot dog
     sim.moveDir = direction
   }, [])
 
   const stopRun = useCallback(() => {
     simRef.current.moveDir = 0
+  }, [])
+
+  // "YOU DIED" continue button — clears the board for the next life,
+  // keeping score, lives, and difficulty progress as they were.
+  const continueAfterDeath = useCallback(() => {
+    const sim = simRef.current
+    if (sim.gameOver || !sim.awaitingContinue) return
+    sim.awaitingContinue = false
+    sim.customers = []
+    sim.mugs = []
+    sim.glasses = []
+    sim.bonus = null
+    sim.playerLane = 0
+    sim.playerX = C.PLAYER_X
+    sim.moveDir = 0
+    sim.runTargetX = null
+    sim.pendingSprayDrinkType = null
+    sim.nextSpawnInMs = C.SPAWN_INTERVAL_START_MS
+    sim.nextBonusInMs = randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS)
   }, [])
 
   const startGame = useCallback(() => {
@@ -343,5 +428,6 @@ export function useGameEngine() {
     grabGlass,
     startGame,
     restart,
+    continueAfterDeath,
   }
 }

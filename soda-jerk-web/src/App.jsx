@@ -7,6 +7,7 @@ import Lane from './components/Lane.jsx'
 import HUD from './components/HUD.jsx'
 import Controls from './components/Controls.jsx'
 import GameOverScreen from './components/GameOverScreen.jsx'
+import LifeLostScreen from './components/LifeLostScreen.jsx'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
 import Celebration from './components/Celebration.jsx'
@@ -34,6 +35,7 @@ export default function App() {
     grabGlass,
     startGame,
     restart,
+    continueAfterDeath,
   } = useGameEngine()
   const music = useMusic(MUSIC_SRC, { volume: 0.22 })
   const [spraying, setSpraying] = useState(false)
@@ -73,7 +75,7 @@ export default function App() {
       prevCelebrateRef.current = state.celebrateCount
       playCelebration()
       setCelebrate(state.lastCelebrate)
-      const t = setTimeout(() => setCelebrate(null), 1200)
+      const t = setTimeout(() => setCelebrate(null), 10000)
       return () => clearTimeout(t)
     }
   }, [state.celebrateCount])
@@ -157,7 +159,7 @@ export default function App() {
         ))}
       </div>
 
-      {state.started && !state.gameOver && (
+      {state.started && !state.gameOver && !state.awaitingContinue && (
         <Controls
           onServe={withAudio(serveOrCatch)}
           selectedDrink={state.selectedDrink}
@@ -165,8 +167,24 @@ export default function App() {
         />
       )}
 
+      {state.started && !state.gameOver && state.awaitingContinue && (
+        <LifeLostScreen score={state.score} lives={state.lives} onContinue={withAudio(continueAfterDeath)} />
+      )}
+
       {state.started && state.gameOver && (
-        <GameOverScreen score={state.score} onRestart={withAudio(restart)} />
+        <GameOverScreen
+          score={state.score}
+          onRestart={withAudio(() => {
+            // restart() hands back a brand-new sim with spillCount/
+            // celebrateCount reset to 0 — without this, these refs would
+            // still hold the old game's last values, and the very next
+            // render would see a mismatch and immediately replay
+            // whichever effect fired last (usually the spray).
+            prevSpillRef.current = 0
+            prevCelebrateRef.current = 0
+            restart()
+          })}
+        />
       )}
 
       {!state.started && (

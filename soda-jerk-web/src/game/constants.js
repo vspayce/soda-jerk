@@ -25,7 +25,7 @@ export const OFFSCREEN_X = 108
 export const COUNTER_HEIGHT_PX = 44
 
 // Time (ms) for a mug to cross the full bar length if nothing's in the way.
-export const MUG_TRAVEL_MS = 250
+export const MUG_TRAVEL_MS = 800
 // 30% slower than the original 1800ms crossing time.
 export const GLASS_RETURN_TRAVEL_MS = 2571
 
@@ -49,6 +49,14 @@ export const SPAWN_INTERVAL_MIN_MS = 1000
 export const RAMP_SECONDS = 90
 
 export const GLASS_RETURN_CHANCE = 0.35
+
+// How long the bartender stays at the end of the bar getting sprayed
+// before the "YOU DIED" pause kicks in.
+export const SPRAY_HOLD_MS = 2000
+
+// How close (in x) the bartender has to run to a returning glass to
+// auto-grab it just by being there, same as tapping it directly.
+export const GLASS_REACH_X = 10
 
 export const POINTS_PER_SERVE = 100
 export const POINTS_PER_CAUGHT_GLASS = 25

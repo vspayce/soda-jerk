@@ -100,20 +100,27 @@ body {
   animation: celebrate-points 800ms ease-out forwards;
 }
 
-@keyframes dachshund-dance {
+@keyframes dachshund-enter {
   0% { opacity: 0; transform: translateY(10px) scale(0.7) rotate(0deg); }
-  10% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
-  20% { transform: translateY(-6px) rotate(-10deg); }
-  30% { transform: translateY(0) rotate(10deg); }
-  40% { transform: translateY(-6px) rotate(-10deg); }
-  50% { transform: translateY(0) rotate(10deg); }
-  60% { transform: translateY(-6px) rotate(-8deg); }
-  70% { transform: translateY(0) rotate(8deg); }
-  85% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+}
+@keyframes dachshund-bounce {
+  0%, 100% { transform: translateY(0) rotate(10deg); }
+  50% { transform: translateY(-6px) rotate(-10deg); }
+}
+@keyframes dachshund-exit {
+  0% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
   100% { opacity: 0; transform: translateY(-10px) scale(0.8) rotate(0deg); }
 }
+/* Sticks around and keeps dancing for a good 10 seconds after the hot
+   dog is grabbed, even though the hot dog itself vanishes instantly —
+   enter, bounce on loop, then fade, as three separately-timed animations
+   rather than one long one. */
 .dachshund-dance {
-  animation: dachshund-dance 1200ms ease-in-out forwards;
+  animation:
+    dachshund-enter 200ms ease-out forwards,
+    dachshund-bounce 300ms ease-in-out 200ms 32,
+    dachshund-exit 200ms ease-in 9800ms forwards;
 }
 
 /* Cheap walk-cycle stand-in — a little bob while a patron is in motion,
