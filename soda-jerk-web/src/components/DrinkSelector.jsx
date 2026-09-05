@@ -7,7 +7,7 @@ const ICON_SRC = (icon) => `${import.meta.env.BASE_URL}art/${icon}`
 // by their outfit color) to serve them.
 export default function DrinkSelector({ selected, onSelect }) {
   return (
-    <div className="flex gap-3 pointer-events-auto">
+    <div className="flex gap-2 pointer-events-auto">
       {DRINK_TYPES.map((drink, i) => (
         <button
           key={i}

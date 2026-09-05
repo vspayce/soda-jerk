@@ -28,6 +28,25 @@ export function useMusic(src, { loop = true, volume: defaultVolume = 0.5 } = {})
     }
   }, [src, loop])
 
+  // Pause when the screen locks / the tab loses visibility — audio
+  // otherwise keeps playing in the background — and pick back up where
+  // it left off if it was actually playing when that happened.
+  useEffect(() => {
+    const wasPlaying = { current: false }
+    const handleVisibility = () => {
+      const audio = audioRef.current
+      if (!audio) return
+      if (document.hidden) {
+        wasPlaying.current = !audio.paused
+        audio.pause()
+      } else if (wasPlaying.current) {
+        audio.play().catch(() => {})
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
+
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume
     try {

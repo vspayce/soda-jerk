@@ -6,7 +6,7 @@ const TAP_HANDLE_SRC = `${import.meta.env.BASE_URL}art/tap-handle-icon.png`
 export default function Controls({ onUp, onDown, onServe, onRunStart, onRunStop, selectedDrink, onSelectDrink }) {
   return (
     <div
-      className="absolute bottom-0 left-0 right-0 z-30 flex items-end justify-between px-6 pointer-events-none"
+      className="absolute bottom-0 left-0 right-0 z-30 flex items-end justify-center gap-5 px-4 pointer-events-none"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2.5rem)' }}
     >
       <Joystick onUp={onUp} onDown={onDown} onRunStart={onRunStart} onRunStop={onRunStop} />
