@@ -40,6 +40,8 @@ function createInitialSim() {
     // of the bar in the player's own lane — App.jsx watches this to fire
     // the seltzer-in-the-face reaction.
     lastSpillDrinkType: 0, // whose drink they wanted — picks which patron sprays
+    missedGlassCount: 0, // bumped whenever a returning glass slides off
+    // the counter uncaught — App.jsx watches this to play the shatter sfx
     pendingSprayDrinkType: null, // set while the bartender is running to
     // the end of the bar after a spill, until he actually gets there
     continuePauseInMs: null, // counts down while he's held at the end of
@@ -269,6 +271,7 @@ function step(sim, dt) {
   }
   const missedCount = sim.glasses.filter((g) => g._missed).length
   if (missedCount > 0) {
+    sim.missedGlassCount++
     loseLife(sim, missedCount)
     if (!sim.gameOver) sim.awaitingContinue = true
   }

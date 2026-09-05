@@ -8,10 +8,26 @@ function getCtx() {
 }
 
 const SIPHON_SRC = `${import.meta.env.BASE_URL}audio/siphon_spray.mp3`
+const GLASS_SHATTER_SRC = `${import.meta.env.BASE_URL}audio/glass-drop-shatter-short.mp3`
+const GAME_OVER_CRASH_SRC = `${import.meta.env.BASE_URL}audio/glasses-off-table-crash.mp3`
 
 // Real recording — seltzer siphon to the face.
 export function playSeltzerSpray() {
   const audio = new Audio(SIPHON_SRC)
+  audio.volume = 0.8
+  audio.play().catch(() => {})
+}
+
+// Real recording — a returning glass missed and hit the floor.
+export function playGlassShatter() {
+  const audio = new Audio(GLASS_SHATTER_SRC)
+  audio.volume = 0.8
+  audio.play().catch(() => {})
+}
+
+// Real recording — out of lives, the whole rack goes down.
+export function playGameOverCrash() {
+  const audio = new Audio(GAME_OVER_CRASH_SRC)
   audio.volume = 0.8
   audio.play().catch(() => {})
 }

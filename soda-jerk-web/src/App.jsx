@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameEngine } from './game/useGameEngine.js'
 import { useMusic } from './audio/useMusic.js'
-import { playSeltzerSpray, playCelebration } from './audio/sfx.js'
+import { playSeltzerSpray, playCelebration, playGlassShatter, playGameOverCrash } from './audio/sfx.js'
 import { LANE_COUNT, POINTS_PER_BONUS } from './game/constants.js'
 import Lane from './components/Lane.jsx'
 import HUD from './components/HUD.jsx'
@@ -45,6 +45,7 @@ export default function App() {
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const prevSpillRef = useRef(state.spillCount)
   const prevCelebrateRef = useRef(state.celebrateCount)
+  const prevMissedGlassRef = useRef(state.missedGlassCount)
   const gestureRef = useRef({ dragging: false, startX: 0, startY: 0, laneLatched: false, runDir: 0 })
 
   // Wrap each control so the very first tap also starts the music —
@@ -56,8 +57,19 @@ export default function App() {
 
   // The fountain's closed once the game ends — cut the music with it.
   useEffect(() => {
-    if (state.gameOver) music.stop()
+    if (state.gameOver) {
+      music.stop()
+      playGameOverCrash()
+    }
   }, [state.gameOver])
+
+  // A glass shatters whenever one slides off the counter uncaught.
+  useEffect(() => {
+    if (state.missedGlassCount !== prevMissedGlassRef.current) {
+      prevMissedGlassRef.current = state.missedGlassCount
+      playGlassShatter()
+    }
+  }, [state.missedGlassCount])
 
   // Seltzer in the face whenever an unserved customer reaches the end of
   // the bar in the player's own lane.
@@ -178,12 +190,13 @@ export default function App() {
           score={state.score}
           onRestart={withAudio(() => {
             // restart() hands back a brand-new sim with spillCount/
-            // celebrateCount reset to 0 — without this, these refs would
-            // still hold the old game's last values, and the very next
-            // render would see a mismatch and immediately replay
-            // whichever effect fired last (usually the spray).
+            // celebrateCount/missedGlassCount reset to 0 — without this,
+            // these refs would still hold the old game's last values, and
+            // the very next render would see a mismatch and immediately
+            // replay whichever effect fired last (usually the spray).
             prevSpillRef.current = 0
             prevCelebrateRef.current = 0
+            prevMissedGlassRef.current = 0
             restart()
           })}
         />
