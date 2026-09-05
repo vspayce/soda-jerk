@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameEngine } from './game/useGameEngine.js'
 import { useMusic } from './audio/useMusic.js'
-import { playSeltzerSpray, playCelebration, playGlassShatter, playGameOverCrash } from './audio/sfx.js'
+import { playSeltzerSpray, playCelebration, playGlassShatter, playCrash } from './audio/sfx.js'
 import { LANE_COUNT, POINTS_PER_BONUS } from './game/constants.js'
 import Lane from './components/Lane.jsx'
 import HUD from './components/HUD.jsx'
@@ -18,9 +18,9 @@ import SettingsScreen from './components/SettingsScreen.jsx'
 // resolves correctly once deployed under /soda-jerk/ on GitHub Pages.
 const MUSIC_SRC = `${import.meta.env.BASE_URL}audio/wurlitzer-loop.mp3`
 
-// No joystick — a swipe up/down on the bar area switches lanes (one per
-// gesture, re-arms on release), and dragging left/right runs the
-// bartender along the counter while the drag is held.
+// No joystick — tap a lane to jump straight to it, swipe up/down to move
+// one lane at a time, and drag left/right to run the bartender along the
+// counter while the drag is held.
 const LANE_SWIPE_THRESHOLD = 40
 const RUN_DEADZONE = 20
 
@@ -28,10 +28,10 @@ export default function App() {
   const {
     state,
     changeLane,
-    serveOrCatch,
+    goToLane,
+    pourDrink,
     startRun,
     stopRun,
-    selectDrink,
     grabBonus,
     grabGlass,
     startGame,
@@ -46,6 +46,7 @@ export default function App() {
   const prevSpillRef = useRef(state.spillCount)
   const prevCelebrateRef = useRef(state.celebrateCount)
   const prevMissedGlassRef = useRef(state.missedGlassCount)
+  const prevMugCrashRef = useRef(state.mugCrashCount)
   const gestureRef = useRef({ dragging: false, startX: 0, startY: 0, laneLatched: false, runDir: 0 })
 
   // Wrap each control so the very first tap also starts the music —
@@ -59,7 +60,7 @@ export default function App() {
   useEffect(() => {
     if (state.gameOver) {
       music.stop()
-      playGameOverCrash()
+      playCrash()
     }
   }, [state.gameOver])
 
@@ -70,6 +71,14 @@ export default function App() {
       playGlassShatter()
     }
   }, [state.missedGlassCount])
+
+  // A thrown mug crashes whenever it sails past with no one to catch it.
+  useEffect(() => {
+    if (state.mugCrashCount !== prevMugCrashRef.current) {
+      prevMugCrashRef.current = state.mugCrashCount
+      playCrash()
+    }
+  }, [state.mugCrashCount])
 
   // Seltzer in the face whenever an unserved customer reaches the end of
   // the bar in the player's own lane.
@@ -123,9 +132,17 @@ export default function App() {
     }
   }
 
-  const handleGestureEnd = () => {
+  const handleGestureEnd = (e, cancelled = false) => {
     const g = gestureRef.current
-    if (g.runDir !== 0) stopRun()
+    if (!g.dragging) return
+    if (g.runDir !== 0) {
+      stopRun()
+    } else if (!cancelled && !g.laneLatched) {
+      // Never swiped or dragged — a plain tap on a lane jumps straight
+      // to it, no need to swipe through the ones in between.
+      const laneEl = e.target.closest('[data-lane-index]')
+      if (laneEl) goToLane(Number(laneEl.dataset.laneIndex))
+    }
     gestureRef.current = { dragging: false, startX: 0, startY: 0, laneLatched: false, runDir: 0 }
   }
 
@@ -153,11 +170,12 @@ export default function App() {
         onPointerDown={handleGestureStart}
         onPointerMove={handleGestureMove}
         onPointerUp={handleGestureEnd}
-        onPointerCancel={handleGestureEnd}
+        onPointerCancel={(e) => handleGestureEnd(e, true)}
       >
         {Array.from({ length: LANE_COUNT }).map((_, laneIndex) => (
           <Lane
             key={laneIndex}
+            laneIndex={laneIndex}
             isPlayerLane={state.playerLane === laneIndex}
             playerX={state.playerX}
             moveDir={state.playerLane === laneIndex ? state.moveDir : 0}
@@ -175,9 +193,8 @@ export default function App() {
 
       {state.started && !state.gameOver && !state.awaitingContinue && (
         <Controls
-          onServe={withAudio(serveOrCatch)}
           selectedDrink={state.selectedDrink}
-          onSelectDrink={withAudio(selectDrink)}
+          onSelectDrink={withAudio(pourDrink)}
         />
       )}
 
@@ -189,14 +206,15 @@ export default function App() {
         <GameOverScreen
           score={state.score}
           onRestart={withAudio(() => {
-            // restart() hands back a brand-new sim with spillCount/
-            // celebrateCount/missedGlassCount reset to 0 — without this,
-            // these refs would still hold the old game's last values, and
-            // the very next render would see a mismatch and immediately
-            // replay whichever effect fired last (usually the spray).
+            // restart() hands back a brand-new sim with these counters
+            // reset to 0 — without this, the refs below would still hold
+            // the old game's last values, and the very next render would
+            // see a mismatch and immediately replay whichever effect
+            // fired last (usually the spray).
             prevSpillRef.current = 0
             prevCelebrateRef.current = 0
             prevMissedGlassRef.current = 0
+            prevMugCrashRef.current = 0
             restart()
           })}
         />

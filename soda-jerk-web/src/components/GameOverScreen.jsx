@@ -20,7 +20,7 @@ export default function GameOverScreen({ score, onRestart }) {
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-ink/90 px-8 text-center overflow-y-auto py-10">
-      <div className="font-display text-brass text-3xl mb-2 tracking-wide">THE FOUNTAIN IS CLOSED</div>
+      <div className="font-display text-brass text-3xl mb-2 tracking-wide">GAME OVER, YOU'RE FIRED!</div>
       <div className="text-cream/80 mb-2">Final score</div>
       <div className="font-display text-cream text-5xl mb-6">{score}</div>
 

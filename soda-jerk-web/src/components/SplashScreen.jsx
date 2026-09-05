@@ -21,7 +21,7 @@ export default function SplashScreen({ onStart, onShowLeaderboard }) {
       >
         <div className="text-cream/70 text-xs tracking-[0.3em]">A PROHIBITION-ERA SODA COUNTER</div>
         <div className="text-cream/40 text-[10px] tracking-[0.25em] mb-4">A GAME BY SPAYCELORD</div>
-        <DecoButton onPress={onStart} pad="px-8 py-4" titleClassName="text-2xl">
+        <DecoButton onPress={onStart} pad="px-8 py-4" titleClassName="text-2xl" fanSize={20}>
           TAP TO START
         </DecoButton>
         <button

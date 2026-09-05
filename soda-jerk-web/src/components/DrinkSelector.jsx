@@ -3,9 +3,8 @@ import SunburstRing from './SunburstRing.jsx'
 
 const ICON_SRC = (icon) => `${import.meta.env.BASE_URL}art/${icon}`
 
-// Sits between the joystick and the JERK button — pick which drink the
-// next mug pours. It has to match what a customer actually wants (shown
-// by their outfit color) to serve them.
+// Tapping a drink pours it immediately. It has to match what a customer
+// actually wants (shown by their outfit color) to serve them.
 export default function DrinkSelector({ selected, onSelect }) {
   return (
     <div className="flex gap-2 pointer-events-auto">

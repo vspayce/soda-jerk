@@ -32,26 +32,14 @@ export const GLASS_RETURN_TRAVEL_MS = 2571
 // Time (ms) for a served (happy) customer to walk off after being served.
 export const CUSTOMER_WALK_OUT_MS = 900
 
-// How long, at the very start vs. at max difficulty, an unserved
-// customer takes to walk the full bar length before reaching the end.
-// A third 20% cut on top of the previous two (~49% slower overall than
-// the original 6000/2600ms).
-export const CUSTOMER_TRAVEL_MS_START = 11719
-export const CUSTOMER_TRAVEL_MS_MIN = 5079
-
-// Spawn interval (ms) between new customers, decreases as difficulty ramps.
-export const SPAWN_INTERVAL_START_MS = 2200
-export const SPAWN_INTERVAL_MIN_MS = 1000
-
-// Difficulty ramps continuously with survival time (endless mode, no
-// discrete waves). RAMP_SECONDS is how long it takes to reach max
-// difficulty — gentle start, steady climb.
-export const RAMP_SECONDS = 90
+// Difficulty (customer spawn rate and travel speed) is gated by score,
+// not survival time — see levels.js, which is the file to edit to
+// retune pacing.
 
 export const GLASS_RETURN_CHANCE = 0.35
 
-// How long the bartender stays at the end of the bar getting sprayed
-// before the "YOU DIED" pause kicks in.
+// How long the bartender stays at the counter getting sprayed before the
+// "YOU MISSED" pause kicks in.
 export const SPRAY_HOLD_MS = 2000
 
 // How close (in x) the bartender has to run to a returning glass to

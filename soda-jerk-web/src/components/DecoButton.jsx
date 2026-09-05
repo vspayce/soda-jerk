@@ -2,7 +2,7 @@
 // up top: a dark panel, a double brass border, and corner sunbursts (the
 // same conic-gradient trick as the hallway backdrop's corner fans) and a
 // gold-gradient embossed title, instead of a plain bordered button.
-function CornerFan({ corner }) {
+function CornerFan({ corner, size = 34 }) {
   const pos = {
     tl: { top: 0, left: 0 },
     tr: { top: 0, right: 0 },
@@ -14,8 +14,8 @@ function CornerFan({ corner }) {
       className="absolute opacity-40"
       style={{
         ...pos,
-        width: 34,
-        height: 34,
+        width: size,
+        height: size,
         background: `repeating-conic-gradient(from 0deg at ${corner.includes('l') ? '0' : '100%'} ${corner.includes('t') ? '0' : '100%'}, #C6A15B 0deg 3deg, transparent 3deg 9deg)`,
       }}
     />
@@ -45,7 +45,15 @@ function Swirl({ flip }) {
   )
 }
 
-export default function DecoButton({ children, subtext, onPress, className = '', titleClassName = 'text-4xl', pad = 'px-10 py-7' }) {
+export default function DecoButton({
+  children,
+  subtext,
+  onPress,
+  className = '',
+  titleClassName = 'text-4xl',
+  pad = 'px-10 py-7',
+  fanSize = 34,
+}) {
   return (
     <button
       onPointerDown={(e) => {
@@ -60,10 +68,10 @@ export default function DecoButton({ children, subtext, onPress, className = '',
       }}
     >
       <div className="absolute inset-[5px] pointer-events-none" style={{ border: '1px solid rgba(198,161,91,0.45)' }} />
-      <CornerFan corner="tl" />
-      <CornerFan corner="tr" />
-      <CornerFan corner="bl" />
-      <CornerFan corner="br" />
+      <CornerFan corner="tl" size={fanSize} />
+      <CornerFan corner="tr" size={fanSize} />
+      <CornerFan corner="bl" size={fanSize} />
+      <CornerFan corner="br" size={fanSize} />
 
       <div className="flex items-center justify-center gap-2">
         <Swirl />

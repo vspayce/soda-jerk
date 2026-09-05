@@ -34,11 +34,12 @@ export default function Lane({
   moveDir,
   spraying,
   sprayDrinkType,
+  laneIndex,
   onGrabBonus,
   onGrabGlass,
 }) {
   return (
-    <div className="relative flex-1 min-h-0">
+    <div className="relative flex-1 min-h-0" data-lane-index={laneIndex}>
       {/* aisle floor beneath the counter, so the lane reads as a distinct row */}
       <div className="absolute left-0 right-0 top-1/2 h-9 -translate-y-1/2 opacity-25 bg-black rounded-sm" />
 

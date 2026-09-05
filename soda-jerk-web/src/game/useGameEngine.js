@@ -1,9 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import * as C from './constants'
-
-function lerp(a, b, t) {
-  return a + (b - a) * t
-}
+import { LEVELS, getLevelForScore } from './levels.js'
 
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)]
@@ -25,6 +22,7 @@ function createInitialSim() {
     lives: C.STARTING_LIVES,
     score: 0,
     survivalMs: 0,
+    level: 1, // current difficulty level — see levels.js
     gameOver: false,
     awaitingContinue: false, // true right after a life is lost (but the
     // game isn't over) — freezes the sim until continueAfterDeath() is
@@ -42,18 +40,16 @@ function createInitialSim() {
     lastSpillDrinkType: 0, // whose drink they wanted — picks which patron sprays
     missedGlassCount: 0, // bumped whenever a returning glass slides off
     // the counter uncaught — App.jsx watches this to play the shatter sfx
-    pendingSprayDrinkType: null, // set while the bartender is running to
-    // the end of the bar after a spill, until he actually gets there
-    continuePauseInMs: null, // counts down while he's held at the end of
-    // the bar getting sprayed, before awaitingContinue kicks in
-    nextSpawnInMs: C.SPAWN_INTERVAL_START_MS,
+    mugCrashCount: 0, // bumped whenever a thrown mug sails past with no
+    // one to catch it — App.jsx watches this to play the crash sfx
+    pendingSprayDrinkType: null, // set while the bartender is being
+    // recalled to the counter after a spill, until he's actually back
+    continuePauseInMs: null, // counts down while he's held at the counter
+    // getting sprayed, before awaitingContinue kicks in
+    nextSpawnInMs: LEVELS[0].spawnIntervalMs,
     nextBonusInMs: randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS),
     nextId: 1,
   }
-}
-
-function difficultyFactor(survivalMs) {
-  return Math.min(survivalMs / 1000 / C.RAMP_SECONDS, 1)
 }
 
 function loseLife(sim, n = 1) {
@@ -93,9 +89,10 @@ function step(sim, dt) {
   if (sim.awaitingContinue) return
 
   sim.survivalMs += dt * 1000
-  const t = difficultyFactor(sim.survivalMs)
-  const spawnInterval = lerp(C.SPAWN_INTERVAL_START_MS, C.SPAWN_INTERVAL_MIN_MS, t)
-  const travelMs = lerp(C.CUSTOMER_TRAVEL_MS_START, C.CUSTOMER_TRAVEL_MS_MIN, t)
+  const levelInfo = getLevelForScore(sim.score)
+  sim.level = levelInfo.level
+  const spawnInterval = levelInfo.spawnIntervalMs
+  const travelMs = levelInfo.customerTravelMs
 
   // Spawning
   sim.nextSpawnInMs -= dt * 1000
@@ -121,17 +118,18 @@ function step(sim, dt) {
   if (sim.playerX < C.PLAYER_X) sim.playerX = C.PLAYER_X
   if (sim.playerX > C.PLAYER_MAX_X) sim.playerX = C.PLAYER_MAX_X
 
-  // A spill from last frame sends the bartender running to the end of the
-  // bar (see below) — the spray itself only fires once he's actually
-  // there, so it's shown happening right where the impatient customer was,
-  // not off in the middle of the bar somewhere.
-  if (sim.pendingSprayDrinkType !== null && sim.runTargetX === null && sim.playerX === C.END_OF_BAR_X) {
+  // A spill from last frame recalls the bartender to the counter (see
+  // below) — the spray itself only fires once he's actually back, so
+  // it's never shown happening off in the middle of the bar somewhere.
+  if (sim.pendingSprayDrinkType !== null && sim.playerX <= C.PLAYER_X) {
     sim.spillCount++
     sim.lastSpillDrinkType = sim.pendingSprayDrinkType
     sim.pendingSprayDrinkType = null
+    sim.moveDir = 0
     // Hold him there getting sprayed for a couple seconds before pausing
-    // for the "YOU DIED" screen — the life was already lost the instant
-    // he reached the end of the bar, this is just letting it play out.
+    // for the "YOU MISSED" screen — the life was already lost the
+    // instant he reached the end of the bar, this is just letting it
+    // play out.
     sim.continuePauseInMs = C.SPRAY_HOLD_MS
   }
   if (sim.continuePauseInMs !== null) {
@@ -226,6 +224,7 @@ function step(sim, dt) {
   }
   const missedMugCount = sim.mugs.filter((m) => m._missed).length
   if (missedMugCount > 0) {
+    sim.mugCrashCount++
     loseLife(sim, missedMugCount)
     if (!sim.gameOver) sim.awaitingContinue = true
   }
@@ -241,14 +240,12 @@ function step(sim, dt) {
       loseLife(sim)
       // Only the bartender's own lane gets the seltzer in the face — the
       // player isn't even standing in the others. The life is lost right
-      // now regardless; the spray itself waits until he's actually run
-      // down to the end of the bar (see the pending-spray check above),
-      // so it's shown happening right there, slow enough to actually see.
+      // now regardless; the spray itself waits until he's recalled back
+      // to the counter (see the pending-spray check above) so it's slow
+      // enough to actually see.
       if (c.lane === sim.playerLane) {
         sim.pendingSprayDrinkType = c.drinkType
-        sim.runTargetX = C.END_OF_BAR_X
-        // Pause is deferred until the spray actually plays out — see the
-        // pendingSprayDrinkType check above.
+        sim.moveDir = -1
       } else if (!sim.gameOver) {
         sim.awaitingContinue = true
       }
@@ -308,28 +305,28 @@ export function useGameEngine() {
     sim.playerLane = newLane
   }, [])
 
-  const serveOrCatch = useCallback(() => {
+  // Tapping a lane directly jumps straight to it — no need to swipe
+  // through the ones in between.
+  const goToLane = useCallback((laneIndex) => {
     const sim = simRef.current
     if (sim.gameOver) return
+    if (laneIndex < 0 || laneIndex >= C.LANE_COUNT) return
+    sim.playerLane = laneIndex
+  }, [])
+
+  // Tapping a drink both picks it and pours it in one motion — no
+  // separate JERK press. Picking a drink means heading back to the
+  // fountain to pour it, so this jumps him straight back home first,
+  // wherever he'd run off to, same as the old select-then-press flow did.
+  const pourDrink = useCallback((index) => {
+    const sim = simRef.current
+    if (sim.gameOver) return
+    sim.selectedDrink = index
+    sim.playerX = C.PLAYER_X
+    sim.moveDir = 0
+    sim.runTargetX = null
+
     const lane = sim.playerLane
-
-    // Catch a returning glass if there is one, but don't let that stop the
-    // same press from also serving a customer — otherwise a lingering
-    // glass silently eats a press meant for someone waiting.
-    const glassIdx = sim.glasses.findIndex((g) => g.lane === lane)
-    if (glassIdx !== -1) {
-      sim.glasses.splice(glassIdx, 1)
-      sim.score += C.POINTS_PER_CAUGHT_GLASS
-    }
-
-    // Grab the hot dog too, if it's here and within reach — same press,
-    // doesn't block serving.
-    if (sim.bonus && sim.bonus.lane === lane && Math.abs(sim.bonus.x - sim.playerX) <= C.BONUS_REACH_X) {
-      sim.score += C.POINTS_PER_BONUS
-      sim.lastCelebrate = { lane: sim.bonus.lane, x: sim.bonus.x }
-      sim.celebrateCount++
-      sim.bonus = null
-    }
 
     // One mug in flight per lane at a time, to keep the prototype simple.
     if (sim.mugs.some((m) => m.lane === lane)) return
@@ -342,8 +339,8 @@ export function useGameEngine() {
       lane,
       x: sim.playerX,
       speed: (C.OFFSCREEN_X - C.PLAYER_X) / (C.MUG_TRAVEL_MS / 1000),
-      drinkType: sim.selectedDrink,
-      color: C.DRINK_TYPES[sim.selectedDrink].color,
+      drinkType: index,
+      color: C.DRINK_TYPES[index].color,
     })
   }, [])
 
@@ -366,16 +363,6 @@ export function useGameEngine() {
     if (sim.gameOver || !sim.bonus) return
     sim.playerLane = sim.bonus.lane
     sim.runTargetX = sim.bonus.x
-  }, [])
-
-  const selectDrink = useCallback((index) => {
-    const sim = simRef.current
-    sim.selectedDrink = index
-    // Picking a drink means heading back to the fountain to pour it —
-    // jump straight back to the home spot, wherever he'd run off to.
-    sim.playerX = C.PLAYER_X
-    sim.moveDir = 0
-    sim.runTargetX = null
   }, [])
 
   const startRun = useCallback((direction) => {
@@ -404,7 +391,9 @@ export function useGameEngine() {
     sim.moveDir = 0
     sim.runTargetX = null
     sim.pendingSprayDrinkType = null
-    sim.nextSpawnInMs = C.SPAWN_INTERVAL_START_MS
+    // Reset to whatever level the current score is already at, not back
+    // to level 1 — losing a life clears the board, not your progress.
+    sim.nextSpawnInMs = getLevelForScore(sim.score).spawnIntervalMs
     sim.nextBonusInMs = randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS)
   }, [])
 
@@ -423,10 +412,10 @@ export function useGameEngine() {
   return {
     state: simRef.current,
     changeLane,
-    serveOrCatch,
+    goToLane,
+    pourDrink,
     startRun,
     stopRun,
-    selectDrink,
     grabBonus,
     grabGlass,
     startGame,

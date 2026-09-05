@@ -9,7 +9,7 @@ function getCtx() {
 
 const SIPHON_SRC = `${import.meta.env.BASE_URL}audio/siphon_spray.mp3`
 const GLASS_SHATTER_SRC = `${import.meta.env.BASE_URL}audio/glass-drop-shatter-short.mp3`
-const GAME_OVER_CRASH_SRC = `${import.meta.env.BASE_URL}audio/glasses-off-table-crash.mp3`
+const CRASH_SRC = `${import.meta.env.BASE_URL}audio/glasses-off-table-crash.mp3`
 
 // Real recording — seltzer siphon to the face.
 export function playSeltzerSpray() {
@@ -25,9 +25,10 @@ export function playGlassShatter() {
   audio.play().catch(() => {})
 }
 
-// Real recording — out of lives, the whole rack goes down.
-export function playGameOverCrash() {
-  const audio = new Audio(GAME_OVER_CRASH_SRC)
+// Real recording — a bigger crash, for a missed mug or running out of
+// lives entirely.
+export function playCrash() {
+  const audio = new Audio(CRASH_SRC)
   audio.volume = 0.8
   audio.play().catch(() => {})
 }

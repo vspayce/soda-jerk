@@ -19,20 +19,34 @@ export default function SettingsScreen({ volume, onVolumeChange, onClose }) {
       <div className="w-full max-w-xs text-left mb-8">
         <div className="font-display text-brass text-sm tracking-widest mb-3">HOW TO PLAY</div>
         <ul className="text-cream/80 text-xs leading-relaxed space-y-2.5 list-disc list-inside">
-          <li>Drag the joystick up or down to switch bars.</li>
-          <li>Drag it left or right to run along the counter.</li>
-          <li>Pick the drink matching a patron's outfit color.</li>
-          <li>Press JERK to pour it their way, or to catch a returning glass.</li>
-          <li>Grab hot dogs that drop on the counter for bonus points.</li>
+          <li>Tap a lane to jump to it, or swipe up/down to move one at a time.</li>
+          <li>Drag left or right to run along the counter.</li>
+          <li>Tap the drink matching a patron's outfit color to pour it their way.</li>
+          <li>Tap a returning glass or a hot dog to grab it, or just run over one.</li>
           <li>Don't let a patron reach the end of the bar — you'll lose a life and get sprayed.</li>
         </ul>
       </div>
 
       <button
         onClick={onClose}
-        className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors"
+        className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
       >
         CLOSE
+      </button>
+
+      <button
+        onClick={() => {
+          // Saved-to-homescreen apps have no browser reload button and
+          // can otherwise get stuck showing whatever was cached the day
+          // it was added — a plain reload can still hit that same cached
+          // copy, so force a real network fetch with a cache-busting URL.
+          const url = new URL(window.location.href)
+          url.searchParams.set('_r', Date.now().toString())
+          window.location.href = url.toString()
+        }}
+        className="text-cream/50 text-xs tracking-[0.2em] underline underline-offset-4"
+      >
+        REFRESH APP
       </button>
     </div>
   )
