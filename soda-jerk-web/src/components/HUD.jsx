@@ -1,6 +1,9 @@
 export default function HUD({ score, lives, isMuted, onToggleMute, onOpenSettings }) {
   return (
-    <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pt-3 pb-2">
+    <div
+      className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pb-2"
+      style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+    >
       <div
         className="font-display text-cream text-lg tracking-wide pointer-events-none"
         style={{ textShadow: '0 2px 6px rgba(0,0,0,0.6)' }}
@@ -9,14 +12,25 @@ export default function HUD({ score, lives, isMuted, onToggleMute, onOpenSetting
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5 pointer-events-none">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <div
+          className="flex items-center gap-1.5 pointer-events-none rounded-full px-2.5 py-1 border"
+          style={{
+            background: 'rgba(21,16,20,0.55)',
+            borderColor: lives <= 2 ? '#7A1F2B' : 'rgba(198,161,91,0.5)',
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <path
               d="M6 3h12l-1.2 8.5a5 5 0 0 1-4.8 4.3v3.2h3v2H9v-2h3v-3.2a5 5 0 0 1-4.8-4.3L6 3z"
-              fill="#C6A15B"
+              fill={lives <= 2 ? '#E0596B' : '#C6A15B'}
             />
           </svg>
-          <span className="font-display text-brass text-sm tracking-wide">×{lives}</span>
+          <span
+            className="font-display text-lg tracking-wide"
+            style={{ color: lives <= 2 ? '#E0596B' : '#C6A15B' }}
+          >
+            ×{lives}
+          </span>
         </div>
 
         {onToggleMute && (

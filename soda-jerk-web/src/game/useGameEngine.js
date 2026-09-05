@@ -291,7 +291,12 @@ export function useGameEngine() {
   }, [])
 
   const selectDrink = useCallback((index) => {
-    simRef.current.selectedDrink = index
+    const sim = simRef.current
+    sim.selectedDrink = index
+    // Picking a drink means heading back to the fountain to pour it —
+    // jump straight back to the home spot, wherever he'd run off to.
+    sim.playerX = C.PLAYER_X
+    sim.moveDir = 0
   }, [])
 
   const startRun = useCallback((direction) => {
