@@ -19,8 +19,7 @@ function wallCenterX(side, yPct) {
 
 const SCONCE_YS = [32, 66]
 
-// Row of syrup bottles on a back-bar shelf, just under the signage.
-const BOTTLE_COLORS = ['#7A1F2B', '#1B6F62', '#8A6E37', '#4A3F6B', '#B8562E', '#7A1F2B', '#1B6F62']
+const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 
 export default function PerspectiveBackdrop() {
   return (
@@ -142,31 +141,13 @@ export default function PerspectiveBackdrop() {
         <span className="font-display text-cream text-xs tracking-[0.2em]">SODA JERK</span>
       </div>
 
-      {/* back-bar shelf of syrup bottles, just under the sign */}
-      <div className="absolute left-0 right-0 flex items-end justify-center gap-2 opacity-70" style={{ top: '14%' }}>
-        {BOTTLE_COLORS.map((color, i) => (
-          <svg key={i} width="10" height={i % 2 === 0 ? 22 : 18} viewBox="0 0 10 22">
-            <rect x="3.5" y="0" width="3" height="5" fill="#C6A15B" />
-            <path d="M2 5 L8 5 L9 22 L1 22 Z" fill={color} stroke="#151014" strokeWidth="0.6" />
-          </svg>
-        ))}
-      </div>
-
-      {/* Wurlitzer jukebox, tucked in the top margin above the lanes so it
-          isn't hidden behind the counters */}
-      <div className="absolute opacity-90" style={{ right: '4%', top: '4%', width: 34, height: 60 }}>
-        <svg width="34" height="60" viewBox="0 0 46 82">
-          <path d="M4 82 L4 20 Q4 3 23 3 Q42 3 42 20 L42 82 Z" fill="#3B2A1C" stroke="#151014" strokeWidth="1.4" />
-          <path d="M8 82 L8 22 Q8 8 23 8 Q38 8 38 22 L38 82 Z" fill="#151014" />
-          {['#C6A15B', '#7A1F2B', '#1B6F62', '#C6A15B'].map((c, i) => (
-            <rect key={i} x={11 + i * 6.2} y={12} width="3.6" height="40" rx="1.8" fill={c} opacity="0.85" />
-          ))}
-          <rect x="8" y="58" width="30" height="18" rx="1" fill="#151014" stroke="#8A6E37" strokeWidth="1" />
-          {[0, 1, 2, 3, 4].map((i) => (
-            <line key={i} x1={10 + i * 6} y1="60" x2={10 + i * 6} y2="74" stroke="#8A6E37" strokeWidth="0.8" opacity="0.6" />
-          ))}
-        </svg>
-      </div>
+      {/* Mighty Wurlitzer, front and center up top */}
+      <img
+        src={ART_SRC('wurlitzer.png')}
+        alt=""
+        className="absolute left-1/2 -translate-x-1/2 opacity-95"
+        style={{ top: '9%', width: '52%', height: 'auto' }}
+      />
     </div>
   )
 }

@@ -34,6 +34,7 @@ function createInitialSim() {
     spillCount: 0, // bumped whenever an unserved customer reaches the end
     // of the bar in the player's own lane — App.jsx watches this to fire
     // the seltzer-in-the-face reaction.
+    lastSpillDrinkType: 0, // whose drink they wanted — picks which patron sprays
     nextSpawnInMs: C.SPAWN_INTERVAL_START_MS,
     nextBonusInMs: randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS),
     nextId: 1,
@@ -172,7 +173,10 @@ function step(sim, dt) {
       loseLife(sim)
       // Only the bartender's own lane gets the seltzer in the face — the
       // player isn't even standing in the others.
-      if (c.lane === sim.playerLane) sim.spillCount++
+      if (c.lane === sim.playerLane) {
+        sim.spillCount++
+        sim.lastSpillDrinkType = c.drinkType
+      }
     } else if (c.status === 'leaving-happy' && c.x >= C.OFFSCREEN_X) {
       c._remove = true
     }

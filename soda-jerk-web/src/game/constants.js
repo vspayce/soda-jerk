@@ -22,7 +22,7 @@ export const OFFSCREEN_X = 108
 // anchor their feet to its bottom edge (so heads clear the top); mugs and
 // glasses ride along its top edge (so they read as sliding on the surface,
 // not passing through the middle of it).
-export const COUNTER_HEIGHT_PX = 22
+export const COUNTER_HEIGHT_PX = 34
 
 // Time (ms) for a mug to cross the full bar length if nothing's in the way.
 export const MUG_TRAVEL_MS = 250

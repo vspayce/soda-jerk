@@ -1,10 +1,14 @@
-import { SeltzerSprayGlyph } from './sprites.jsx'
 import { COUNTER_HEIGHT_PX } from '../game/constants.js'
 
 const STAND_SRC = `${import.meta.env.BASE_URL}art/player-stand.png`
 const RUN_SRC = `${import.meta.env.BASE_URL}art/player-run.png`
 
-export default function Player({ x, spraying, moveDir }) {
+// The patron who reached the end of the bar sprays the bartender — shown
+// in their own drink color, leaning in from the right (they face left,
+// toward the bartender, already the right way round for this).
+const SPRAY_SRC = [`${import.meta.env.BASE_URL}art/spray-orange.png`, `${import.meta.env.BASE_URL}art/spray-pink.png`]
+
+export default function Player({ x, spraying, sprayDrinkType, moveDir }) {
   const running = moveDir !== 0
 
   return (
@@ -28,12 +32,12 @@ export default function Player({ x, spraying, moveDir }) {
           }}
         />
         {spraying && (
-          <div
+          <img
+            src={SPRAY_SRC[sprayDrinkType]}
+            alt=""
             className="absolute seltzer-spray"
-            style={{ left: '55%', top: '18%', transform: 'translate(-35%, -50%)' }}
-          >
-            <SeltzerSprayGlyph />
-          </div>
+            style={{ left: '100%', bottom: 0, marginLeft: 4, height: 54, width: 'auto' }}
+          />
         )}
       </div>
     </div>

@@ -78,6 +78,7 @@ export default function App() {
             playerX={state.playerX}
             moveDir={state.playerLane === laneIndex ? state.moveDir : 0}
             spraying={state.playerLane === laneIndex && spraying}
+            sprayDrinkType={state.lastSpillDrinkType}
             customers={state.customers.filter((c) => c.lane === laneIndex)}
             mugs={state.mugs.filter((m) => m.lane === laneIndex)}
             glasses={state.glasses.filter((g) => g.lane === laneIndex)}

@@ -1,4 +1,3 @@
-import { CustomerSprite } from './sprites.jsx'
 import { PLAYER_X, COUNTER_HEIGHT_PX } from '../game/constants.js'
 
 // Glows red once a still-walking customer gets close to the end of
@@ -6,7 +5,15 @@ import { PLAYER_X, COUNTER_HEIGHT_PX } from '../game/constants.js'
 // customers no longer stop and wait; they just keep coming.
 const DANGER_X = PLAYER_X + 22
 
-export default function Customer({ x, color, status, drinkName, id }) {
+// One patron illustration per drink type — they face left (the direction
+// they walk in), so served customers get flipped to face right as they
+// head back out.
+const PATRON_SRC = [
+  `${import.meta.env.BASE_URL}art/patron-orange.png`,
+  `${import.meta.env.BASE_URL}art/patron-pink.png`,
+]
+
+export default function Customer({ x, drinkType, status, drinkName }) {
   const isUrgent = status === 'walking' && x <= DANGER_X
 
   return (
@@ -22,7 +29,16 @@ export default function Customer({ x, color, status, drinkName, id }) {
       }}
       title={drinkName}
     >
-      <CustomerSprite color={color} variantSeed={id} />
+      <img
+        src={PATRON_SRC[drinkType]}
+        alt=""
+        style={{
+          height: 50,
+          width: 'auto',
+          display: 'block',
+          transform: status === 'leaving-happy' ? 'scaleX(-1)' : 'none',
+        }}
+      />
     </div>
   )
 }
