@@ -32,6 +32,15 @@ body {
   user-select: none;
 }
 
+/* Without this, a mouse-drag starting on any sprite (the bartender,
+   customers, mugs) kicks off the browser's native image drag-and-drop
+   instead of our swipe/run gesture — touch input never had this problem,
+   which is why it only shows up testing with a real mouse. */
+.phone-frame img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
 /* Returning glass — pulses so it reads clearly against the counter as it
    drifts back, distinct from the solid outgoing mug. */
 @keyframes glass-pulse {

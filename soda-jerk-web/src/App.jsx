@@ -16,15 +16,32 @@ import SettingsScreen from './components/SettingsScreen.jsx'
 // resolves correctly once deployed under /soda-jerk/ on GitHub Pages.
 const MUSIC_SRC = `${import.meta.env.BASE_URL}audio/wurlitzer-loop.mp3`
 
+// No joystick — a swipe up/down on the bar area switches lanes (one per
+// gesture, re-arms on release), and dragging left/right runs the
+// bartender along the counter while the drag is held.
+const LANE_SWIPE_THRESHOLD = 40
+const RUN_DEADZONE = 20
+
 export default function App() {
-  const { state, changeLane, serveOrCatch, startRun, stopRun, selectDrink, grabBonus, startGame, restart } =
-    useGameEngine()
+  const {
+    state,
+    changeLane,
+    serveOrCatch,
+    startRun,
+    stopRun,
+    selectDrink,
+    grabBonus,
+    grabGlass,
+    startGame,
+    restart,
+  } = useGameEngine()
   const music = useMusic(MUSIC_SRC, { volume: 0.22 })
   const [spraying, setSpraying] = useState(false)
   const [celebrate, setCelebrate] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
   const prevSpillRef = useRef(state.spillCount)
   const prevCelebrateRef = useRef(state.celebrateCount)
+  const gestureRef = useRef({ dragging: false, startX: 0, startY: 0, laneLatched: false, runDir: 0 })
 
   // Wrap each control so the very first tap also starts the music —
   // satisfies the browser's "needs a real user gesture" rule for audio.
@@ -61,9 +78,45 @@ export default function App() {
     }
   }, [state.celebrateCount])
 
+  const handleGestureStart = (e) => {
+    if (!state.started || state.gameOver) return
+    music.start()
+    gestureRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, laneLatched: false, runDir: 0 }
+  }
+
+  const handleGestureMove = (e) => {
+    const g = gestureRef.current
+    if (!g.dragging) return
+    const dx = e.clientX - g.startX
+    const dy = e.clientY - g.startY
+
+    if (!g.laneLatched && Math.abs(dy) > LANE_SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
+      g.laneLatched = true
+      changeLane(dy < 0 ? -1 : 1)
+    }
+
+    if (Math.abs(dx) > RUN_DEADZONE) {
+      const dir = dx > 0 ? 1 : -1
+      if (g.runDir !== dir) {
+        g.runDir = dir
+        startRun(dir)
+      }
+    } else if (g.runDir !== 0) {
+      g.runDir = 0
+      stopRun()
+    }
+  }
+
+  const handleGestureEnd = () => {
+    const g = gestureRef.current
+    if (g.runDir !== 0) stopRun()
+    gestureRef.current = { dragging: false, startX: 0, startY: 0, laneLatched: false, runDir: 0 }
+  }
+
   return (
     <div
       className="phone-frame select-none relative"
+      onDragStart={(e) => e.preventDefault()}
       style={{
         background:
           'radial-gradient(120% 80% at 50% 0%, #1B6F62 0%, #0E4B43 35%, #151014 100%)',
@@ -79,7 +132,13 @@ export default function App() {
         onOpenSettings={() => setShowSettings(true)}
       />
 
-      <div className="absolute inset-0 flex flex-col justify-end gap-1 px-4 pt-28 pb-32">
+      <div
+        className="absolute inset-0 flex flex-col justify-end gap-1 px-4 pt-28 pb-32"
+        onPointerDown={handleGestureStart}
+        onPointerMove={handleGestureMove}
+        onPointerUp={handleGestureEnd}
+        onPointerCancel={handleGestureEnd}
+      >
         {Array.from({ length: LANE_COUNT }).map((_, laneIndex) => (
           <Lane
             key={laneIndex}
@@ -93,17 +152,14 @@ export default function App() {
             glasses={state.glasses.filter((g) => g.lane === laneIndex)}
             bonus={state.bonus && state.bonus.lane === laneIndex ? state.bonus : null}
             onGrabBonus={withAudio(grabBonus)}
+            onGrabGlass={withAudio(grabGlass)}
           />
         ))}
       </div>
 
       {state.started && !state.gameOver && (
         <Controls
-          onUp={withAudio(() => changeLane(-1))}
-          onDown={withAudio(() => changeLane(1))}
           onServe={withAudio(serveOrCatch)}
-          onRunStart={withAudio(startRun)}
-          onRunStop={stopRun}
           selectedDrink={state.selectedDrink}
           onSelectDrink={withAudio(selectDrink)}
         />

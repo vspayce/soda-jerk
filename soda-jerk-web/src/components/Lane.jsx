@@ -35,6 +35,7 @@ export default function Lane({
   spraying,
   sprayDrinkType,
   onGrabBonus,
+  onGrabGlass,
 }) {
   return (
     <div className="relative flex-1 min-h-0">
@@ -89,12 +90,19 @@ export default function Lane({
       ))}
 
       {glasses.map((g) => (
+        // Same pattern as the hot dog — a stable, non-animated tap
+        // target with padding for an easy hit, animation confined to
+        // the inner image. Catchable any time, from anywhere.
         <div
           key={g.id}
-          className="absolute z-20 -translate-x-1/2 -translate-y-1/2 glass-return"
-          style={{ left: `${g.x}%`, top: COUNTER_SURFACE_Y }}
+          className="absolute z-20 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center"
+          style={{ left: `${g.x}%`, top: COUNTER_SURFACE_Y, padding: 12 }}
+          onPointerDown={(e) => {
+            e.preventDefault()
+            onGrabGlass(g.id)
+          }}
         >
-          <img src={GLASS_EMPTY_SRC} alt="" style={{ height: 44, width: 'auto', display: 'block' }} />
+          <img src={GLASS_EMPTY_SRC} alt="" className="glass-return" style={{ height: 44, width: 'auto', display: 'block' }} />
         </div>
       ))}
 

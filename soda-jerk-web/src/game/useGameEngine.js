@@ -279,6 +279,17 @@ export function useGameEngine() {
     })
   }, [])
 
+  // Tapping a returning glass directly catches it, wherever it is — no
+  // need to be standing in that lane first.
+  const grabGlass = useCallback((glassId) => {
+    const sim = simRef.current
+    if (sim.gameOver) return
+    const idx = sim.glasses.findIndex((g) => g.id === glassId)
+    if (idx === -1) return
+    sim.glasses.splice(idx, 1)
+    sim.score += C.POINTS_PER_CAUGHT_GLASS
+  }, [])
+
   // Tapping the hot dog directly grabs it outright — no need to line up
   // with it first, since the tap itself is the targeting.
   const grabBonus = useCallback(() => {
@@ -329,6 +340,7 @@ export function useGameEngine() {
     stopRun,
     selectDrink,
     grabBonus,
+    grabGlass,
     startGame,
     restart,
   }

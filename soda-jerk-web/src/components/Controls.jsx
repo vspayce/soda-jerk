@@ -1,16 +1,13 @@
-import Joystick from './Joystick.jsx'
 import DrinkSelector from './DrinkSelector.jsx'
 
 const TAP_HANDLE_SRC = `${import.meta.env.BASE_URL}art/tap-handle-icon.png`
 
-export default function Controls({ onUp, onDown, onServe, onRunStart, onRunStop, selectedDrink, onSelectDrink }) {
+export default function Controls({ onServe, selectedDrink, onSelectDrink }) {
   return (
     <div
-      className="absolute bottom-0 left-0 right-0 z-30 flex items-end justify-center gap-5 px-4 pointer-events-none"
+      className="absolute bottom-0 left-0 right-0 z-30 flex items-end justify-center gap-6 px-4 pointer-events-none"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2.5rem)' }}
     >
-      <Joystick onUp={onUp} onDown={onDown} onRunStart={onRunStart} onRunStop={onRunStop} />
-
       <DrinkSelector selected={selectedDrink} onSelect={onSelectDrink} />
 
       <button
