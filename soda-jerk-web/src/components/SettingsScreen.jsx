@@ -1,3 +1,5 @@
+import { refreshApp } from '../refreshApp.js'
+
 export default function SettingsScreen({ volume, onVolumeChange, onClose }) {
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center bg-ink/95 px-8 py-10 overflow-y-auto">
@@ -35,15 +37,7 @@ export default function SettingsScreen({ volume, onVolumeChange, onClose }) {
       </button>
 
       <button
-        onClick={() => {
-          // Saved-to-homescreen apps have no browser reload button and
-          // can otherwise get stuck showing whatever was cached the day
-          // it was added — a plain reload can still hit that same cached
-          // copy, so force a real network fetch with a cache-busting URL.
-          const url = new URL(window.location.href)
-          url.searchParams.set('_r', Date.now().toString())
-          window.location.href = url.toString()
-        }}
+        onClick={refreshApp}
         className="text-cream/50 text-xs tracking-[0.2em] underline underline-offset-4"
       >
         REFRESH APP
