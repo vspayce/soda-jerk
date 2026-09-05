@@ -1,4 +1,5 @@
 import DrinkSelector from './DrinkSelector.jsx'
+import SunburstRing from './SunburstRing.jsx'
 
 const TAP_HANDLE_SRC = `${import.meta.env.BASE_URL}art/tap-handle-icon.png`
 
@@ -10,22 +11,25 @@ export default function Controls({ onServe, selectedDrink, onSelectDrink }) {
     >
       <DrinkSelector selected={selectedDrink} onSelect={onSelectDrink} />
 
-      <button
-        onPointerDown={(e) => {
-          e.preventDefault()
-          onServe()
-        }}
-        className="flex items-center justify-center rounded-full border-2 border-brass active:bg-brass/20 transition-colors select-none"
-        style={{
-          width: 84,
-          height: 84,
-          background: 'radial-gradient(circle at 40% 35%, #2B1B10 0%, #151014 100%)',
-          pointerEvents: 'auto',
-        }}
-        aria-label="Pour or catch"
-      >
-        <img src={TAP_HANDLE_SRC} alt="" style={{ height: 62, width: 'auto' }} />
-      </button>
+      <div className="relative flex items-center justify-center" style={{ width: 84, height: 84 }}>
+        <SunburstRing size={116} />
+        <button
+          onPointerDown={(e) => {
+            e.preventDefault()
+            onServe()
+          }}
+          className="relative flex items-center justify-center rounded-full border-2 border-brass active:bg-brass/20 transition-colors select-none"
+          style={{
+            width: 84,
+            height: 84,
+            background: 'radial-gradient(circle at 40% 35%, #2B1B10 0%, #151014 100%)',
+            pointerEvents: 'auto',
+          }}
+          aria-label="Pour or catch"
+        >
+          <img src={TAP_HANDLE_SRC} alt="" style={{ height: 62, width: 'auto' }} />
+        </button>
+      </div>
     </div>
   )
 }

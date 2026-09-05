@@ -102,7 +102,7 @@ export default function PerspectiveBackdrop() {
         }}
       />
 
-      {/* corner fans, contained to the top corners */}
+      {/* corner fans, top and bottom */}
       <div
         className="absolute top-0 left-0 opacity-[0.12]"
         style={{
@@ -119,6 +119,24 @@ export default function PerspectiveBackdrop() {
           height: 90,
           clipPath: 'circle(100% at 100% 0)',
           background: 'repeating-conic-gradient(from 0deg at 100% 0, #C6A15B 0deg 3deg, transparent 3deg 9deg)',
+        }}
+      />
+      <div
+        className="absolute bottom-0 left-0 opacity-[0.12]"
+        style={{
+          width: 90,
+          height: 90,
+          clipPath: 'circle(100% at 0 100%)',
+          background: 'repeating-conic-gradient(from 0deg at 0 100%, #C6A15B 0deg 3deg, transparent 3deg 9deg)',
+        }}
+      />
+      <div
+        className="absolute bottom-0 right-0 opacity-[0.12]"
+        style={{
+          width: 90,
+          height: 90,
+          clipPath: 'circle(100% at 100% 100%)',
+          background: 'repeating-conic-gradient(from 0deg at 100% 100%, #C6A15B 0deg 3deg, transparent 3deg 9deg)',
         }}
       />
 

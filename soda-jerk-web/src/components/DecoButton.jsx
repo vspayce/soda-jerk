@@ -22,6 +22,29 @@ function CornerFan({ corner }) {
   )
 }
 
+// Small curling flourish flanking the title, mirrored on the right —
+// the same kind of scrollwork framing the "SODA JERK" sign's lettering.
+function Swirl({ flip }) {
+  return (
+    <svg
+      width="30"
+      height="16"
+      viewBox="0 0 30 16"
+      fill="none"
+      style={{ transform: flip ? 'scaleX(-1)' : 'none', opacity: 0.75, flexShrink: 0 }}
+    >
+      <path
+        d="M2 8c0-4.5 6.5-6.5 9.5-3 2.5 3 0 5.5-2.5 4-1.5-1-1-2.5.5-2.5"
+        stroke="#C6A15B"
+        strokeWidth="1.3"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <circle cx="15" cy="8" r="1.3" fill="#C6A15B" />
+    </svg>
+  )
+}
+
 export default function DecoButton({ children, subtext, onPress, className = '', titleClassName = 'text-4xl', pad = 'px-10 py-7' }) {
   return (
     <button
@@ -42,17 +65,21 @@ export default function DecoButton({ children, subtext, onPress, className = '',
       <CornerFan corner="bl" />
       <CornerFan corner="br" />
 
-      <div
-        className={`font-display ${titleClassName} tracking-[0.15em]`}
-        style={{
-          backgroundImage: 'linear-gradient(180deg, #F0D998 0%, #C6A15B 45%, #8A6E37 100%)',
-          WebkitBackgroundClip: 'text',
-          backgroundClip: 'text',
-          color: 'transparent',
-          textShadow: '0 2px 3px rgba(0,0,0,0.5)',
-        }}
-      >
-        {children}
+      <div className="flex items-center justify-center gap-2">
+        <Swirl />
+        <div
+          className={`font-display ${titleClassName} tracking-[0.15em] whitespace-nowrap`}
+          style={{
+            backgroundImage: 'linear-gradient(180deg, #F0D998 0%, #C6A15B 45%, #8A6E37 100%)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent',
+            textShadow: '0 2px 3px rgba(0,0,0,0.5)',
+          }}
+        >
+          {children}
+        </div>
+        <Swirl flip />
       </div>
 
       {subtext && <div className="text-cream/60 text-[11px] tracking-[0.25em] mt-3">{subtext}</div>}

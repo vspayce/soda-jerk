@@ -8,6 +8,7 @@ import HUD from './components/HUD.jsx'
 import Controls from './components/Controls.jsx'
 import GameOverScreen from './components/GameOverScreen.jsx'
 import LifeLostScreen from './components/LifeLostScreen.jsx'
+import LeaderboardScreen from './components/LeaderboardScreen.jsx'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
 import Celebration from './components/Celebration.jsx'
@@ -41,6 +42,7 @@ export default function App() {
   const [spraying, setSpraying] = useState(false)
   const [celebrate, setCelebrate] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
   const prevSpillRef = useRef(state.spillCount)
   const prevCelebrateRef = useRef(state.celebrateCount)
   const gestureRef = useRef({ dragging: false, startX: 0, startY: 0, laneLatched: false, runDir: 0 })
@@ -193,8 +195,11 @@ export default function App() {
             music.start()
             startGame()
           }}
+          onShowLeaderboard={() => setShowLeaderboard(true)}
         />
       )}
+
+      {!state.started && showLeaderboard && <LeaderboardScreen onClose={() => setShowLeaderboard(false)} />}
 
       {celebrate && <Celebration points={POINTS_PER_BONUS} />}
 

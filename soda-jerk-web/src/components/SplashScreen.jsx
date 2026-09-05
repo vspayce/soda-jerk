@@ -5,7 +5,7 @@ import DecoButton from './DecoButton.jsx'
 // see App.jsx, which calls music.start() from the same tap.
 const SPLASH_SRC = `${import.meta.env.BASE_URL}art/splash.png`
 
-export default function SplashScreen({ onStart }) {
+export default function SplashScreen({ onStart, onShowLeaderboard }) {
   return (
     <div
       className="absolute inset-0 z-50 flex flex-col items-center justify-end select-none"
@@ -24,6 +24,12 @@ export default function SplashScreen({ onStart }) {
         <DecoButton onPress={onStart} pad="px-8 py-4" titleClassName="text-2xl">
           TAP TO START
         </DecoButton>
+        <button
+          onClick={onShowLeaderboard}
+          className="mt-4 text-cream/50 text-xs tracking-[0.25em] underline underline-offset-4"
+        >
+          HIGH SCORES
+        </button>
       </div>
     </div>
   )
