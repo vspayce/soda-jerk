@@ -4,7 +4,7 @@ import DrinkSelector from './DrinkSelector.jsx'
 export default function Controls({ selectedDrink, onSelectDrink }) {
   return (
     <div
-      className="absolute bottom-0 left-0 right-0 z-30 flex items-end justify-center gap-6 px-4 pointer-events-none"
+      className="absolute bottom-0 left-0 right-0 z-30 flex items-end px-8 pointer-events-none"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2.5rem)' }}
     >
       <DrinkSelector selected={selectedDrink} onSelect={onSelectDrink} />

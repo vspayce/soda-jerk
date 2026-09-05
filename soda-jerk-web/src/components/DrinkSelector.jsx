@@ -7,7 +7,7 @@ const ICON_SRC = (icon) => `${import.meta.env.BASE_URL}art/${icon}`
 // actually wants (shown by their outfit color) to serve them.
 export default function DrinkSelector({ selected, onSelect }) {
   return (
-    <div className="flex gap-2 pointer-events-auto">
+    <div className="w-full flex justify-between pointer-events-auto">
       {DRINK_TYPES.map((drink, i) => (
         <div key={i} className="relative flex items-center justify-center" style={{ width: 54, height: 54 }}>
           <SunburstRing size={74} />
