@@ -26,8 +26,7 @@ export const COUNTER_HEIGHT_PX = 44
 
 // Time (ms) for a mug to cross the full bar length if nothing's in the way.
 export const MUG_TRAVEL_MS = 800
-// 30% slower than the original 1800ms crossing time.
-export const GLASS_RETURN_TRAVEL_MS = 2571
+export const GLASS_RETURN_TRAVEL_MS = 4200
 
 // Time (ms) for a served (happy) customer to walk off after being served.
 export const CUSTOMER_WALK_OUT_MS = 900
@@ -42,6 +41,11 @@ export const GLASS_RETURN_CHANCE = 0.35
 // "YOU MISSED" pause kicks in.
 export const SPRAY_HOLD_MS = 2000
 
+// Same idea, but for a spill in a lane he isn't even standing in — no
+// recall animation to wait for, just a short beat with the spray sound
+// before the "YOU GOT SPRAYED!" screen shows up.
+export const SPRAY_OTHER_LANE_HOLD_MS = 900
+
 // How close (in x) the bartender has to run to a returning glass to
 // auto-grab it just by being there, same as tapping it directly.
 export const GLASS_REACH_X = 10
@@ -55,8 +59,8 @@ export const POINTS_PER_CAUGHT_GLASS = 25
 // uncaught, same as throwing with no one there — it has to match to
 // serve them.
 export const DRINK_TYPES = [
-  { name: 'Orange Creme', color: '#D9822B', icon: 'drink-orange.png' },
-  { name: 'In the Hay', color: '#D9668A', icon: 'drink-pink.png' },
+  { name: 'Orange Creme', color: '#D9822B', icon: 'drink-orange.png', tapIcon: 'tap-orange.png' },
+  { name: 'In the Hay', color: '#D9668A', icon: 'drink-pink.png', tapIcon: 'tap-pink.png' },
 ]
 
 // A hot dog drops on the counter every so often, somewhere within the

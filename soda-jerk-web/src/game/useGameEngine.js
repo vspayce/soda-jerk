@@ -26,7 +26,10 @@ function createInitialSim() {
     gameOver: false,
     awaitingContinue: false, // true right after a life is lost (but the
     // game isn't over) — freezes the sim until continueAfterDeath() is
-    // called, when the "YOU DIED" button is tapped
+    // called, when the "YOU MISSED" button is tapped
+    missReason: null, // 'spray' | 'glass' | 'mug' | 'other' — which kind
+    // of miss most recently triggered awaitingContinue, so the UI can
+    // show the matching sprite
     customers: [],
     mugs: [],
     glasses: [],
@@ -136,7 +139,10 @@ function step(sim, dt) {
     sim.continuePauseInMs -= dt * 1000
     if (sim.continuePauseInMs <= 0) {
       sim.continuePauseInMs = null
-      if (!sim.gameOver) sim.awaitingContinue = true
+      if (!sim.gameOver) {
+        sim.missReason = 'spray'
+        sim.awaitingContinue = true
+      }
     }
   }
 
@@ -226,7 +232,10 @@ function step(sim, dt) {
   if (missedMugCount > 0) {
     sim.mugCrashCount++
     loseLife(sim, missedMugCount)
-    if (!sim.gameOver) sim.awaitingContinue = true
+    if (!sim.gameOver) {
+      sim.missReason = 'mug'
+      sim.awaitingContinue = true
+    }
   }
   sim.mugs = sim.mugs.filter((m) => !m._arrived && !m._missed)
 
@@ -238,16 +247,22 @@ function step(sim, dt) {
       c.x = C.END_OF_BAR_X
       c._remove = true
       loseLife(sim)
-      // Only the bartender's own lane gets the seltzer in the face — the
-      // player isn't even standing in the others. The life is lost right
-      // now regardless; the spray itself waits until he's recalled back
-      // to the counter (see the pending-spray check above) so it's slow
-      // enough to actually see.
+      // Only the bartender's own lane gets the in-game seltzer-in-the-face
+      // recall animation — the player isn't even standing in the others,
+      // so there's nothing to visibly run back for. Either way it's a
+      // spray as far as the "YOU GOT SPRAYED!" pause screen is concerned,
+      // and either way the spray sound plays and there's a beat before
+      // that screen shows up — in his own lane that beat is the recall
+      // actually playing out (see the pending-spray check above), but
+      // elsewhere it's just a short pause since there's no animation to
+      // wait for.
       if (c.lane === sim.playerLane) {
         sim.pendingSprayDrinkType = c.drinkType
         sim.moveDir = -1
       } else if (!sim.gameOver) {
-        sim.awaitingContinue = true
+        sim.spillCount++
+        sim.lastSpillDrinkType = c.drinkType
+        sim.continuePauseInMs = C.SPRAY_OTHER_LANE_HOLD_MS
       }
     } else if (c.status === 'leaving-happy' && c.x >= C.OFFSCREEN_X) {
       c._remove = true
@@ -270,7 +285,10 @@ function step(sim, dt) {
   if (missedCount > 0) {
     sim.missedGlassCount++
     loseLife(sim, missedCount)
-    if (!sim.gameOver) sim.awaitingContinue = true
+    if (!sim.gameOver) {
+      sim.missReason = 'glass'
+      sim.awaitingContinue = true
+    }
   }
   const autoCaughtCount = sim.glasses.filter((g) => g._caught).length
   if (autoCaughtCount > 0) sim.score += autoCaughtCount * C.POINTS_PER_CAUGHT_GLASS
@@ -368,6 +386,11 @@ export function useGameEngine() {
   const startRun = useCallback((direction) => {
     const sim = simRef.current
     if (sim.gameOver) return
+    // Can't fight your way out of being marched back to the counter for
+    // the spray — otherwise dragging to run the instant it starts just
+    // overwrites the forced recall's moveDir and he never gets there,
+    // so the spray (and the pause after it) never actually fires.
+    if (sim.pendingSprayDrinkType !== null) return
     sim.runTargetX = null // manual control cancels any auto-run to the hot dog
     sim.moveDir = direction
   }, [])

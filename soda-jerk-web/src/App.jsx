@@ -199,7 +199,12 @@ export default function App() {
       )}
 
       {state.started && !state.gameOver && state.awaitingContinue && (
-        <LifeLostScreen score={state.score} lives={state.lives} onContinue={withAudio(continueAfterDeath)} />
+        <LifeLostScreen
+          score={state.score}
+          lives={state.lives}
+          missReason={state.missReason}
+          onContinue={withAudio(continueAfterDeath)}
+        />
       )}
 
       {state.started && state.gameOver && (
