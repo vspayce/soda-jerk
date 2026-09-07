@@ -13,6 +13,7 @@ import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
 import Celebration from './components/Celebration.jsx'
 import SettingsScreen from './components/SettingsScreen.jsx'
+import InstructionsScreen from './components/InstructionsScreen.jsx'
 
 // BASE_URL respects the vite.config.js `base` setting, so this still
 // resolves correctly once deployed under /soda-jerk/ on GitHub Pages.
@@ -43,6 +44,7 @@ export default function App() {
   const [celebrate, setCelebrate] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [showInstructions, setShowInstructions] = useState(false)
   const prevSpillRef = useRef(state.spillCount)
   const prevCelebrateRef = useRef(state.celebrateCount)
   const prevMissedGlassRef = useRef(state.missedGlassCount)
@@ -229,9 +231,18 @@ export default function App() {
         <SplashScreen
           onStart={() => {
             music.start()
-            startGame()
+            setShowInstructions(true)
           }}
           onShowLeaderboard={() => setShowLeaderboard(true)}
+        />
+      )}
+
+      {!state.started && showInstructions && (
+        <InstructionsScreen
+          onContinue={() => {
+            setShowInstructions(false)
+            startGame()
+          }}
         />
       )}
 

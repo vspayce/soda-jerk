@@ -51,7 +51,7 @@ export const SPRAY_OTHER_LANE_HOLD_MS = 900
 export const GLASS_REACH_X = 10
 
 export const POINTS_PER_SERVE = 100
-export const POINTS_PER_CAUGHT_GLASS = 25
+export const POINTS_PER_CAUGHT_GLASS = 50
 
 // Selectable drink types — tap one of the taps to pour it. A customer's
 // outfit color shows which one they want; the wrong drink just sails
@@ -73,4 +73,4 @@ export const BONUS_SPAWN_INTERVAL_MIN_MS = 9000
 export const BONUS_SPAWN_INTERVAL_MAX_MS = 18000
 export const BONUS_LIFETIME_MS = 6000
 export const BONUS_REACH_X = 14
-export const POINTS_PER_BONUS = 50
+export const POINTS_PER_BONUS = 500

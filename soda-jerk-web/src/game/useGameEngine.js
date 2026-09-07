@@ -83,7 +83,12 @@ function trySpawnCustomer(sim, travelMs) {
     status: 'walking', // walking -> leaving-happy (served) | removed (reached end of bar)
     speed,
     drinkType,
-    patronType, // which illustration to use — purely cosmetic variety
+    patronType, // which illustration to use
+    // The mom-and-son pair (patronType 1) is two people — testing what it
+    // feels like to need a drink for each of them before they'll leave,
+    // same drink type both times. They keep walking (and can still reach
+    // the end and cost a life) until this hits 0.
+    drinksNeeded: patronType === 1 ? 2 : 1,
     drinkName: C.DRINK_TYPES[drinkType].name,
     color: C.DRINK_TYPES[drinkType].color,
   })
@@ -210,8 +215,11 @@ function step(sim, dt) {
     )
     if (target && m.x >= target.x) {
       sim.score += C.POINTS_PER_SERVE
-      target.status = 'leaving-happy'
-      target.speed = (C.OFFSCREEN_X - target.x) / (C.CUSTOMER_WALK_OUT_MS / 1000)
+      target.drinksNeeded -= 1
+      if (target.drinksNeeded <= 0) {
+        target.status = 'leaving-happy'
+        target.speed = (C.OFFSCREEN_X - target.x) / (C.CUSTOMER_WALK_OUT_MS / 1000)
+      }
 
       // One returning glass per lane at a time — otherwise catching the
       // only one you can see still leaves a second one uncaught to be
@@ -341,6 +349,12 @@ export function useGameEngine() {
   const pourDrink = useCallback((index) => {
     const sim = simRef.current
     if (sim.gameOver) return
+    // A life was already lost and the "YOU GOT SPRAYED!" pause is on its
+    // way (the recall/spray sequence, or the short sound-and-pause beat
+    // for a different lane) — block pouring until it actually shows,
+    // otherwise a second mistake in that window can cost a second life
+    // before the player has even seen the first one land.
+    if (sim.pendingSprayDrinkType !== null || sim.continuePauseInMs !== null) return
     sim.selectedDrink = index
     sim.playerX = C.PLAYER_X
     sim.moveDir = 0
