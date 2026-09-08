@@ -54,6 +54,12 @@ export const WALK_PAUSE_MAX_MS = 800
 // can be waiting behind the first in every lane.
 export const STAGE_LANE_CAPACITY = [1, 2]
 
+// Extra slowdown applied to customerTravelMs by stage (index 0 = stage 1)
+// on top of the score-gated pacing in levels.js — stage 2 has twice as
+// many patrons walking at once, so this eases their pace back down to
+// compensate, applied as a multiplier (1 = unchanged, higher = slower).
+export const STAGE_TRAVEL_MULTIPLIER = [1, 1.2]
+
 export const GLASS_RETURN_CHANCE = 0.35
 
 // How long the bartender stays at the counter getting sprayed before the

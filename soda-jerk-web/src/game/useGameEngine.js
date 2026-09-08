@@ -125,7 +125,7 @@ function step(sim, dt) {
   const levelInfo = getLevelForScore(sim.score)
   sim.level = levelInfo.level
   const spawnInterval = levelInfo.spawnIntervalMs
-  const travelMs = levelInfo.customerTravelMs
+  const travelMs = levelInfo.customerTravelMs * (C.STAGE_TRAVEL_MULTIPLIER[sim.stage - 1] ?? 1)
 
   // Spawning
   sim.nextSpawnInMs -= dt * 1000
