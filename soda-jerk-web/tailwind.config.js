@@ -16,6 +16,8 @@ export default {
       fontFamily: {
         display: ['"Playfair Display"', 'serif'],
         body: ['"Inter"', 'sans-serif'],
+        // Matches the flourished script lettering on the "SODA JERK" sign.
+        script: ['"Berkshire Swash"', 'cursive'],
       },
     },
   },

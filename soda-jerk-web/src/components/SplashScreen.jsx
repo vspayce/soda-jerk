@@ -25,9 +25,9 @@ export default function SplashScreen({ onStart, onShowLeaderboard }) {
             e.preventDefault()
             onStart()
           }}
-          className="px-9 py-3.5 rounded-sm border-2 border-brass text-brass font-display text-lg tracking-[0.2em] active:bg-brass active:text-ink transition-colors"
+          className="px-9 py-3.5 rounded-sm border-2 border-brass text-brass font-script text-2xl tracking-wide active:bg-brass active:text-ink transition-colors"
         >
-          TAP TO START
+          Tap to Start
         </button>
         <div className="mt-4 flex items-center gap-4">
           <button

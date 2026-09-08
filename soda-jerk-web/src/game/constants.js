@@ -64,7 +64,7 @@ export const DRINK_TYPES = [
 
 // How many different patron illustrations exist per drink color — purely
 // cosmetic variety, picked at random when a customer spawns.
-export const PATRON_TYPE_COUNT = 2
+export const PATRON_TYPE_COUNT = 3
 
 // A hot dog drops on the counter every so often, somewhere within the
 // bartender's run range — reach it (JERK while close enough) before it

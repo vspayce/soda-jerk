@@ -12,6 +12,10 @@ const ROWS = [
     label: 'Catch a returning glass',
     points: POINTS_PER_CAUGHT_GLASS,
     icons: [ART_SRC('glass-empty.png')],
+    // The glass art is a nearly-white, mostly-transparent outline — same
+    // problem as in the lane itself, so it gets the same glow treatment
+    // to actually be visible here.
+    glow: true,
   },
   {
     label: 'Grab a hot dog',
@@ -27,19 +31,34 @@ export default function InstructionsScreen({ onContinue }) {
       <div className="text-cream/50 text-xs tracking-[0.2em] mb-6">TAP A DRINK TO POUR IT — MATCH THEIR OUTFIT</div>
 
       <div className="w-full max-w-xs mb-6">
-        {ROWS.map(({ label, points, icons }, i) => (
+        {ROWS.map(({ label, points, icons, glow }, i) => (
           <div
             key={label}
             className="flex items-center justify-between py-3 gap-3"
             style={{ borderBottom: i < ROWS.length - 1 ? '1px solid rgba(198,161,91,0.2)' : 'none' }}
           >
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1" style={{ width: 52 }}>
+              <div className="relative flex items-center gap-1" style={{ width: 52 }}>
+                {glow && (
+                  <div
+                    className="absolute"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: 'radial-gradient(circle, rgba(255,221,140,0.85) 0%, rgba(255,221,140,0) 70%)',
+                    }}
+                  />
+                )}
                 {icons.map((src) => (
                   <img
                     key={src}
                     src={src}
                     alt=""
+                    className="relative"
                     style={{ height: 30, width: 'auto', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))' }}
                   />
                 ))}
@@ -71,9 +90,9 @@ export default function InstructionsScreen({ onContinue }) {
           e.preventDefault()
           onContinue()
         }}
-        className="px-9 py-3.5 rounded-sm border-2 border-brass text-brass font-display text-lg tracking-[0.2em] active:bg-brass active:text-ink transition-colors"
+        className="px-9 py-3.5 rounded-sm border-2 border-brass text-brass font-script text-2xl tracking-wide active:bg-brass active:text-ink transition-colors"
       >
-        LET'S GO
+        Let's Go
       </button>
     </div>
   )

@@ -16,10 +16,11 @@ const DANGER_X = PLAYER_X + 22
 const PATRON_SRC = [
   [`${import.meta.env.BASE_URL}art/patron-orange.png`, `${import.meta.env.BASE_URL}art/patron-pink.png`],
   [`${import.meta.env.BASE_URL}art/patron2-orange.png`, `${import.meta.env.BASE_URL}art/patron2-pink.png`],
+  [`${import.meta.env.BASE_URL}art/patron3-orange.png`, `${import.meta.env.BASE_URL}art/patron3-pink.png`],
 ]
 // Some illustrations (e.g. the mom-and-son pair) are wider than others,
 // so each patronType gets its own height to read at a consistent scale.
-const PATRON_HEIGHT = [65, 58]
+const PATRON_HEIGHT = [65, 58, 65]
 
 export default function Customer({ x, drinkType, patronType, status, drinkName }) {
   const isUrgent = status === 'walking' && x <= DANGER_X

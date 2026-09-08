@@ -111,7 +111,21 @@ export default function Lane({
             onGrabGlass(g.id)
           }}
         >
-          <img src={GLASS_EMPTY_SRC} alt="" className="glass-return" style={{ height: 44, width: 'auto', display: 'block' }} />
+          <div
+            className="glass-return-halo absolute"
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,221,140,0.9) 0%, rgba(255,221,140,0) 70%)',
+            }}
+          />
+          <img
+            src={GLASS_EMPTY_SRC}
+            alt=""
+            className="glass-return relative"
+            style={{ height: 44, width: 'auto', display: 'block' }}
+          />
         </div>
       ))}
 
