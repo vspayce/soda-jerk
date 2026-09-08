@@ -10,9 +10,30 @@ function randomBetween(min, max) {
   return min + Math.random() * (max - min)
 }
 
+// Fresh state for a bonus-round attempt — the scoop starts at rest on
+// the launch anchor, ready to be pulled back.
+function createBonusLevelState() {
+  return {
+    wheelAngle: 0,
+    throwsLeft: C.BONUS_LEVEL_THROWS,
+    scoopState: 'ready', // 'ready' | 'aiming' | 'flying' | 'result'
+    scoopX: C.BONUS_LAUNCH_ANCHOR.x,
+    scoopY: C.BONUS_LAUNCH_ANCHOR.y,
+    vx: 0,
+    vy: 0,
+    aimDX: 0, // how far the scoop's currently pulled back from the
+    aimDY: 0, // anchor, while aiming — the drag vector itself
+    resultText: null, // 'HIT! +500' | 'MISS' while scoopState is 'result'
+    resultHoldMs: 0,
+  }
+}
+
 function createInitialSim() {
   return {
     started: false,
+    mode: 'bar', // 'bar' | 'bonus' — swaps the whole gameplay loop over
+    // to the wheel-throw mini-game; see stepBonus() and BonusLevel.jsx
+    bonusLevel: null, // set to createBonusLevelState() while mode is 'bonus'
     playerLane: 0,
     playerX: C.PLAYER_X,
     moveDir: 0, // -1 left, 0 still, 1 right — set by holding a run button
@@ -124,8 +145,93 @@ function trySpawnCustomer(sim, travelMs) {
   })
 }
 
+// The wheel-throw bonus round — an entirely different mini-game from the
+// bar, so it gets its own physics tick instead of threading through the
+// lane logic above. Coordinates are all percentages of the bonus arena's
+// own square play field (see BONUS_* in constants.js and BonusLevel.jsx).
+function stepBonus(sim, dt) {
+  const b = sim.bonusLevel
+  if (!b) return
+
+  // The wheel spins continuously while a throw is live — that's the
+  // actual challenge, timing it against the spin — but holds still once
+  // one lands, so a scoop that made it into a cup stays visibly sitting
+  // there (rather than the wheel spinning on and leaving it behind) for
+  // the "HIT!"/"MISS" beat.
+  if (b.scoopState !== 'result') {
+    b.wheelAngle = (b.wheelAngle + C.BONUS_WHEEL_SPIN_DEG_PER_S * dt) % 360
+  }
+
+  if (b.scoopState === 'flying') {
+    b.scoopX += b.vx * dt
+    b.scoopY += b.vy * dt
+    b.vy += C.BONUS_GRAVITY * dt
+
+    let hitCupX = null
+    let hitCupY = null
+    for (let i = 0; i < C.BONUS_CUP_COUNT; i++) {
+      const angleRad = ((b.wheelAngle + i * 90) * Math.PI) / 180
+      // The 4 slots aren't a perfect circle in the source art, hence the
+      // separate x/y radius — see BONUS_WHEEL_HOLE_FRACTION_* above.
+      const cupX = C.BONUS_WHEEL_CENTER.x + C.BONUS_WHEEL_RADIUS_X * Math.cos(angleRad)
+      const cupY = C.BONUS_WHEEL_CENTER.y + C.BONUS_WHEEL_RADIUS_Y * Math.sin(angleRad)
+      const dist = Math.hypot(b.scoopX - cupX, b.scoopY - cupY)
+      if (dist <= C.BONUS_HIT_RADIUS) {
+        hitCupX = cupX
+        hitCupY = cupY
+        break
+      }
+    }
+
+    const offArena = b.scoopX < -15 || b.scoopX > 115 || b.scoopY > 115 || b.scoopY < -25
+    if (hitCupX !== null) {
+      // Snap to the cup's exact center so it visually sits in the cup
+      // rather than wherever it happened to cross the hit radius.
+      b.scoopX = hitCupX
+      b.scoopY = hitCupY
+      b.vx = 0
+      b.vy = 0
+      sim.score += C.BONUS_LEVEL_POINTS
+      b.resultText = `HIT! +${C.BONUS_LEVEL_POINTS}`
+      b.scoopState = 'result'
+      b.resultHoldMs = C.BONUS_RESULT_HOLD_MS
+    } else if (offArena) {
+      b.resultText = 'MISS'
+      b.scoopState = 'result'
+      b.resultHoldMs = C.BONUS_RESULT_HOLD_MS
+    }
+  } else if (b.scoopState === 'result') {
+    b.resultHoldMs -= dt * 1000
+    if (b.resultHoldMs <= 0) {
+      b.throwsLeft -= 1
+      if (b.throwsLeft > 0) {
+        b.scoopState = 'ready'
+        b.scoopX = C.BONUS_LAUNCH_ANCHOR.x
+        b.scoopY = C.BONUS_LAUNCH_ANCHOR.y
+        b.vx = 0
+        b.vy = 0
+        b.aimDX = 0
+        b.aimDY = 0
+        b.resultText = null
+      } else {
+        // Round's over — back to the bar. Reset the stage-clear attempt
+        // so a future clean full-clear can send the player back here.
+        sim.mode = 'bar'
+        sim.bonusLevel = null
+        sim.stageAttemptArmed = false
+        sim.stageAttemptClean = false
+        sim.wasAllLanesFull = false
+      }
+    }
+  }
+}
+
 function step(sim, dt) {
   if (!sim.started) return
+  if (sim.mode === 'bonus') {
+    stepBonus(sim, dt)
+    return
+  }
   if (sim.awaitingContinue) return
   if (sim.awaitingStageAdvance) return
 
@@ -364,14 +470,22 @@ function step(sim, dt) {
       sim.stageAttemptClean = true
     }
     sim.wasAllLanesFull = isFullNow
-    if (
-      sim.stageAttemptArmed &&
-      sim.stageAttemptClean &&
-      !sim.awaitingStageAdvance &&
-      sim.stage < C.STAGE_LANE_CAPACITY.length &&
-      sim.customers.length === 0
-    ) {
-      sim.awaitingStageAdvance = true
+    if (sim.stageAttemptArmed && sim.stageAttemptClean && !sim.awaitingStageAdvance && sim.customers.length === 0) {
+      if (sim.stage < C.STAGE_LANE_CAPACITY.length) {
+        // Still have lane-capacity stages left to unlock — show the
+        // normal "LEVEL PASSED" screen.
+        sim.awaitingStageAdvance = true
+      } else {
+        // Already at the top lane-capacity stage — a clean full clear
+        // here sends the player to the wheel-throw bonus round instead.
+        // The attempt flags reset so another clean clear later can send
+        // them back for another round.
+        sim.mode = 'bonus'
+        sim.bonusLevel = createBonusLevelState()
+        sim.stageAttemptArmed = false
+        sim.stageAttemptClean = false
+        sim.wasAllLanesFull = false
+      }
     }
   }
 }
@@ -530,6 +644,57 @@ export function useGameEngine() {
     sim.wasAllLanesFull = false
   }, [])
 
+  // Bonus-round aiming — pull back from the launch anchor, then release
+  // to throw. Distances in are all arena-relative percentages, computed
+  // by BonusLevel.jsx from its own bounding box.
+  const bonusAimStart = useCallback(() => {
+    const sim = simRef.current
+    const b = sim.bonusLevel
+    if (!b || b.scoopState !== 'ready') return
+    b.scoopState = 'aiming'
+  }, [])
+
+  const bonusAimMove = useCallback((dx, dy) => {
+    const sim = simRef.current
+    const b = sim.bonusLevel
+    if (!b || b.scoopState !== 'aiming') return
+    const pull = Math.hypot(dx, dy)
+    const clampScale = pull > C.BONUS_MAX_PULL ? C.BONUS_MAX_PULL / pull : 1
+    b.aimDX = dx * clampScale
+    b.aimDY = dy * clampScale
+  }, [])
+
+  const bonusAimEnd = useCallback(() => {
+    const sim = simRef.current
+    const b = sim.bonusLevel
+    if (!b || b.scoopState !== 'aiming') return
+    const pull = Math.hypot(b.aimDX, b.aimDY)
+    if (pull < C.BONUS_MIN_PULL) {
+      // Barely pulled — treat as a cancel, snap back to rest instead of
+      // a limp, accidental throw.
+      b.scoopState = 'ready'
+      b.aimDX = 0
+      b.aimDY = 0
+      return
+    }
+    // A slingshot launches opposite the pull direction, at a speed
+    // proportional to how far back it was drawn.
+    b.vx = -b.aimDX * C.BONUS_LAUNCH_POWER
+    b.vy = -b.aimDY * C.BONUS_LAUNCH_POWER
+    b.scoopX = C.BONUS_LAUNCH_ANCHOR.x + b.aimDX
+    b.scoopY = C.BONUS_LAUNCH_ANCHOR.y + b.aimDY
+    b.scoopState = 'flying'
+  }, [])
+
+  // Dev/test shortcut — jump straight into the bonus round from
+  // anywhere mid-game, no need to actually clear two full stages first.
+  const skipToBonus = useCallback(() => {
+    const sim = simRef.current
+    if (sim.gameOver || !sim.started) return
+    sim.mode = 'bonus'
+    sim.bonusLevel = createBonusLevelState()
+  }, [])
+
   const startGame = useCallback(() => {
     simRef.current.started = true
     setTick((n) => n + 1)
@@ -555,5 +720,9 @@ export function useGameEngine() {
     restart,
     continueAfterDeath,
     advanceStage,
+    bonusAimStart,
+    bonusAimMove,
+    bonusAimEnd,
+    skipToBonus,
   }
 }

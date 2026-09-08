@@ -9,6 +9,7 @@ import Controls from './components/Controls.jsx'
 import GameOverScreen from './components/GameOverScreen.jsx'
 import LifeLostScreen from './components/LifeLostScreen.jsx'
 import StagePassedScreen from './components/StagePassedScreen.jsx'
+import BonusLevel from './components/BonusLevel.jsx'
 import LeaderboardScreen from './components/LeaderboardScreen.jsx'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
@@ -40,6 +41,10 @@ export default function App() {
     restart,
     continueAfterDeath,
     advanceStage,
+    bonusAimStart,
+    bonusAimMove,
+    bonusAimEnd,
+    skipToBonus,
   } = useGameEngine()
   const music = useMusic(MUSIC_SRC, { volume: 0.22 })
   const [spraying, setSpraying] = useState(false)
@@ -51,6 +56,7 @@ export default function App() {
   const prevCelebrateRef = useRef(state.celebrateCount)
   const prevMissedGlassRef = useRef(state.missedGlassCount)
   const prevMugCrashRef = useRef(state.mugCrashCount)
+  const prevBonusResultRef = useRef(null)
   const gestureRef = useRef({ dragging: false, startX: 0, startY: 0, laneLatched: false, runDir: 0 })
 
   // Wrap each control so the very first tap also starts the music —
@@ -106,6 +112,15 @@ export default function App() {
       return () => clearTimeout(t)
     }
   }, [state.celebrateCount])
+
+  // A cheerful sting when a throw lands in a cup during the bonus round.
+  useEffect(() => {
+    const resultText = state.bonusLevel?.resultText ?? null
+    if (resultText && resultText !== prevBonusResultRef.current && resultText.startsWith('HIT')) {
+      playCelebration()
+    }
+    prevBonusResultRef.current = resultText
+  }, [state.bonusLevel?.resultText])
 
   const handleGestureStart = (e) => {
     if (!state.started || state.gameOver) return
@@ -169,40 +184,51 @@ export default function App() {
         onOpenSettings={() => setShowSettings(true)}
       />
 
-      <div
-        className="absolute inset-0 flex flex-col justify-end gap-1 px-4 pt-28 pb-32"
-        onPointerDown={handleGestureStart}
-        onPointerMove={handleGestureMove}
-        onPointerUp={handleGestureEnd}
-        onPointerCancel={(e) => handleGestureEnd(e, true)}
-      >
-        {Array.from({ length: LANE_COUNT }).map((_, laneIndex) => (
-          <Lane
-            key={laneIndex}
-            laneIndex={laneIndex}
-            isPlayerLane={state.playerLane === laneIndex}
-            playerX={state.playerX}
-            moveDir={state.playerLane === laneIndex ? state.moveDir : 0}
-            spraying={state.playerLane === laneIndex && spraying}
-            sprayDrinkType={state.lastSpillDrinkType}
-            customers={state.customers.filter((c) => c.lane === laneIndex)}
-            mugs={state.mugs.filter((m) => m.lane === laneIndex)}
-            glasses={state.glasses.filter((g) => g.lane === laneIndex)}
-            bonus={state.bonus && state.bonus.lane === laneIndex ? state.bonus : null}
-            onGrabBonus={withAudio(grabBonus)}
-            onGrabGlass={withAudio(grabGlass)}
-          />
-        ))}
-      </div>
+      {state.mode !== 'bonus' && (
+        <div
+          className="absolute inset-0 flex flex-col justify-end gap-1 px-4 pt-28 pb-32"
+          onPointerDown={handleGestureStart}
+          onPointerMove={handleGestureMove}
+          onPointerUp={handleGestureEnd}
+          onPointerCancel={(e) => handleGestureEnd(e, true)}
+        >
+          {Array.from({ length: LANE_COUNT }).map((_, laneIndex) => (
+            <Lane
+              key={laneIndex}
+              laneIndex={laneIndex}
+              isPlayerLane={state.playerLane === laneIndex}
+              playerX={state.playerX}
+              moveDir={state.playerLane === laneIndex ? state.moveDir : 0}
+              spraying={state.playerLane === laneIndex && spraying}
+              sprayDrinkType={state.lastSpillDrinkType}
+              customers={state.customers.filter((c) => c.lane === laneIndex)}
+              mugs={state.mugs.filter((m) => m.lane === laneIndex)}
+              glasses={state.glasses.filter((g) => g.lane === laneIndex)}
+              bonus={state.bonus && state.bonus.lane === laneIndex ? state.bonus : null}
+              onGrabBonus={withAudio(grabBonus)}
+              onGrabGlass={withAudio(grabGlass)}
+            />
+          ))}
+        </div>
+      )}
 
-      {state.started && !state.gameOver && !state.awaitingContinue && !state.awaitingStageAdvance && (
+      {state.mode === 'bonus' && state.bonusLevel && (
+        <BonusLevel
+          bonusLevel={state.bonusLevel}
+          onAimStart={withAudio(bonusAimStart)}
+          onAimMove={bonusAimMove}
+          onAimEnd={bonusAimEnd}
+        />
+      )}
+
+      {state.mode !== 'bonus' && state.started && !state.gameOver && !state.awaitingContinue && !state.awaitingStageAdvance && (
         <Controls
           selectedDrink={state.selectedDrink}
           onSelectDrink={withAudio(pourDrink)}
         />
       )}
 
-      {state.started && !state.gameOver && state.awaitingContinue && (
+      {state.mode !== 'bonus' && state.started && !state.gameOver && state.awaitingContinue && (
         <LifeLostScreen
           score={state.score}
           lives={state.lives}
@@ -211,7 +237,7 @@ export default function App() {
         />
       )}
 
-      {state.started && !state.gameOver && !state.awaitingContinue && state.awaitingStageAdvance && (
+      {state.mode !== 'bonus' && state.started && !state.gameOver && !state.awaitingContinue && state.awaitingStageAdvance && (
         <StagePassedScreen stage={state.stage} onContinue={withAudio(advanceStage)} />
       )}
 
@@ -261,6 +287,14 @@ export default function App() {
           volume={music.volume}
           onVolumeChange={music.setVolume}
           onClose={() => setShowSettings(false)}
+          onSkipToBonus={
+            state.started && !state.gameOver && state.mode !== 'bonus'
+              ? withAudio(() => {
+                  setShowSettings(false)
+                  skipToBonus()
+                })
+              : null
+          }
         />
       )}
     </div>

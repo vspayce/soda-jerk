@@ -1,6 +1,6 @@
 import { refreshApp } from '../refreshApp.js'
 
-export default function SettingsScreen({ volume, onVolumeChange, onClose }) {
+export default function SettingsScreen({ volume, onVolumeChange, onClose, onSkipToBonus }) {
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center bg-ink/95 px-8 py-10 overflow-y-auto">
       <div className="font-display text-brass text-2xl mb-8 tracking-wide">SETTINGS</div>
@@ -28,6 +28,15 @@ export default function SettingsScreen({ volume, onVolumeChange, onClose }) {
           <li>Don't let a patron reach the end of the bar — you'll lose a life and get sprayed.</li>
         </ul>
       </div>
+
+      {onSkipToBonus && (
+        <button
+          onClick={onSkipToBonus}
+          className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
+        >
+          SKIP TO BONUS ROUND
+        </button>
+      )}
 
       <button
         onClick={onClose}

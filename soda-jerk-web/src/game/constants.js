@@ -99,3 +99,39 @@ export const BONUS_SPAWN_INTERVAL_MAX_MS = 18000
 export const BONUS_LIFETIME_MS = 6000
 export const BONUS_REACH_X = 14
 export const POINTS_PER_BONUS = 500
+
+// The bonus ROUND (distinct from the hot dog bonus above) — an Angry
+// Birds-style throw at a spinning wheel of malt cups, reached after
+// clearing every lane at stage 2's cap. All coordinates below are
+// percentages (0-100) of the bonus arena's own square play field, not
+// the phone-frame — see BonusLevel.jsx.
+export const BONUS_LEVEL_THROWS = 3
+export const BONUS_LEVEL_POINTS = 500
+// The wheel sits up in the right side of the arena; the scoop launches
+// from the lower-left, so a throw arcs up and across, slingshot-style,
+// rather than straight up the middle.
+export const BONUS_WHEEL_CENTER = { x: 68, y: 32 }
+// bonus-wheel.png's 4 cup slots sit at these fractions of the wheel
+// image's own width/height, measured from its center — not a perfect
+// circle (hand-painted art), so x and y get their own radius rather
+// than one shared value.
+export const BONUS_WHEEL_IMAGE_SIZE = 36 // wheel image width, % of arena
+export const BONUS_WHEEL_HOLE_FRACTION_X = 0.37
+export const BONUS_WHEEL_HOLE_FRACTION_Y = 0.32
+export const BONUS_WHEEL_RADIUS_X = BONUS_WHEEL_IMAGE_SIZE * BONUS_WHEEL_HOLE_FRACTION_X
+export const BONUS_WHEEL_RADIUS_Y = BONUS_WHEEL_IMAGE_SIZE * BONUS_WHEEL_HOLE_FRACTION_Y
+export const BONUS_CUP_SIZE = 13 // each cup sprite's width, % of arena
+export const BONUS_WHEEL_SPIN_DEG_PER_S = 40
+export const BONUS_LAUNCH_ANCHOR = { x: 18, y: 35 }
+export const BONUS_MAX_PULL = 25 // furthest the scoop can be dragged back
+export const BONUS_MIN_PULL = 4 // shorter than this and releasing cancels the aim
+// Launch power and gravity are tuned together so only a deliberate, fairly
+// steep pull (mostly straight back, not just diagonal) arcs high enough to
+// drop back down into the wheel — a flatter, half-hearted toss comes up
+// short. Higher gravity than a lob really needs, on purpose, so the margin
+// for error on power AND angle both stay tight.
+export const BONUS_LAUNCH_POWER = 3.65 // arena-%/s of launch velocity per arena-% pulled
+export const BONUS_GRAVITY = 85 // arena-%/s^2 pulling the scoop back down
+export const BONUS_HIT_RADIUS = 6 // how close to a cup's center counts as landing in it
+export const BONUS_RESULT_HOLD_MS = 1400 // how long HIT!/MISS shows before the next throw
+export const BONUS_CUP_COUNT = 4
