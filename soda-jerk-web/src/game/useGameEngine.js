@@ -441,6 +441,13 @@ export function useGameEngine() {
     sim.moveDir = 0
     sim.runTargetX = null
     sim.pendingSprayDrinkType = null
+    // A spray sequence's hold timer can still be silently ticking down in
+    // the background if a faster miss (glass/mug) showed its screen
+    // first — without clearing it here, it survives this reset and later
+    // fires a second, unprompted "YOU GOT SPRAYED!" screen once it hits
+    // zero, well after the player already continued from the first one.
+    sim.continuePauseInMs = null
+    sim.missReason = null
     // Reset to whatever level the current score is already at, not back
     // to level 1 — losing a life clears the board, not your progress.
     sim.nextSpawnInMs = getLevelForScore(sim.score).spawnIntervalMs
