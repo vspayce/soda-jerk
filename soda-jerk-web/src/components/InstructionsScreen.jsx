@@ -1,4 +1,5 @@
 import { POINTS_PER_SERVE, POINTS_PER_CAUGHT_GLASS, POINTS_PER_BONUS } from '../game/constants.js'
+import SignButton from './SignButton.jsx'
 
 const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 
@@ -85,15 +86,7 @@ export default function InstructionsScreen({ onContinue }) {
         </div>
       </div>
 
-      <button
-        onPointerDown={(e) => {
-          e.preventDefault()
-          onContinue()
-        }}
-        className="px-9 py-3.5 rounded-sm border-2 border-brass text-brass font-script text-2xl tracking-wide active:bg-brass active:text-ink transition-colors"
-      >
-        Let's Go
-      </button>
+      <SignButton onPress={onContinue}>Let's Go</SignButton>
     </div>
   )
 }

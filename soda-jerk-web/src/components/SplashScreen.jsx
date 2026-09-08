@@ -1,4 +1,5 @@
 import { refreshApp } from '../refreshApp.js'
+import SignButton from './SignButton.jsx'
 
 // Title screen shown before the game starts. Doubles as the required
 // "real user gesture" moment that unlocks audio playback on mobile —
@@ -20,15 +21,7 @@ export default function SplashScreen({ onStart, onShowLeaderboard }) {
         style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(21,16,20,0.75) 45%, #151014 100%)' }}
       >
         <div className="text-cream/40 text-[10px] tracking-[0.25em] mb-4">A GAME BY SPAYCELORD</div>
-        <button
-          onPointerDown={(e) => {
-            e.preventDefault()
-            onStart()
-          }}
-          className="px-9 py-3.5 rounded-sm border-2 border-brass text-brass font-script text-2xl tracking-wide active:bg-brass active:text-ink transition-colors"
-        >
-          Tap to Start
-        </button>
+        <SignButton onPress={onStart}>Tap to Start</SignButton>
         <div className="mt-4 flex items-center gap-4">
           <button
             onClick={onShowLeaderboard}

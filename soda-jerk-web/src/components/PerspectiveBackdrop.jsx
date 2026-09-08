@@ -160,7 +160,7 @@ export default function PerspectiveBackdrop() {
         src={ART_SRC('soda-jerk-logo.png')}
         alt="Soda Jerk"
         className="absolute left-1/2 -translate-x-1/2"
-        style={{ top: 44, height: 24, width: 'auto' }}
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 44px)', height: 24, width: 'auto' }}
       />
 
       {/* Mighty Wurlitzer, front and center up top */}
