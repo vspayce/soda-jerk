@@ -29,7 +29,18 @@ export const MUG_TRAVEL_MS = 800
 export const GLASS_RETURN_TRAVEL_MS = 4200
 
 // Time (ms) for a served (happy) customer to walk off after being served.
-export const CUSTOMER_WALK_OUT_MS = 900
+// Fast — reads as being hustled off rather than a casual stroll, so a
+// served customer doesn't linger in the lane long enough to tempt (and
+// then waste) another matching drink thrown their way.
+export const CUSTOMER_WALK_OUT_MS = 280
+
+// A walking-in customer occasionally pauses for a beat instead of
+// marching in a dead straight line — feels more like browsing, less
+// like a conveyor belt. Chance is per frame (~60fps), so on average
+// that's roughly one pause every 5-6 seconds of walking.
+export const WALK_PAUSE_CHANCE_PER_FRAME = 0.003
+export const WALK_PAUSE_MIN_MS = 300
+export const WALK_PAUSE_MAX_MS = 650
 
 // Difficulty (customer spawn rate and travel speed) is gated by score,
 // not survival time — see levels.js, which is the file to edit to

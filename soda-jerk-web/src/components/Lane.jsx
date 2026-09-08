@@ -93,7 +93,7 @@ export default function Lane({
           <img
             src={DRINK_ICON_SRC(DRINK_TYPES[m.drinkType].icon)}
             alt=""
-            style={{ height: 39, width: 'auto', display: 'block' }}
+            style={{ height: 27, width: 'auto', display: 'block' }}
           />
         </div>
       ))}

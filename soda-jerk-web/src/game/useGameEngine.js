@@ -89,6 +89,8 @@ function trySpawnCustomer(sim, travelMs) {
     // same drink type both times. They keep walking (and can still reach
     // the end and cost a life) until this hits 0.
     drinksNeeded: patronType === 1 ? 2 : 1,
+    pauseMs: 0, // counts down while paused mid-walk — see below, keeps
+    // them from marching in a dead straight line the whole way
     drinkName: C.DRINK_TYPES[drinkType].name,
     color: C.DRINK_TYPES[drinkType].color,
   })
@@ -195,7 +197,17 @@ function step(sim, dt) {
   // frame's stale position, one step behind).
   for (const c of sim.customers) {
     if (c.status === 'walking') {
-      c.x -= c.speed * dt
+      if (c.pauseMs > 0) {
+        c.pauseMs -= dt * 1000
+      } else {
+        c.x -= c.speed * dt
+        // Every so often, stop for a beat instead of marching in dead
+        // a straight line the whole way — just a brief hitch, not a
+        // real stall.
+        if (Math.random() < C.WALK_PAUSE_CHANCE_PER_FRAME) {
+          c.pauseMs = randomBetween(C.WALK_PAUSE_MIN_MS, C.WALK_PAUSE_MAX_MS)
+        }
+      }
     } else if (c.status === 'leaving-happy') {
       c.x += c.speed * dt
     }
