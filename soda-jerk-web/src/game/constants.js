@@ -36,15 +36,23 @@ export const CUSTOMER_WALK_OUT_MS = 280
 
 // A walking-in customer occasionally pauses for a beat instead of
 // marching in a dead straight line — feels more like browsing, less
-// like a conveyor belt. Chance is per frame (~60fps), so on average
-// that's roughly one pause every 5-6 seconds of walking.
-export const WALK_PAUSE_CHANCE_PER_FRAME = 0.003
-export const WALK_PAUSE_MIN_MS = 300
-export const WALK_PAUSE_MAX_MS = 650
+// like a conveyor belt, and gives more of a stuttering gait. Chance is
+// per frame (~60fps), so on average that's roughly one pause every
+// 2.5-3 seconds of walking.
+export const WALK_PAUSE_CHANCE_PER_FRAME = 0.006
+export const WALK_PAUSE_MIN_MS = 350
+export const WALK_PAUSE_MAX_MS = 800
 
 // Difficulty (customer spawn rate and travel speed) is gated by score,
 // not survival time — see levels.js, which is the file to edit to
 // retune pacing.
+
+// Separate from the score-gated difficulty above: how many customers can
+// queue up walking in the same lane at once, by stage (index 0 = stage
+// 1). Stage 1 is one at a time; filling every lane and then clearing the
+// whole bar at once bumps the player to stage 2, where a second patron
+// can be waiting behind the first in every lane.
+export const STAGE_LANE_CAPACITY = [1, 2]
 
 export const GLASS_RETURN_CHANCE = 0.35
 

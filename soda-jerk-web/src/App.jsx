@@ -8,6 +8,7 @@ import HUD from './components/HUD.jsx'
 import Controls from './components/Controls.jsx'
 import GameOverScreen from './components/GameOverScreen.jsx'
 import LifeLostScreen from './components/LifeLostScreen.jsx'
+import StagePassedScreen from './components/StagePassedScreen.jsx'
 import LeaderboardScreen from './components/LeaderboardScreen.jsx'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
@@ -38,6 +39,7 @@ export default function App() {
     startGame,
     restart,
     continueAfterDeath,
+    advanceStage,
   } = useGameEngine()
   const music = useMusic(MUSIC_SRC, { volume: 0.22 })
   const [spraying, setSpraying] = useState(false)
@@ -193,7 +195,7 @@ export default function App() {
         ))}
       </div>
 
-      {state.started && !state.gameOver && !state.awaitingContinue && (
+      {state.started && !state.gameOver && !state.awaitingContinue && !state.awaitingStageAdvance && (
         <Controls
           selectedDrink={state.selectedDrink}
           onSelectDrink={withAudio(pourDrink)}
@@ -207,6 +209,10 @@ export default function App() {
           missReason={state.missReason}
           onContinue={withAudio(continueAfterDeath)}
         />
+      )}
+
+      {state.started && !state.gameOver && !state.awaitingContinue && state.awaitingStageAdvance && (
+        <StagePassedScreen stage={state.stage} onContinue={withAudio(advanceStage)} />
       )}
 
       {state.started && state.gameOver && (

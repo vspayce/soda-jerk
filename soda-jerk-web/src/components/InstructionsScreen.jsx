@@ -39,7 +39,7 @@ export default function InstructionsScreen({ onContinue }) {
             style={{ borderBottom: i < ROWS.length - 1 ? '1px solid rgba(198,161,91,0.2)' : 'none' }}
           >
             <div className="flex items-center gap-3">
-              <div className="relative flex items-center gap-1" style={{ width: 52 }}>
+              <div className="relative flex items-center justify-center gap-1" style={{ width: 52 }}>
                 {glow && (
                   <div
                     className="absolute"

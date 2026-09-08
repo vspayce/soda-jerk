@@ -23,6 +23,15 @@ function createInitialSim() {
     score: 0,
     survivalMs: 0,
     level: 1, // current difficulty level — see levels.js
+    stage: 1, // current lane-capacity stage — see STAGE_LANE_CAPACITY in
+    // constants.js. Unrelated to `level` above: this only changes how many
+    // customers can queue in one lane, advanced by clearing the bar, not by
+    // score.
+    allLanesFilledOnce: false, // armed once every lane has simultaneously
+    // held a walking customer — see awaitingStageAdvance below
+    awaitingStageAdvance: false, // true once the bar's been fully cleared
+    // after arming above — freezes the sim (like awaitingContinue) until
+    // the "LEVEL PASSED" screen is dismissed via advanceStage()
     gameOver: false,
     awaitingContinue: false, // true right after a life is lost (but the
     // game isn't over) — freezes the sim until continueAfterDeath() is
@@ -64,11 +73,22 @@ function loseLife(sim, n = 1) {
 }
 
 function trySpawnCustomer(sim, travelMs) {
-  // Cap one active (still walking) customer per lane, so arrivals stay
-  // readable in the prototype.
-  const busyLanes = new Set(sim.customers.filter((c) => c.status === 'walking').map((c) => c.lane))
+  // Cap how many active (still walking) customers can queue in the same
+  // lane at once — one at stage 1, two at stage 2 (see STAGE_LANE_CAPACITY)
+  // — so arrivals stay readable. A lane with a mug still in flight is
+  // always off-limits regardless of stage — otherwise a mug thrown down an
+  // empty lane can catch a customer the instant they spawn, off-screen past
+  // the visible edge, before the player has ever seen them walk in.
+  const capacity = C.STAGE_LANE_CAPACITY[sim.stage - 1] ?? 1
+  const walkingCountByLane = new Map()
+  for (const c of sim.customers) {
+    if (c.status === 'walking') walkingCountByLane.set(c.lane, (walkingCountByLane.get(c.lane) || 0) + 1)
+  }
+  const mugLanes = new Set(sim.mugs.map((m) => m.lane))
   const openLanes = []
-  for (let i = 0; i < C.LANE_COUNT; i++) if (!busyLanes.has(i)) openLanes.push(i)
+  for (let i = 0; i < C.LANE_COUNT; i++) {
+    if ((walkingCountByLane.get(i) || 0) < capacity && !mugLanes.has(i)) openLanes.push(i)
+  }
   if (openLanes.length === 0) return
 
   const lane = pick(openLanes)
@@ -99,6 +119,7 @@ function trySpawnCustomer(sim, travelMs) {
 function step(sim, dt) {
   if (!sim.started) return
   if (sim.awaitingContinue) return
+  if (sim.awaitingStageAdvance) return
 
   sim.survivalMs += dt * 1000
   const levelInfo = getLevelForScore(sim.score)
@@ -315,6 +336,27 @@ function step(sim, dt) {
   const autoCaughtCount = sim.glasses.filter((g) => g._caught).length
   if (autoCaughtCount > 0) sim.score += autoCaughtCount * C.POINTS_PER_CAUGHT_GLASS
   sim.glasses = sim.glasses.filter((g) => !g._missed && !g._caught)
+
+  // Stage advance: once every lane has simultaneously had a customer
+  // waiting in it, getting the whole bar empty again — no one left
+  // walking anywhere — counts as clearing it "all at once". Only checked
+  // once the game isn't already showing a life-lost screen, so a miss
+  // landing on the same frame as the last lane emptying doesn't collide
+  // with the stage-passed one.
+  if (!sim.gameOver && !sim.awaitingContinue) {
+    const walkingLanes = new Set(sim.customers.filter((c) => c.status === 'walking').map((c) => c.lane))
+    if (!sim.allLanesFilledOnce && walkingLanes.size >= C.LANE_COUNT) {
+      sim.allLanesFilledOnce = true
+    }
+    if (
+      sim.allLanesFilledOnce &&
+      !sim.awaitingStageAdvance &&
+      sim.stage < C.STAGE_LANE_CAPACITY.length &&
+      walkingLanes.size === 0
+    ) {
+      sim.awaitingStageAdvance = true
+    }
+  }
 }
 
 export function useGameEngine() {
@@ -454,6 +496,17 @@ export function useGameEngine() {
     sim.nextBonusInMs = randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS)
   }, [])
 
+  // "LEVEL PASSED" continue button — unlocks the next stage's lane
+  // capacity and lets the sim keep running, keeping score, lives, and
+  // everything else exactly as they were.
+  const advanceStage = useCallback(() => {
+    const sim = simRef.current
+    if (sim.gameOver || !sim.awaitingStageAdvance) return
+    sim.awaitingStageAdvance = false
+    sim.stage += 1
+    sim.allLanesFilledOnce = false // re-arm in case a future stage adds a third
+  }, [])
+
   const startGame = useCallback(() => {
     simRef.current.started = true
     setTick((n) => n + 1)
@@ -478,5 +531,6 @@ export function useGameEngine() {
     startGame,
     restart,
     continueAfterDeath,
+    advanceStage,
   }
 }

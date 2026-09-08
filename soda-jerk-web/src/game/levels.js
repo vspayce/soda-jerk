@@ -11,15 +11,15 @@
 //   spawnIntervalMs  — time between new customers walking in (lower = busier)
 //   customerTravelMs — time a customer takes to walk the full bar before
 //                      reaching the end (lower = less time to react)
-// customerTravelMs values are 10% faster than the original pacing
-// (time / 1.1) — patrons cross the bar a bit quicker at every level.
+// customerTravelMs values are a further 20% slower on top of the prior
+// pacing pass — patrons were still crossing the bar too briskly.
 export const LEVELS = [
-  { level: 1, score: 0, spawnIntervalMs: 2200, customerTravelMs: 10654 },
-  { level: 2, score: 500, spawnIntervalMs: 1900, customerTravelMs: 8909 },
-  { level: 3, score: 1000, spawnIntervalMs: 1600, customerTravelMs: 7455 },
-  { level: 4, score: 1500, spawnIntervalMs: 1350, customerTravelMs: 6182 },
-  { level: 5, score: 2000, spawnIntervalMs: 1150, customerTravelMs: 5273 },
-  { level: 6, score: 2500, spawnIntervalMs: 1000, customerTravelMs: 4617 },
+  { level: 1, score: 0, spawnIntervalMs: 2200, customerTravelMs: 14702 },
+  { level: 2, score: 500, spawnIntervalMs: 1900, customerTravelMs: 12294 },
+  { level: 3, score: 1000, spawnIntervalMs: 1600, customerTravelMs: 10288 },
+  { level: 4, score: 1500, spawnIntervalMs: 1350, customerTravelMs: 8531 },
+  { level: 5, score: 2000, spawnIntervalMs: 1150, customerTravelMs: 7277 },
+  { level: 6, score: 2500, spawnIntervalMs: 1000, customerTravelMs: 6371 },
 ]
 
 // The last level in the list is the difficulty ceiling — any score past
