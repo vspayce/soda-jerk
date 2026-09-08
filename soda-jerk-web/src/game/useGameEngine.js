@@ -27,11 +27,19 @@ function createInitialSim() {
     // constants.js. Unrelated to `level` above: this only changes how many
     // customers can queue in one lane, advanced by clearing the bar, not by
     // score.
-    allLanesFilledOnce: false, // armed once every lane has simultaneously
-    // held a walking customer — see awaitingStageAdvance below
+    wasAllLanesFull: false, // tracks the previous frame's full/not-full
+    // state, so filling every lane is detected as an edge (the moment it
+    // *becomes* full), which (re-)arms a fresh stage-clear attempt below
+    stageAttemptArmed: false, // true from the moment every lane fills
+    // until either a life is lost (see stageAttemptClean) or the stage is
+    // passed — a fresh full house always re-arms it
+    stageAttemptClean: false, // true only if no life has been lost since
+    // stageAttemptArmed was last set — passing the stage requires every
+    // patron on the bar to actually be served, not just gone from a miss
     awaitingStageAdvance: false, // true once the bar's been fully cleared
-    // after arming above — freezes the sim (like awaitingContinue) until
-    // the "LEVEL PASSED" screen is dismissed via advanceStage()
+    // (served, not missed) after an armed, clean attempt — freezes the
+    // sim (like awaitingContinue) until the "LEVEL PASSED" screen is
+    // dismissed via advanceStage()
     gameOver: false,
     awaitingContinue: false, // true right after a life is lost (but the
     // game isn't over) — freezes the sim until continueAfterDeath() is
@@ -275,6 +283,7 @@ function step(sim, dt) {
   if (missedMugCount > 0) {
     sim.mugCrashCount++
     loseLife(sim, missedMugCount)
+    if (sim.stageAttemptArmed) sim.stageAttemptClean = false
     if (!sim.gameOver) {
       sim.missReason = 'mug'
       sim.awaitingContinue = true
@@ -290,6 +299,7 @@ function step(sim, dt) {
       c.x = C.END_OF_BAR_X
       c._remove = true
       loseLife(sim)
+      if (sim.stageAttemptArmed) sim.stageAttemptClean = false
       // Only the bartender's own lane gets the in-game seltzer-in-the-face
       // recall animation — the player isn't even standing in the others,
       // so there's nothing to visibly run back for. Either way it's a
@@ -328,6 +338,7 @@ function step(sim, dt) {
   if (missedCount > 0) {
     sim.missedGlassCount++
     loseLife(sim, missedCount)
+    if (sim.stageAttemptArmed) sim.stageAttemptClean = false
     if (!sim.gameOver) {
       sim.missReason = 'glass'
       sim.awaitingContinue = true
@@ -337,22 +348,28 @@ function step(sim, dt) {
   if (autoCaughtCount > 0) sim.score += autoCaughtCount * C.POINTS_PER_CAUGHT_GLASS
   sim.glasses = sim.glasses.filter((g) => !g._missed && !g._caught)
 
-  // Stage advance: once every lane has simultaneously had a customer
-  // waiting in it, getting the whole bar empty again — no one left
-  // walking anywhere — counts as clearing it "all at once". Only checked
-  // once the game isn't already showing a life-lost screen, so a miss
-  // landing on the same frame as the last lane emptying doesn't collide
-  // with the stage-passed one.
+  // Stage advance: the moment every lane fills up at once (re-)arms a
+  // fresh attempt at clearing the bar; a life lost anywhere while armed
+  // marks the attempt unclean (see the loseLife call sites above), so
+  // only a full house served clean start to finish — bar completely
+  // empty, everyone actually served and walked off, not just missed —
+  // counts as passing. Only checked once the game isn't already showing
+  // a life-lost screen, so a miss landing on the same frame as the last
+  // customer leaving doesn't collide with the stage-passed screen.
   if (!sim.gameOver && !sim.awaitingContinue) {
     const walkingLanes = new Set(sim.customers.filter((c) => c.status === 'walking').map((c) => c.lane))
-    if (!sim.allLanesFilledOnce && walkingLanes.size >= C.LANE_COUNT) {
-      sim.allLanesFilledOnce = true
+    const isFullNow = walkingLanes.size >= C.LANE_COUNT
+    if (isFullNow && !sim.wasAllLanesFull) {
+      sim.stageAttemptArmed = true
+      sim.stageAttemptClean = true
     }
+    sim.wasAllLanesFull = isFullNow
     if (
-      sim.allLanesFilledOnce &&
+      sim.stageAttemptArmed &&
+      sim.stageAttemptClean &&
       !sim.awaitingStageAdvance &&
       sim.stage < C.STAGE_LANE_CAPACITY.length &&
-      walkingLanes.size === 0
+      sim.customers.length === 0
     ) {
       sim.awaitingStageAdvance = true
     }
@@ -490,6 +507,10 @@ export function useGameEngine() {
     // zero, well after the player already continued from the first one.
     sim.continuePauseInMs = null
     sim.missReason = null
+    // The board's empty again after this reset — a stale "was full" flag
+    // would otherwise miss the next genuine fill-up as an edge (it'd
+    // already look full), so this always starts clean too.
+    sim.wasAllLanesFull = false
     // Reset to whatever level the current score is already at, not back
     // to level 1 — losing a life clears the board, not your progress.
     sim.nextSpawnInMs = getLevelForScore(sim.score).spawnIntervalMs
@@ -504,7 +525,9 @@ export function useGameEngine() {
     if (sim.gameOver || !sim.awaitingStageAdvance) return
     sim.awaitingStageAdvance = false
     sim.stage += 1
-    sim.allLanesFilledOnce = false // re-arm in case a future stage adds a third
+    sim.stageAttemptArmed = false
+    sim.stageAttemptClean = false
+    sim.wasAllLanesFull = false
   }, [])
 
   const startGame = useCallback(() => {
