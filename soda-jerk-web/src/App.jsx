@@ -10,6 +10,7 @@ import GameOverScreen from './components/GameOverScreen.jsx'
 import LifeLostScreen from './components/LifeLostScreen.jsx'
 import StagePassedScreen from './components/StagePassedScreen.jsx'
 import BonusLevel from './components/BonusLevel.jsx'
+import PlatesLevel from './components/PlatesLevel.jsx'
 import LeaderboardScreen from './components/LeaderboardScreen.jsx'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
@@ -44,7 +45,9 @@ export default function App() {
     bonusAimStart,
     bonusAimMove,
     bonusAimEnd,
-    skipToBonus,
+    plateClick,
+    skipToBonusWheel,
+    skipToBonusPlates,
   } = useGameEngine()
   const music = useMusic(MUSIC_SRC, { volume: 0.22 })
   const [spraying, setSpraying] = useState(false)
@@ -57,6 +60,8 @@ export default function App() {
   const prevMissedGlassRef = useRef(state.missedGlassCount)
   const prevMugCrashRef = useRef(state.mugCrashCount)
   const prevBonusResultRef = useRef(null)
+  const prevPlatePopRef = useRef(0)
+  const prevPlatesResultRef = useRef(null)
   const gestureRef = useRef({ dragging: false, startX: 0, startY: 0, laneLatched: false, runDir: 0 })
 
   // Wrap each control so the very first tap also starts the music —
@@ -122,6 +127,25 @@ export default function App() {
     prevBonusResultRef.current = resultText
   }, [state.bonusLevel?.resultText])
 
+  // A little chime each time a dirty/dollar plate gets sprayed.
+  useEffect(() => {
+    const popCount = state.platesLevel?.popCount ?? 0
+    if (popCount !== prevPlatePopRef.current) {
+      prevPlatePopRef.current = popCount
+      playCelebration()
+    }
+  }, [state.platesLevel?.popCount])
+
+  // A crash the instant a clean plate gets sprayed by mistake, ending
+  // the round — no sound for the normal "time's up" ending.
+  useEffect(() => {
+    const resultText = state.platesLevel?.resultText ?? null
+    if (resultText && resultText !== prevPlatesResultRef.current && resultText !== "TIME'S UP!") {
+      playCrash()
+    }
+    prevPlatesResultRef.current = resultText
+  }, [state.platesLevel?.resultText])
+
   const handleGestureStart = (e) => {
     if (!state.started || state.gameOver) return
     music.start()
@@ -184,7 +208,7 @@ export default function App() {
         onOpenSettings={() => setShowSettings(true)}
       />
 
-      {state.mode !== 'bonus' && (
+      {state.mode === 'bar' && (
         <div
           className="absolute inset-0 flex flex-col justify-end gap-1 px-4 pt-28 pb-32"
           onPointerDown={handleGestureStart}
@@ -212,7 +236,7 @@ export default function App() {
         </div>
       )}
 
-      {state.mode === 'bonus' && state.bonusLevel && (
+      {state.mode === 'bonusWheel' && state.bonusLevel && (
         <BonusLevel
           bonusLevel={state.bonusLevel}
           onAimStart={withAudio(bonusAimStart)}
@@ -221,14 +245,18 @@ export default function App() {
         />
       )}
 
-      {state.mode !== 'bonus' && state.started && !state.gameOver && !state.awaitingContinue && !state.awaitingStageAdvance && (
+      {state.mode === 'bonusPlates' && state.platesLevel && (
+        <PlatesLevel platesLevel={state.platesLevel} onPlateClick={withAudio(plateClick)} />
+      )}
+
+      {state.mode === 'bar' && state.started && !state.gameOver && !state.awaitingContinue && !state.awaitingStageAdvance && (
         <Controls
           selectedDrink={state.selectedDrink}
           onSelectDrink={withAudio(pourDrink)}
         />
       )}
 
-      {state.mode !== 'bonus' && state.started && !state.gameOver && state.awaitingContinue && (
+      {state.mode === 'bar' && state.started && !state.gameOver && state.awaitingContinue && (
         <LifeLostScreen
           score={state.score}
           lives={state.lives}
@@ -237,7 +265,7 @@ export default function App() {
         />
       )}
 
-      {state.mode !== 'bonus' && state.started && !state.gameOver && !state.awaitingContinue && state.awaitingStageAdvance && (
+      {state.mode === 'bar' && state.started && !state.gameOver && !state.awaitingContinue && state.awaitingStageAdvance && (
         <StagePassedScreen stage={state.stage} onContinue={withAudio(advanceStage)} />
       )}
 
@@ -287,11 +315,19 @@ export default function App() {
           volume={music.volume}
           onVolumeChange={music.setVolume}
           onClose={() => setShowSettings(false)}
-          onSkipToBonus={
-            state.started && !state.gameOver && state.mode !== 'bonus'
+          onSkipToBonusWheel={
+            state.started && !state.gameOver && state.mode === 'bar'
               ? withAudio(() => {
                   setShowSettings(false)
-                  skipToBonus()
+                  skipToBonusWheel()
+                })
+              : null
+          }
+          onSkipToBonusPlates={
+            state.started && !state.gameOver && state.mode === 'bar'
+              ? withAudio(() => {
+                  setShowSettings(false)
+                  skipToBonusPlates()
                 })
               : null
           }

@@ -1,6 +1,6 @@
 import { refreshApp } from '../refreshApp.js'
 
-export default function SettingsScreen({ volume, onVolumeChange, onClose, onSkipToBonus }) {
+export default function SettingsScreen({ volume, onVolumeChange, onClose, onSkipToBonusWheel, onSkipToBonusPlates }) {
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center bg-ink/95 px-8 py-10 overflow-y-auto">
       <div className="font-display text-brass text-2xl mb-8 tracking-wide">SETTINGS</div>
@@ -29,12 +29,21 @@ export default function SettingsScreen({ volume, onVolumeChange, onClose, onSkip
         </ul>
       </div>
 
-      {onSkipToBonus && (
+      {onSkipToBonusWheel && (
         <button
-          onClick={onSkipToBonus}
+          onClick={onSkipToBonusWheel}
           className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
         >
-          SKIP TO BONUS ROUND
+          SKIP TO ICE CREAM BONUS
+        </button>
+      )}
+
+      {onSkipToBonusPlates && (
+        <button
+          onClick={onSkipToBonusPlates}
+          className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
+        >
+          SKIP TO PLATE BONUS
         </button>
       )}
 

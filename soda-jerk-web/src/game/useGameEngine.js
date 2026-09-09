@@ -31,12 +31,38 @@ function createBonusLevelState() {
   }
 }
 
+// Fresh state for a plate-wash bonus-round attempt.
+function createPlatesLevelState() {
+  return {
+    remainingMs: C.PLATES_ROUND_MS,
+    nextSpawnInMs: randomBetween(C.PLATES_SPAWN_INTERVAL_MIN_MS, C.PLATES_SPAWN_INTERVAL_MAX_MS),
+    plates: [], // { id, lane, progress (0-1), kind: 'dirty'|'clean'|'dollar' }
+    popCount: 0, // bumped whenever a dirty/dollar plate is sprayed — App.jsx
+    // watches this for a little sfx, same pattern as celebrateCount etc.
+    lastPopKind: null,
+    resultText: null, // set once the round is ending — "TIME'S UP!" or the
+    // clean-plate scold — shown for resultHoldMs before returning to the bar
+    resultHoldMs: 0,
+    ended: false,
+    nextId: 1,
+  }
+}
+
+function pickPlateKind() {
+  const r = Math.random()
+  if (r < C.PLATES_KIND_WEIGHTS.dirty) return 'dirty'
+  if (r < C.PLATES_KIND_WEIGHTS.dirty + C.PLATES_KIND_WEIGHTS.clean) return 'clean'
+  return 'dollar'
+}
+
 function createInitialSim() {
   return {
     started: false,
-    mode: 'bar', // 'bar' | 'bonus' — swaps the whole gameplay loop over
-    // to the wheel-throw mini-game; see stepBonus() and BonusLevel.jsx
-    bonusLevel: null, // set to createBonusLevelState() while mode is 'bonus'
+    mode: 'bar', // 'bar' | 'bonusWheel' | 'bonusPlates' — swaps the whole
+    // gameplay loop over to one of the two bonus mini-games; see
+    // stepBonus()/BonusLevel.jsx and stepPlates()/PlatesLevel.jsx
+    bonusLevel: null, // set to createBonusLevelState() while mode is 'bonusWheel'
+    platesLevel: null, // set to createPlatesLevelState() while mode is 'bonusPlates'
     playerLane: 0,
     playerX: C.PLAYER_X,
     moveDir: 0, // -1 left, 0 still, 1 right — set by holding a run button
@@ -231,21 +257,70 @@ function stepBonus(sim, dt) {
         b.resultText = null
         b.iceCreamColor = Math.floor(Math.random() * C.BONUS_CUP_COUNT)
       } else {
-        // Round's over — back to the bar. Reset the stage-clear attempt
-        // so a future clean full-clear can send the player back here.
-        sim.mode = 'bar'
+        // Wheel round's over — on to the plate-wash round before heading
+        // back to the bar (see stepPlates for that final leg).
+        sim.mode = 'bonusPlates'
         sim.bonusLevel = null
-        sim.stageAttemptActive = false
-        sim.stageAttemptClean = false
+        sim.platesLevel = createPlatesLevelState()
       }
     }
   }
 }
 
+// The plate-wash bonus round — a first-person shooting gallery. Plates
+// approach in 3 lanes; a click removes whichever one it lands on
+// (checked by simple screen-space distance to the plate's current
+// interpolated position, same spirit as the wheel round's cup check).
+function stepPlates(sim, dt) {
+  const p = sim.platesLevel
+  if (!p) return
+
+  if (p.ended) {
+    p.resultHoldMs -= dt * 1000
+    if (p.resultHoldMs <= 0) {
+      // Round's over — back to the bar. Reset the stage-clear attempt so
+      // a future clean full-clear can send the player back through both
+      // bonus rounds again.
+      sim.mode = 'bar'
+      sim.platesLevel = null
+      sim.stageAttemptActive = false
+      sim.stageAttemptClean = false
+    }
+    return
+  }
+
+  p.remainingMs -= dt * 1000
+  if (p.remainingMs <= 0) {
+    p.ended = true
+    p.resultText = "TIME'S UP!"
+    p.resultHoldMs = C.PLATES_RESULT_HOLD_MS
+    return
+  }
+
+  p.nextSpawnInMs -= dt * 1000
+  if (p.nextSpawnInMs <= 0) {
+    p.plates.push({ id: p.nextId++, lane: pick(C.PLATES_LANES), progress: 0, kind: pickPlateKind() })
+    p.nextSpawnInMs = randomBetween(C.PLATES_SPAWN_INTERVAL_MIN_MS, C.PLATES_SPAWN_INTERVAL_MAX_MS)
+  }
+
+  for (const plate of p.plates) {
+    plate.progress += (dt * 1000) / C.PLATES_TRAVEL_MS
+    // Reached the player without being clicked — no penalty either way,
+    // dirty/dollar or clean, it just goes by. Missing a dollar plate only
+    // costs the points you could've had, same as ignoring the hot dog.
+    if (plate.progress >= 1) plate._remove = true
+  }
+  p.plates = p.plates.filter((pl) => !pl._remove)
+}
+
 function step(sim, dt) {
   if (!sim.started) return
-  if (sim.mode === 'bonus') {
+  if (sim.mode === 'bonusWheel') {
     stepBonus(sim, dt)
+    return
+  }
+  if (sim.mode === 'bonusPlates') {
+    stepPlates(sim, dt)
     return
   }
   if (sim.awaitingContinue) return
@@ -507,7 +582,7 @@ function step(sim, dt) {
       } else {
         // Already at the top lane-capacity stage — a clean full clear
         // here sends the player to the wheel-throw bonus round instead.
-        sim.mode = 'bonus'
+        sim.mode = 'bonusWheel'
         sim.bonusLevel = createBonusLevelState()
       }
     }
@@ -706,13 +781,43 @@ export function useGameEngine() {
     b.scoopState = 'flying'
   }, [])
 
-  // Dev/test shortcut — jump straight into the bonus round from
+  // Tapping a plate sprays it clean (dirty/dollar — scores and removes
+  // it) or, if it's a clean one, ends the round on the spot — a metal
+  // cup's forgiving if you miss the color, but a clean plate never is.
+  const plateClick = useCallback((plateId) => {
+    const sim = simRef.current
+    const p = sim.platesLevel
+    if (!p || p.ended) return
+    const idx = p.plates.findIndex((pl) => pl.id === plateId)
+    if (idx === -1) return
+    const plate = p.plates[idx]
+    p.plates.splice(idx, 1)
+    if (plate.kind === 'clean') {
+      p.ended = true
+      p.resultText = 'THAT ONE WAS CLEAN!'
+      p.resultHoldMs = C.PLATES_RESULT_HOLD_MS
+      return
+    }
+    const points = plate.kind === 'dollar' ? C.PLATES_DOLLAR_POINTS : C.PLATES_DIRTY_POINTS
+    sim.score += points
+    p.popCount++
+    p.lastPopKind = plate.kind
+  }, [])
+
+  // Dev/test shortcuts — jump straight into either bonus round from
   // anywhere mid-game, no need to actually clear two full stages first.
-  const skipToBonus = useCallback(() => {
+  const skipToBonusWheel = useCallback(() => {
     const sim = simRef.current
     if (sim.gameOver || !sim.started) return
-    sim.mode = 'bonus'
+    sim.mode = 'bonusWheel'
     sim.bonusLevel = createBonusLevelState()
+  }, [])
+
+  const skipToBonusPlates = useCallback(() => {
+    const sim = simRef.current
+    if (sim.gameOver || !sim.started) return
+    sim.mode = 'bonusPlates'
+    sim.platesLevel = createPlatesLevelState()
   }, [])
 
   const startGame = useCallback(() => {
@@ -743,6 +848,8 @@ export function useGameEngine() {
     bonusAimStart,
     bonusAimMove,
     bonusAimEnd,
-    skipToBonus,
+    plateClick,
+    skipToBonusWheel,
+    skipToBonusPlates,
   }
 }

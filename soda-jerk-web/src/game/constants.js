@@ -153,3 +153,32 @@ export const BONUS_CUP_COLORS = [
   { name: 'Chocolate', color: '#6B4226' },
 ]
 export const BONUS_CUP_COUNT = BONUS_CUP_COLORS.length
+
+// The second bonus round — a first-person plate-wash shooting gallery,
+// reached right after the wheel-throw round finishes. Plates fly toward
+// the camera in 3 lanes; spray a dirty one for points, but never a clean
+// one — that ends the round on the spot. All coordinates are percentages
+// of the full phone-frame (no square arena needed here — nothing in this
+// round depends on true circular geometry). See PlatesLevel.jsx.
+export const PLATES_ROUND_MS = 25000 // the round ends normally after this long
+export const PLATES_SPAWN_INTERVAL_MIN_MS = 550
+export const PLATES_SPAWN_INTERVAL_MAX_MS = 1000
+export const PLATES_TRAVEL_MS = 2600 // time for a plate to cross from spawn to the player
+// Odds a freshly spawned plate is each kind — must add to 1.
+export const PLATES_KIND_WEIGHTS = { dirty: 0.72, clean: 0.16, dollar: 0.12 }
+export const PLATES_DIRTY_POINTS = 25
+export const PLATES_DOLLAR_POINTS = 100
+export const PLATES_RESULT_HOLD_MS = 1800
+// Every plate starts at the same small, distant point and grows as it
+// approaches; the two side lanes also drift outward as they near the
+// player, so they read as angling in from either side, not falling
+// straight down like the center lane.
+export const PLATES_LANES = ['left', 'center', 'right']
+export const PLATES_LANE_PATHS = {
+  center: { startX: 50, startY: 20, endX: 50, endY: 92 },
+  left: { startX: 50, startY: 20, endX: 12, endY: 88 },
+  right: { startX: 50, startY: 20, endX: 88, endY: 88 },
+}
+export const PLATES_START_SCALE = 0.12
+export const PLATES_END_SCALE = 1.15
+export const PLATES_BASE_SIZE_PCT = 30 // plate width at scale 1, % of screen width
