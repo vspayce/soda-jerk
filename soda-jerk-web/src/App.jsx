@@ -47,7 +47,9 @@ export default function App() {
     bonusAimMove,
     bonusAimEnd,
     plateClick,
-    shakerThrow,
+    shakerAimStart,
+    shakerAimMove,
+    shakerAimEnd,
     skipToBonusWheel,
     skipToBonusPlates,
     skipToBonusShaker,
@@ -268,7 +270,12 @@ export default function App() {
       )}
 
       {state.mode === 'bonusShaker' && state.shakerLevel && (
-        <ShakerLevel shakerLevel={state.shakerLevel} onThrow={withAudio(shakerThrow)} />
+        <ShakerLevel
+          shakerLevel={state.shakerLevel}
+          onAimStart={withAudio(shakerAimStart)}
+          onAimMove={shakerAimMove}
+          onAimEnd={shakerAimEnd}
+        />
       )}
 
       {state.mode === 'bar' && state.started && !state.gameOver && !state.awaitingContinue && !state.awaitingStageAdvance && (

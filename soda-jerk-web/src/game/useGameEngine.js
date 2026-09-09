@@ -64,8 +64,13 @@ const SHAKER_TRACK_LENGTH = SHAKER_TRACK_MAX_X - SHAKER_TRACK_MIN_X
 // moving together at one speed so the spacing (and the sushi-conveyor
 // look) holds steady as they scroll past.
 function createShakerLevelState() {
-  const spacing = C.SHAKER_CUP_SPACING_PCT
-  const count = Math.ceil(SHAKER_TRACK_LENGTH / spacing) + 1
+  // Round to the nearest cup count that tiles the belt with NO seam —
+  // using the raw target spacing directly left a leftover fractional gap
+  // that wrapped around into a near-duplicate cup sitting right on top of
+  // another. Deriving the actual spacing from the count instead makes
+  // count * spacing land on SHAKER_TRACK_LENGTH exactly.
+  const count = Math.max(1, Math.round(SHAKER_TRACK_LENGTH / C.SHAKER_CUP_SPACING_PCT))
+  const spacing = SHAKER_TRACK_LENGTH / count
   const cups = []
   for (const row of C.SHAKER_ROWS) {
     const speed = randomBetween(C.SHAKER_CUP_SPEED_MIN_X, C.SHAKER_CUP_SPEED_MAX_X)
@@ -87,13 +92,19 @@ function createShakerLevelState() {
   return {
     throwsLeft: C.SHAKER_ROUND_THROWS,
     cups,
-    scoops: [], // in-flight throws: { id, lane, progress (0-1) }
+    scoopState: 'ready', // 'ready' | 'aiming' | 'flying' | 'result' — same
+    // shape as the wheel round's bonusLevel.scoopState
+    scoopX: C.SHAKER_LAUNCH_ANCHOR.x,
+    scoopY: C.SHAKER_LAUNCH_ANCHOR.y,
+    aimDX: 0,
+    aimDY: 0,
+    vx: 0,
+    vy: 0,
     resultText: null, // 'HIT!' | 'MISS' — brief flash after each throw resolves
     resultHoldMs: 0,
     resolvedCount: 0, // bumped every time a throw resolves — App.jsx watches
     // this (alongside resultText) to fire the matching hit/miss sfx
     ended: false,
-    nextId: 1,
   }
 }
 
@@ -376,11 +387,11 @@ function stepPlates(sim, dt) {
 }
 
 // The shaker-cup bonus round — three rows, each a belt of cups packed
-// right next to each other and scrolling past like a sushi conveyor; a
-// throw always lands at SHAKER_TARGET_X after a fixed travel time, so
-// scoring is purely about tapping a row at the moment one of its cups is
-// passing through that x — see shakerThrow() for where a throw actually
-// gets fired.
+// right next to each other and scrolling past like a sushi conveyor. The
+// throw itself is the same Angry-Birds pull-back-and-release physics as
+// the wheel round (see stepBonus above): pull harder to arc higher and
+// reach an upper row, then land wherever that arc actually carries the
+// scoop — see shakerAimStart/Move/End for where a throw actually fires.
 function stepShaker(sim, dt) {
   const s = sim.shakerLevel
   if (!s) return
@@ -396,34 +407,63 @@ function stepShaker(sim, dt) {
     return
   }
 
+  // The belts keep scrolling no matter what the scoop's doing — a cup
+  // train that paused mid-aim would give the game away.
   for (const cup of s.cups) {
     cup.x += cup.dir * cup.speed * dt
     if (cup.x > SHAKER_TRACK_MAX_X) cup.x -= SHAKER_TRACK_LENGTH
     else if (cup.x < SHAKER_TRACK_MIN_X) cup.x += SHAKER_TRACK_LENGTH
   }
 
-  for (const scoop of s.scoops) {
-    scoop.progress += (dt * 1000) / C.SHAKER_THROW_TRAVEL_MS
-    if (scoop.progress >= 1) {
-      const hit = s.cups.some(
-        (c) => c.lane === scoop.lane && Math.abs(c.x - C.SHAKER_TARGET_X) <= C.SHAKER_TARGET_TOLERANCE_PCT
-      )
-      if (hit) {
-        sim.score += C.SHAKER_HIT_POINTS
-        s.resultText = 'HIT!'
-      } else {
-        s.resultText = 'MISS'
-      }
+  if (s.scoopState === 'flying') {
+    s.scoopX += s.vx * dt
+    s.scoopY += s.vy * dt
+    s.vy += C.SHAKER_GRAVITY * dt
+
+    // Same shape as the wheel round's per-cup distance check, just with
+    // separate x/y radii since these cups sit in flat horizontal rows
+    // instead of around a circle.
+    const landedCup = s.cups.find(
+      (c) =>
+        Math.abs(s.scoopY - c.y) <= C.SHAKER_CUP_HIT_RADIUS_Y &&
+        Math.abs(s.scoopX - c.x) <= C.SHAKER_CUP_HIT_RADIUS_X
+    )
+    const offArena = s.scoopX < -15 || s.scoopX > 115 || s.scoopY > 115 || s.scoopY < -25
+
+    if (landedCup) {
+      s.scoopX = landedCup.x
+      s.scoopY = landedCup.y
+      s.vx = 0
+      s.vy = 0
+      sim.score += C.SHAKER_HIT_POINTS
+      s.resultText = 'HIT!'
       s.resultHoldMs = C.SHAKER_RESULT_HOLD_MS
       s.resolvedCount++
-      scoop._remove = true
+      s.scoopState = 'result'
+    } else if (offArena) {
+      s.resultText = 'MISS'
+      s.resultHoldMs = C.SHAKER_RESULT_HOLD_MS
+      s.resolvedCount++
+      s.scoopState = 'result'
     }
-  }
-  s.scoops = s.scoops.filter((sc) => !sc._remove)
-
-  if (s.throwsLeft <= 0 && s.scoops.length === 0) {
-    s.ended = true
-    s.resultHoldMs = C.SHAKER_ROUND_END_HOLD_MS
+  } else if (s.scoopState === 'result') {
+    s.resultHoldMs -= dt * 1000
+    if (s.resultHoldMs <= 0) {
+      s.throwsLeft -= 1
+      if (s.throwsLeft > 0) {
+        s.scoopState = 'ready'
+        s.scoopX = C.SHAKER_LAUNCH_ANCHOR.x
+        s.scoopY = C.SHAKER_LAUNCH_ANCHOR.y
+        s.vx = 0
+        s.vy = 0
+        s.aimDX = 0
+        s.aimDY = 0
+        s.resultText = null
+      } else {
+        s.ended = true
+        s.resultHoldMs = C.SHAKER_ROUND_END_HOLD_MS
+      }
+    }
   }
 }
 
@@ -870,6 +910,11 @@ export function useGameEngine() {
     if (sim.gameOver || !sim.awaitingStageAdvance) return
     sim.awaitingStageAdvance = false
     sim.stage += 1
+    // Passing a level only requires the CUSTOMERS to be gone — a glass or
+    // mug can still be mid-return-flight at that instant. Left alone it
+    // survives into the new stage, frozen mid-slide over the fresh venue.
+    sim.glasses = []
+    sim.mugs = []
   }, [])
 
   // Bonus-round aiming — pull back from the launch anchor, then release
@@ -937,16 +982,43 @@ export function useGameEngine() {
     p.lastPopKind = plate.kind
   }, [])
 
-  // Tapping a shaker row fires a scoop into it — it always lands at
-  // SHAKER_TARGET_X, resolved once it arrives (see stepShaker). One
-  // throw per tap; blocked once throwsLeft runs out, same as the wheel.
-  const shakerThrow = useCallback((lane) => {
+  // Shaker-round aiming — pull back from the launch anchor, then release
+  // to throw. Identical shape to bonusAimStart/Move/End above; distances
+  // are percentages of the full phone-frame (ShakerLevel.jsx is a
+  // full-screen arena, unlike the wheel round's own square sub-arena).
+  const shakerAimStart = useCallback(() => {
     const sim = simRef.current
     const s = sim.shakerLevel
-    if (!s || s.ended || s.throwsLeft <= 0) return
-    if (s.scoops.some((sc) => sc.lane === lane)) return
-    s.throwsLeft -= 1
-    s.scoops.push({ id: s.nextId++, lane, progress: 0 })
+    if (!s || s.scoopState !== 'ready') return
+    s.scoopState = 'aiming'
+  }, [])
+
+  const shakerAimMove = useCallback((dx, dy) => {
+    const sim = simRef.current
+    const s = sim.shakerLevel
+    if (!s || s.scoopState !== 'aiming') return
+    const pull = Math.hypot(dx, dy)
+    const clampScale = pull > C.SHAKER_MAX_PULL ? C.SHAKER_MAX_PULL / pull : 1
+    s.aimDX = dx * clampScale
+    s.aimDY = dy * clampScale
+  }, [])
+
+  const shakerAimEnd = useCallback(() => {
+    const sim = simRef.current
+    const s = sim.shakerLevel
+    if (!s || s.scoopState !== 'aiming') return
+    const pull = Math.hypot(s.aimDX, s.aimDY)
+    if (pull < C.SHAKER_MIN_PULL) {
+      s.scoopState = 'ready'
+      s.aimDX = 0
+      s.aimDY = 0
+      return
+    }
+    s.vx = -s.aimDX * C.SHAKER_LAUNCH_POWER
+    s.vy = -s.aimDY * C.SHAKER_LAUNCH_POWER
+    s.scoopX = C.SHAKER_LAUNCH_ANCHOR.x + s.aimDX
+    s.scoopY = C.SHAKER_LAUNCH_ANCHOR.y + s.aimDY
+    s.scoopState = 'flying'
   }, [])
 
   // Dev/test shortcuts — jump straight into any bonus round from
@@ -1010,7 +1082,9 @@ export function useGameEngine() {
     bonusAimMove,
     bonusAimEnd,
     plateClick,
-    shakerThrow,
+    shakerAimStart,
+    shakerAimMove,
+    shakerAimEnd,
     skipToBonusWheel,
     skipToBonusPlates,
     skipToBonusShaker,

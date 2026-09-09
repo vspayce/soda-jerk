@@ -197,15 +197,15 @@ export const PLATES_BASE_SIZE_PCT = 30 // plate width at scale 1, % of screen wi
 // The third bonus round — the jerk again seen from behind (same viewpoint
 // as the plate wash), this time facing three rows of shaker cups packed
 // right next to each other, each row a continuous belt of cups scrolling
-// past like a sushi conveyor. Tapping a row throws a scoop into it; the
-// scoop always lands at SHAKER_TARGET_X after a fixed travel time, so
-// landing it is purely about timing the tap to when a cup in that row's
-// train is passing through the target zone. All coordinates are
+// past like a sushi conveyor. The throw itself is Angry-Birds style, same
+// pull-back-and-release physics as the wheel round (see BONUS_* above):
+// pull harder to arc higher and reach an upper row, land the scoop on a
+// cup wherever the arc actually carries it. All coordinates are
 // percentages of the full phone-frame, same as the plate wash. See
-// ShakerLevel.jsx.
+// ShakerLevel.jsx / stepShaker().
 export const SHAKER_ROUND_THROWS = 6
 export const SHAKER_HIT_POINTS = 75
-export const SHAKER_RESULT_HOLD_MS = 700 // brief HIT!/MISS pause before the next throw's allowed
+export const SHAKER_RESULT_HOLD_MS = 900 // brief HIT!/MISS pause before the next throw's allowed
 export const SHAKER_ROUND_END_HOLD_MS = 1800 // how long the final result shows before returning to the bar
 // Row order top-to-bottom; alternating dir gives the belts visual variety,
 // same spirit as the plate wash's three different conveyor entry points.
@@ -222,6 +222,15 @@ export const SHAKER_CUP_SPACING_PCT = 17
 export const SHAKER_TRACK_PAD_PCT = 20 // offscreen overhang each side, for a seamless wrap
 export const SHAKER_CUP_SPEED_MIN_X = 14 // %/s
 export const SHAKER_CUP_SPEED_MAX_X = 22
-export const SHAKER_TARGET_X = 50 // every thrown scoop lands here
-export const SHAKER_TARGET_TOLERANCE_PCT = 5 // how close a cup's center must be to SHAKER_TARGET_X to count as a hit
-export const SHAKER_THROW_TRAVEL_MS = 450 // time for a scoop to fly from the jerk up to a row
+
+// Throw physics — a slingshot pull-back from the jerk's raised hand, same
+// shape as the BONUS_* wheel-round constants above.
+export const SHAKER_LAUNCH_ANCHOR = { x: 24, y: 90 }
+export const SHAKER_MAX_PULL = 30 // furthest the scoop can be dragged back
+export const SHAKER_MIN_PULL = 4 // shorter than this and releasing cancels the aim
+export const SHAKER_LAUNCH_POWER = 4.6 // arena-%/s of launch velocity per arena-% pulled
+export const SHAKER_GRAVITY = 160 // arena-%/s^2 pulling the scoop back down
+// A max-strength pull's apex lands almost exactly on the top row's y —
+// weaker pulls peak lower, at the middle or bottom row instead.
+export const SHAKER_CUP_HIT_RADIUS_X = 7 // how close to a cup's center (in x) counts as landing in it
+export const SHAKER_CUP_HIT_RADIUS_Y = 7 // how close to a row's y counts as reaching that row
