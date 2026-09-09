@@ -35,7 +35,7 @@ export default function Player({ x, spraying, sprayDrinkType, sprayPatronType, t
           src={poseSrc}
           alt=""
           style={{
-            height: 68,
+            height: 85,
             width: 'auto',
             display: 'block',
             transform: moveDir === -1 ? 'scaleX(-1)' : 'none',
@@ -46,7 +46,7 @@ export default function Player({ x, spraying, sprayDrinkType, sprayPatronType, t
             src={SPRAY_SRC[sprayPatronType][sprayDrinkType]}
             alt=""
             className="absolute seltzer-spray"
-            style={{ left: '100%', bottom: 0, marginLeft: 4, height: 70, width: 'auto' }}
+            style={{ left: '100%', bottom: 0, marginLeft: 4, height: 88, width: 'auto' }}
           />
         )}
       </div>

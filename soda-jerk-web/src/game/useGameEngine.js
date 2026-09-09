@@ -60,20 +60,25 @@ const SHAKER_TRACK_MAX_X = 100 + C.SHAKER_TRACK_PAD_PCT
 const SHAKER_TRACK_LENGTH = SHAKER_TRACK_MAX_X - SHAKER_TRACK_MIN_X
 
 // Fresh state for a shaker-cup bonus-round attempt — each row is a train
-// of cups packed SHAKER_CUP_SPACING_PCT apart spanning the whole belt, all
-// moving together at one speed so the spacing (and the sushi-conveyor
+// of cups packed snugly together spanning the whole belt, all cups within
+// a row moving at one shared speed so the spacing (and the sushi-conveyor
 // look) holds steady as they scroll past.
 function createShakerLevelState() {
-  // Round to the nearest cup count that tiles the belt with NO seam —
-  // using the raw target spacing directly left a leftover fractional gap
-  // that wrapped around into a near-duplicate cup sitting right on top of
-  // another. Deriving the actual spacing from the count instead makes
-  // count * spacing land on SHAKER_TRACK_LENGTH exactly.
-  const count = Math.max(1, Math.round(SHAKER_TRACK_LENGTH / C.SHAKER_CUP_SPACING_PCT))
-  const spacing = SHAKER_TRACK_LENGTH / count
   const cups = []
   for (const row of C.SHAKER_ROWS) {
-    const speed = randomBetween(C.SHAKER_CUP_SPEED_MIN_X, C.SHAKER_CUP_SPEED_MAX_X)
+    // Round to the nearest cup count that tiles the belt with NO seam —
+    // using the raw target spacing directly left a leftover fractional gap
+    // that wrapped around into a near-duplicate cup sitting right on top of
+    // another. Deriving the actual spacing from the count instead makes
+    // count * spacing land on SHAKER_TRACK_LENGTH exactly. Done per row
+    // since each row's cup size (and so its spacing) scales differently
+    // for the perspective effect — see SHAKER_ROWS' `scale`.
+    const spacingTarget = C.SHAKER_CUP_SPACING_PCT * row.scale
+    const count = Math.max(1, Math.round(SHAKER_TRACK_LENGTH / spacingTarget))
+    const spacing = SHAKER_TRACK_LENGTH / count
+    // Smaller (more distant-looking) cups drift slower, same depth cue as
+    // their smaller size — real motion, not just a smaller sprite.
+    const speed = randomBetween(C.SHAKER_CUP_SPEED_MIN_X, C.SHAKER_CUP_SPEED_MAX_X) * row.scale
     const phase = Math.random() * spacing
     for (let i = 0; i < count; i++) {
       const raw = SHAKER_TRACK_MIN_X + phase + i * spacing
@@ -85,6 +90,7 @@ function createShakerLevelState() {
         x,
         dir: row.dir,
         speed,
+        size: C.SHAKER_CUP_SIZE_PCT * row.scale,
         color: Math.floor(Math.random() * C.BONUS_CUP_COUNT), // purely cosmetic variety
       })
     }
@@ -422,12 +428,16 @@ function stepShaker(sim, dt) {
 
     // Same shape as the wheel round's per-cup distance check, just with
     // separate x/y radii since these cups sit in flat horizontal rows
-    // instead of around a circle.
-    const landedCup = s.cups.find(
-      (c) =>
-        Math.abs(s.scoopY - c.y) <= C.SHAKER_CUP_HIT_RADIUS_Y &&
-        Math.abs(s.scoopX - c.x) <= C.SHAKER_CUP_HIT_RADIUS_X
-    )
+    // instead of around a circle. Scaled per cup by its own size so the
+    // smaller "distant" cups aren't secretly as easy to hit as the big
+    // "near" ones — the hitbox should match what's actually on screen.
+    const landedCup = s.cups.find((c) => {
+      const cupScale = c.size / C.SHAKER_CUP_SIZE_PCT
+      return (
+        Math.abs(s.scoopY - c.y) <= C.SHAKER_CUP_HIT_RADIUS_Y * cupScale &&
+        Math.abs(s.scoopX - c.x) <= C.SHAKER_CUP_HIT_RADIUS_X * cupScale
+      )
+    })
     const offArena = s.scoopX < -15 || s.scoopX > 115 || s.scoopY > 115 || s.scoopY < -25
 
     if (landedCup) {

@@ -23,12 +23,13 @@ const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 
 // A repeating ogee/swirl damask, echoing the wallpaper behind the counter
 // in the splash art — replaces the old straight brass fluting lines. The
-// stroke color is baked in (data URIs can't take a CSS variable), so the
-// fountain theme gets its own copy in a warmer red instead of cream.
+// stroke color is baked in (data URIs can't take a CSS variable).
 const SWIRL_PATTERN_SPEAKEASY =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M15 30c0-10 8-16 15-16s15 6 15 16-8 16-15 16-15-6-15-16z' stroke='%23EDE3D0' stroke-width='1' fill='none' opacity='0.6'/%3E%3Cpath d='M0 0c15 0 15 15 30 15s15-15 30-15M0 60c15 0 15-15 30-15s15 15 30 15' stroke='%23EDE3D0' stroke-width='1' fill='none' opacity='0.6'/%3E%3C/svg%3E"
-const SWIRL_PATTERN_FOUNTAIN =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M15 30c0-10 8-16 15-16s15 6 15 16-8 16-15 16-15-6-15-16z' stroke='%237A1F2B' stroke-width='1' fill='none' opacity='0.6'/%3E%3Cpath d='M0 0c15 0 15 15 30 15s15-15 30-15M0 60c15 0 15-15 30-15s15 15 30 15' stroke='%237A1F2B' stroke-width='1' fill='none' opacity='0.6'/%3E%3C/svg%3E"
+// The fountain venue's wall gets a PixelLab-generated damask instead of a
+// recolor of the speakeasy's — a distinct leaf-and-diamond motif to match
+// its own brighter 1950s diner look, at its own native tile size.
+const SWIRL_PATTERN_FOUNTAIN = ART_SRC('fountain-wallpaper.png')
 
 // The speakeasy look is the original arcade-cabinet palette; from stage 2
 // on the whole bar gets a permanent reskin toward a brighter 1950s diner —
@@ -38,6 +39,7 @@ const THEMES = {
   speakeasy: {
     wallGradient: 'linear-gradient(180deg, #8A6E37 0%, #151014 70%)',
     swirlPattern: SWIRL_PATTERN_SPEAKEASY,
+    swirlPatternSize: 60,
     vanishingGlow: 'radial-gradient(ellipse at 50% 0%, rgba(232,200,120,0.28) 0%, transparent 70%)',
     sconceColor: '#E8C878',
     sconceGlow: '0 0 10px 3px rgba(232,200,120,0.55)',
@@ -47,6 +49,7 @@ const THEMES = {
   fountain: {
     wallGradient: 'linear-gradient(180deg, #E8C9A8 0%, #151014 72%)',
     swirlPattern: SWIRL_PATTERN_FOUNTAIN,
+    swirlPatternSize: 64,
     vanishingGlow: 'radial-gradient(ellipse at 50% 0%, rgba(252,228,196,0.32) 0%, transparent 70%)',
     sconceColor: '#FCE4C4',
     sconceGlow: '0 0 10px 3px rgba(252,228,196,0.6)',
@@ -119,7 +122,7 @@ export default function PerspectiveBackdrop({ stage = 1 }) {
         style={{
           clipPath: 'polygon(46% 0%, 50% 0%, 6% 100%, -6% 100%)',
           backgroundImage: `url("${theme.swirlPattern}")`,
-          backgroundSize: '60px 60px',
+          backgroundSize: `${theme.swirlPatternSize}px ${theme.swirlPatternSize}px`,
         }}
       />
 
@@ -137,7 +140,7 @@ export default function PerspectiveBackdrop({ stage = 1 }) {
         style={{
           clipPath: 'polygon(50% 0%, 54% 0%, 106% 100%, 94% 100%)',
           backgroundImage: `url("${theme.swirlPattern}")`,
-          backgroundSize: '60px 60px',
+          backgroundSize: `${theme.swirlPatternSize}px ${theme.swirlPatternSize}px`,
         }}
       />
 

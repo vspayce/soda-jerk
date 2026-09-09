@@ -209,15 +209,21 @@ export const SHAKER_RESULT_HOLD_MS = 900 // brief HIT!/MISS pause before the nex
 export const SHAKER_ROUND_END_HOLD_MS = 1800 // how long the final result shows before returning to the bar
 // Row order top-to-bottom; alternating dir gives the belts visual variety,
 // same spirit as the plate wash's three different conveyor entry points.
+// `scale` shrinks the top row and grows the bottom one, so the belts read
+// as receding into the distance like the rest of the venue's perspective
+// (see PerspectiveBackdrop's converging walls) instead of three flat,
+// same-size lanes.
 export const SHAKER_ROWS = [
-  { lane: 'top', y: 28, dir: 1 },
-  { lane: 'middle', y: 50, dir: -1 },
-  { lane: 'bottom', y: 72, dir: 1 },
+  { lane: 'top', y: 28, dir: 1, scale: 0.72 },
+  { lane: 'middle', y: 50, dir: -1, scale: 1 },
+  { lane: 'bottom', y: 72, dir: 1, scale: 1.3 },
 ]
-export const SHAKER_CUP_SIZE_PCT = 13 // cup width, % of screen width
+export const SHAKER_CUP_SIZE_PCT = 13 // cup width at scale 1, % of screen width
 // Cups in a row sit right next to each other — spacing is only a hair
 // wider than the cup itself — and the belt runs off both edges of the
-// screen so the train reads as endless, not a fixed row of props.
+// screen so the train reads as endless, not a fixed row of props. Also
+// at scale 1; scaled per-row same as the cup size so smaller/bigger cups
+// still pack snugly instead of gapping or overlapping.
 export const SHAKER_CUP_SPACING_PCT = 17
 export const SHAKER_TRACK_PAD_PCT = 20 // offscreen overhang each side, for a seamless wrap
 export const SHAKER_CUP_SPEED_MIN_X = 14 // %/s

@@ -1,7 +1,6 @@
 import { useRef } from 'react'
 import {
   SHAKER_ROWS,
-  SHAKER_CUP_SIZE_PCT,
   SHAKER_LAUNCH_ANCHOR,
   BONUS_CUP_COLORS,
 } from '../game/constants.js'
@@ -66,7 +65,7 @@ function ShakerShelves() {
   return (
     <svg className="absolute inset-0 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ zIndex: 0 }}>
       {SHAKER_ROWS.map((row) => {
-        const shelfY = row.y + 9
+        const shelfY = row.y + 9 * row.scale
         return (
           <g key={row.lane}>
             <line x1={0} y1={shelfY} x2={100} y2={shelfY} stroke="#2A2D31" strokeWidth={4} vectorEffect="non-scaling-stroke" />
@@ -154,7 +153,7 @@ export default function ShakerLevel({ shakerLevel, onAimStart, onAimMove, onAimE
                 <div
                   key={cup.id}
                   className="absolute -translate-x-1/2 -translate-y-1/2"
-                  style={{ left: `${cup.x}%`, top: 0, width: `${SHAKER_CUP_SIZE_PCT}%`, aspectRatio: '509 / 734' }}
+                  style={{ left: `${cup.x}%`, top: 0, width: `${cup.size}%`, aspectRatio: '509 / 734' }}
                 >
                   <img src={CUP_SRC} alt="" className="absolute inset-0 w-full h-full" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }} />
                   <ColorTint src={CUP_SRC} color={BONUS_CUP_COLORS[cup.color].color} />
