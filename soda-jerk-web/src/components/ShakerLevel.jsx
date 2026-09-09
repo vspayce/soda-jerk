@@ -31,7 +31,7 @@ const SCOOP_BALL_MASK_SRC = ART_SRC('bonus-scoop-ball-mask.png')
 // translate()` in HAND_FRACTION units — percentages there resolve against
 // the element's own rendered box, not the containing block, so it lands
 // correctly regardless of the arena's aspect ratio.
-const JERK_HAND_FRACTION = { x: 0.81, y: 0.23 }
+const JERK_HAND_FRACTION = { x: 0.275, y: 0.293 }
 const JERK_WIDTH_PCT = 22
 
 // Same recolor trick as BonusLevel: an opaque tint on top with
