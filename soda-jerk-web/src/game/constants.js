@@ -115,14 +115,22 @@ export const BONUS_WHEEL_CENTER = { x: 68, y: 32 }
 // image's own width/height, measured from its center — not a perfect
 // circle (hand-painted art), so x and y get their own radius rather
 // than one shared value.
-export const BONUS_WHEEL_IMAGE_SIZE = 36 // wheel image width, % of arena
+export const BONUS_WHEEL_IMAGE_SIZE = 28 // wheel image width, % of arena
 export const BONUS_WHEEL_HOLE_FRACTION_X = 0.37
 export const BONUS_WHEEL_HOLE_FRACTION_Y = 0.32
 export const BONUS_WHEEL_RADIUS_X = BONUS_WHEEL_IMAGE_SIZE * BONUS_WHEEL_HOLE_FRACTION_X
 export const BONUS_WHEEL_RADIUS_Y = BONUS_WHEEL_IMAGE_SIZE * BONUS_WHEEL_HOLE_FRACTION_Y
-export const BONUS_CUP_SIZE = 13 // each cup sprite's width, % of arena
+export const BONUS_CUP_SIZE = 10 // each cup sprite's width, % of arena
+// bonus-cup.png is 509x734, cropped tight to the cup's own silhouette —
+// its opening sits right at the top edge of the image. The cup renders
+// centered on its hole position, so the actual opening is this far above
+// that center — a hit has to reach here, not just the cup's middle, to
+// read as landing IN it rather than passing through its side.
+export const BONUS_CUP_ASPECT = 734 / 509
+export const BONUS_CUP_RIM_FRACTION_FROM_TOP = 0.08
+export const BONUS_CUP_RIM_OFFSET_Y = (0.5 - BONUS_CUP_RIM_FRACTION_FROM_TOP) * BONUS_CUP_SIZE * BONUS_CUP_ASPECT
 export const BONUS_WHEEL_SPIN_DEG_PER_S = 40
-export const BONUS_LAUNCH_ANCHOR = { x: 18, y: 35 }
+export const BONUS_LAUNCH_ANCHOR = { x: 18, y: 20 }
 export const BONUS_MAX_PULL = 25 // furthest the scoop can be dragged back
 export const BONUS_MIN_PULL = 4 // shorter than this and releasing cancels the aim
 // Launch power and gravity are tuned together so only a deliberate, fairly
@@ -132,6 +140,16 @@ export const BONUS_MIN_PULL = 4 // shorter than this and releasing cancels the a
 // for error on power AND angle both stay tight.
 export const BONUS_LAUNCH_POWER = 3.65 // arena-%/s of launch velocity per arena-% pulled
 export const BONUS_GRAVITY = 85 // arena-%/s^2 pulling the scoop back down
-export const BONUS_HIT_RADIUS = 6 // how close to a cup's center counts as landing in it
+export const BONUS_HIT_RADIUS = 5 // how close to a cup's rim (see BONUS_CUP_RIM_OFFSET_Y) counts as landing in it
 export const BONUS_RESULT_HOLD_MS = 1400 // how long HIT!/MISS shows before the next throw
-export const BONUS_CUP_COUNT = 4
+// Each cup gets its own color (index order matches the angle formula:
+// 0=right, 1=bottom, 2=left, 3=top). The scoop is randomly tinted one of
+// these each throw — landing in a cup of a different color still stops
+// it (can't fly through a metal cup) but doesn't score.
+export const BONUS_CUP_COLORS = [
+  { name: 'Strawberry', color: '#D9668A' },
+  { name: 'Caramel', color: '#D9822B' },
+  { name: 'Vanilla', color: '#E8DCC0' },
+  { name: 'Chocolate', color: '#6B4226' },
+]
+export const BONUS_CUP_COUNT = BONUS_CUP_COLORS.length

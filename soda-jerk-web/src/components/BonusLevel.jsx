@@ -5,7 +5,7 @@ import {
   BONUS_WHEEL_HOLE_FRACTION_X,
   BONUS_WHEEL_HOLE_FRACTION_Y,
   BONUS_CUP_SIZE,
-  BONUS_CUP_COUNT,
+  BONUS_CUP_COLORS,
   BONUS_LAUNCH_ANCHOR,
 } from '../game/constants.js'
 
@@ -18,6 +18,7 @@ const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 const WHEEL_SRC = ART_SRC('bonus-wheel.png')
 const CUP_SRC = ART_SRC('bonus-cup.png')
 const SCOOP_SRC = ART_SRC('bonus-scoop.png')
+const SCOOP_BALL_MASK_SRC = ART_SRC('bonus-scoop-ball-mask.png')
 const JERK_SRC = ART_SRC('bonus-jerk.png')
 
 // bonus-jerk.png is 599x1403; his held scoop sits at roughly this
@@ -29,6 +30,31 @@ const JERK_SCOOP_FRACTION = { x: 0.142, y: 0.208 }
 const JERK_WIDTH_PCT = 24
 const JERK_LEFT_PCT = BONUS_LAUNCH_ANCHOR.x - JERK_SCOOP_FRACTION.x * JERK_WIDTH_PCT
 const JERK_TOP_PCT = BONUS_LAUNCH_ANCHOR.y - JERK_SCOOP_FRACTION.y * JERK_WIDTH_PCT * JERK_ASPECT
+
+// Both the metal cups and the plain off-white scoop art are recolored the
+// same way: an opaque tint sits on top with mix-blend-mode "color" (which
+// keeps the art's own shading/highlights, just recolors the hue), clipped
+// to the art's own silhouette via mask-image so the tint doesn't bleed
+// onto whatever's rendered behind it.
+function ColorTint({ src, color }) {
+  return (
+    <div
+      className="absolute inset-0"
+      style={{
+        backgroundColor: color,
+        mixBlendMode: 'color',
+        WebkitMaskImage: `url(${src})`,
+        maskImage: `url(${src})`,
+        WebkitMaskSize: 'contain',
+        maskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center',
+        maskPosition: 'center',
+      }}
+    />
+  )
+}
 
 export default function BonusLevel({ bonusLevel, onAimStart, onAimMove, onAimEnd }) {
   const arenaRef = useRef(null)
@@ -68,10 +94,15 @@ export default function BonusLevel({ bonusLevel, onAimStart, onAimMove, onAimEnd
 
   const scoopX = bonusLevel.scoopState === 'aiming' ? BONUS_LAUNCH_ANCHOR.x + bonusLevel.aimDX : bonusLevel.scoopX
   const scoopY = bonusLevel.scoopState === 'aiming' ? BONUS_LAUNCH_ANCHOR.y + bonusLevel.aimDY : bonusLevel.scoopY
+  const flavor = BONUS_CUP_COLORS[bonusLevel.iceCreamColor]
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col items-center bg-ink" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 78px)' }}>
       <div className="font-display text-brass text-lg tracking-[0.2em] mb-1">BONUS ROUND</div>
+      <div className="flex items-center gap-1.5 mb-1">
+        <div className="rounded-full" style={{ width: 10, height: 10, background: flavor.color, border: '1px solid rgba(255,255,255,0.5)' }} />
+        <div className="text-cream/80 text-[11px] tracking-[0.2em]">MATCH THE {flavor.name.toUpperCase()} CUP</div>
+      </div>
       <div className="text-cream/60 text-[11px] tracking-[0.25em] mb-3">
         PULL BACK &amp; LAUNCH — {bonusLevel.throwsLeft} {bonusLevel.throwsLeft === 1 ? 'THROW' : 'THROWS'} LEFT
       </div>
@@ -110,26 +141,28 @@ export default function BonusLevel({ bonusLevel, onAimStart, onAimMove, onAimEnd
           }}
         >
           <img src={WHEEL_SRC} alt="" className="absolute inset-0 w-full h-full" style={{ filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.6))' }} />
-          {Array.from({ length: BONUS_CUP_COUNT }).map((_, i) => {
+          {BONUS_CUP_COLORS.map((cup, i) => {
             const rad = ((i * 90) * Math.PI) / 180
             const x = 50 + BONUS_WHEEL_HOLE_FRACTION_X * 100 * Math.cos(rad)
             const y = 50 + BONUS_WHEEL_HOLE_FRACTION_Y * 100 * Math.sin(rad)
             return (
-              <img
-                key={i}
-                src={CUP_SRC}
-                alt=""
+              <div
+                key={cup.name}
                 className="absolute"
                 style={{
                   left: `${x}%`,
                   top: `${y}%`,
                   width: `${(BONUS_CUP_SIZE / BONUS_WHEEL_IMAGE_SIZE) * 100}%`,
+                  aspectRatio: '509 / 734',
                   // Counter-rotate against the wrapper's spin — the cups
                   // orbit around the wheel with it, but always stay
                   // upright, same as baskets on a real spinning wheel.
                   transform: `translate(-50%, -50%) rotate(${-bonusLevel.wheelAngle}deg)`,
                 }}
-              />
+              >
+                <img src={CUP_SRC} alt="" className="absolute inset-0 w-full h-full" />
+                <ColorTint src={CUP_SRC} color={cup.color} />
+              </div>
             )
           })}
         </div>
@@ -163,20 +196,23 @@ export default function BonusLevel({ bonusLevel, onAimStart, onAimMove, onAimEnd
         />
 
         {/* the ice cream scoop — dragged back to aim, then flies once
-            released */}
-        <img
-          src={SCOOP_SRC}
-          alt=""
+            released. The ball on top is tinted to this throw's flavor;
+            the metal scoop underneath stays plain. */}
+        <div
           className="absolute -translate-x-1/2 -translate-y-1/2"
           style={{
             left: `${scoopX}%`,
             top: `${scoopY}%`,
             width: '8%',
+            aspectRatio: '170 / 205',
             zIndex: 3,
             filter: 'drop-shadow(0 3px 4px rgba(0,0,0,0.6))',
           }}
           onPointerDown={handlePointerDown}
-        />
+        >
+          <img src={SCOOP_SRC} alt="" className="absolute inset-0 w-full h-full" />
+          <ColorTint src={SCOOP_BALL_MASK_SRC} color={flavor.color} />
+        </div>
 
         {bonusLevel.scoopState === 'result' && (
           <div

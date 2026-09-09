@@ -11,7 +11,8 @@ function randomBetween(min, max) {
 }
 
 // Fresh state for a bonus-round attempt — the scoop starts at rest on
-// the launch anchor, ready to be pulled back.
+// the launch anchor, ready to be pulled back, tinted a random flavor
+// that has to land in the matching cup to score.
 function createBonusLevelState() {
   return {
     wheelAngle: 0,
@@ -23,6 +24,8 @@ function createBonusLevelState() {
     vy: 0,
     aimDX: 0, // how far the scoop's currently pulled back from the
     aimDY: 0, // anchor, while aiming — the drag vector itself
+    iceCreamColor: Math.floor(Math.random() * C.BONUS_CUP_COUNT), // index
+    // into BONUS_CUP_COLORS — which cup this throw's scoop needs to land in
     resultText: null, // 'HIT! +500' | 'MISS' while scoopState is 'result'
     resultHoldMs: 0,
   }
@@ -48,14 +51,13 @@ function createInitialSim() {
     // constants.js. Unrelated to `level` above: this only changes how many
     // customers can queue in one lane, advanced by clearing the bar, not by
     // score.
-    wasAllLanesFull: false, // tracks the previous frame's full/not-full
-    // state, so filling every lane is detected as an edge (the moment it
-    // *becomes* full), which (re-)arms a fresh stage-clear attempt below
-    stageAttemptArmed: false, // true from the moment every lane fills
-    // until either a life is lost (see stageAttemptClean) or the stage is
-    // passed — a fresh full house always re-arms it
+    stageAttemptActive: false, // true from the moment every lane fills
+    // until that exact batch is fully resolved (served-all, or a life
+    // lost) — spawning is frozen the whole time (see the spawn block in
+    // step()), so the board can only shrink by serving/missing that
+    // batch, never get topped back up by fresh arrivals mid-attempt
     stageAttemptClean: false, // true only if no life has been lost since
-    // stageAttemptArmed was last set — passing the stage requires every
+    // stageAttemptActive was last set — passing the stage requires every
     // patron on the bar to actually be served, not just gone from a miss
     awaitingStageAdvance: false, // true once the bar's been fully cleared
     // (served, not missed) after an armed, clean attempt — freezes the
@@ -167,32 +169,46 @@ function stepBonus(sim, dt) {
     b.scoopY += b.vy * dt
     b.vy += C.BONUS_GRAVITY * dt
 
-    let hitCupX = null
-    let hitCupY = null
+    let landedCupIndex = null
+    let landedCupX = null
+    let landedCupY = null
     for (let i = 0; i < C.BONUS_CUP_COUNT; i++) {
       const angleRad = ((b.wheelAngle + i * 90) * Math.PI) / 180
       // The 4 slots aren't a perfect circle in the source art, hence the
       // separate x/y radius — see BONUS_WHEEL_HOLE_FRACTION_* above.
       const cupX = C.BONUS_WHEEL_CENTER.x + C.BONUS_WHEEL_RADIUS_X * Math.cos(angleRad)
-      const cupY = C.BONUS_WHEEL_CENTER.y + C.BONUS_WHEEL_RADIUS_Y * Math.sin(angleRad)
+      const cupCenterY = C.BONUS_WHEEL_CENTER.y + C.BONUS_WHEEL_RADIUS_Y * Math.sin(angleRad)
+      // The cup image renders centered on that hole position, but the
+      // opening is up near its top edge — the cups always stay upright
+      // (counter-rotated against the wheel's spin, see BonusLevel.jsx),
+      // so that opening is always straight up from the center by a fixed
+      // amount, regardless of wheelAngle.
+      const cupY = cupCenterY - C.BONUS_CUP_RIM_OFFSET_Y
       const dist = Math.hypot(b.scoopX - cupX, b.scoopY - cupY)
       if (dist <= C.BONUS_HIT_RADIUS) {
-        hitCupX = cupX
-        hitCupY = cupY
+        landedCupIndex = i
+        landedCupX = cupX
+        landedCupY = cupY
         break
       }
     }
 
     const offArena = b.scoopX < -15 || b.scoopX > 115 || b.scoopY > 115 || b.scoopY < -25
-    if (hitCupX !== null) {
+    if (landedCupIndex !== null) {
       // Snap to the cup's exact center so it visually sits in the cup
-      // rather than wherever it happened to cross the hit radius.
-      b.scoopX = hitCupX
-      b.scoopY = hitCupY
+      // rather than wherever it happened to cross the hit radius — a
+      // metal cup stops the scoop either way, whether or not the color
+      // matches.
+      b.scoopX = landedCupX
+      b.scoopY = landedCupY
       b.vx = 0
       b.vy = 0
-      sim.score += C.BONUS_LEVEL_POINTS
-      b.resultText = `HIT! +${C.BONUS_LEVEL_POINTS}`
+      if (landedCupIndex === b.iceCreamColor) {
+        sim.score += C.BONUS_LEVEL_POINTS
+        b.resultText = `HIT! +${C.BONUS_LEVEL_POINTS}`
+      } else {
+        b.resultText = 'WRONG CUP'
+      }
       b.scoopState = 'result'
       b.resultHoldMs = C.BONUS_RESULT_HOLD_MS
     } else if (offArena) {
@@ -213,14 +229,14 @@ function stepBonus(sim, dt) {
         b.aimDX = 0
         b.aimDY = 0
         b.resultText = null
+        b.iceCreamColor = Math.floor(Math.random() * C.BONUS_CUP_COUNT)
       } else {
         // Round's over — back to the bar. Reset the stage-clear attempt
         // so a future clean full-clear can send the player back here.
         sim.mode = 'bar'
         sim.bonusLevel = null
-        sim.stageAttemptArmed = false
+        sim.stageAttemptActive = false
         sim.stageAttemptClean = false
-        sim.wasAllLanesFull = false
       }
     }
   }
@@ -241,11 +257,16 @@ function step(sim, dt) {
   const spawnInterval = levelInfo.spawnIntervalMs
   const travelMs = levelInfo.customerTravelMs * (C.STAGE_TRAVEL_MULTIPLIER[sim.stage - 1] ?? 1)
 
-  // Spawning
-  sim.nextSpawnInMs -= dt * 1000
-  if (sim.nextSpawnInMs <= 0) {
-    trySpawnCustomer(sim, travelMs)
-    sim.nextSpawnInMs = spawnInterval
+  // Spawning — frozen entirely during an active stage-clear attempt
+  // (every lane filled, waiting to see if that exact batch clears
+  // cleanly), so the board can only shrink from here, never get topped
+  // back up by a fresh arrival mid-attempt.
+  if (!sim.stageAttemptActive) {
+    sim.nextSpawnInMs -= dt * 1000
+    if (sim.nextSpawnInMs <= 0) {
+      trySpawnCustomer(sim, travelMs)
+      sim.nextSpawnInMs = spawnInterval
+    }
   }
 
   // Running left/right along the counter — either manually, while a drag
@@ -389,7 +410,10 @@ function step(sim, dt) {
   if (missedMugCount > 0) {
     sim.mugCrashCount++
     loseLife(sim, missedMugCount)
-    if (sim.stageAttemptArmed) sim.stageAttemptClean = false
+    if (sim.stageAttemptActive) {
+      sim.stageAttemptClean = false
+      sim.stageAttemptActive = false
+    }
     if (!sim.gameOver) {
       sim.missReason = 'mug'
       sim.awaitingContinue = true
@@ -405,7 +429,10 @@ function step(sim, dt) {
       c.x = C.END_OF_BAR_X
       c._remove = true
       loseLife(sim)
-      if (sim.stageAttemptArmed) sim.stageAttemptClean = false
+      if (sim.stageAttemptActive) {
+        sim.stageAttemptClean = false
+        sim.stageAttemptActive = false
+      }
       // Only the bartender's own lane gets the in-game seltzer-in-the-face
       // recall animation — the player isn't even standing in the others,
       // so there's nothing to visibly run back for. Either way it's a
@@ -444,7 +471,10 @@ function step(sim, dt) {
   if (missedCount > 0) {
     sim.missedGlassCount++
     loseLife(sim, missedCount)
-    if (sim.stageAttemptArmed) sim.stageAttemptClean = false
+    if (sim.stageAttemptActive) {
+      sim.stageAttemptClean = false
+      sim.stageAttemptActive = false
+    }
     if (!sim.gameOver) {
       sim.missReason = 'glass'
       sim.awaitingContinue = true
@@ -454,23 +484,22 @@ function step(sim, dt) {
   if (autoCaughtCount > 0) sim.score += autoCaughtCount * C.POINTS_PER_CAUGHT_GLASS
   sim.glasses = sim.glasses.filter((g) => !g._missed && !g._caught)
 
-  // Stage advance: the moment every lane fills up at once (re-)arms a
-  // fresh attempt at clearing the bar; a life lost anywhere while armed
-  // marks the attempt unclean (see the loseLife call sites above), so
-  // only a full house served clean start to finish — bar completely
-  // empty, everyone actually served and walked off, not just missed —
-  // counts as passing. Only checked once the game isn't already showing
-  // a life-lost screen, so a miss landing on the same frame as the last
+  // Stage advance: the moment every lane fills up at once arms a fresh
+  // attempt and freezes spawning (see the spawn block above) — that
+  // exact batch has to reach zero, served clean, with no fresh arrivals
+  // helping it along and no life lost anywhere (see the loseLife call
+  // sites above, which also drop stageAttemptActive the instant a miss
+  // happens). Only checked once the game isn't already showing a
+  // life-lost screen, so a miss landing on the same frame as the last
   // customer leaving doesn't collide with the stage-passed screen.
   if (!sim.gameOver && !sim.awaitingContinue) {
     const walkingLanes = new Set(sim.customers.filter((c) => c.status === 'walking').map((c) => c.lane))
-    const isFullNow = walkingLanes.size >= C.LANE_COUNT
-    if (isFullNow && !sim.wasAllLanesFull) {
-      sim.stageAttemptArmed = true
+    if (!sim.stageAttemptActive && walkingLanes.size >= C.LANE_COUNT) {
+      sim.stageAttemptActive = true
       sim.stageAttemptClean = true
     }
-    sim.wasAllLanesFull = isFullNow
-    if (sim.stageAttemptArmed && sim.stageAttemptClean && !sim.awaitingStageAdvance && sim.customers.length === 0) {
+    if (sim.stageAttemptActive && sim.stageAttemptClean && !sim.awaitingStageAdvance && sim.customers.length === 0) {
+      sim.stageAttemptActive = false
       if (sim.stage < C.STAGE_LANE_CAPACITY.length) {
         // Still have lane-capacity stages left to unlock — show the
         // normal "LEVEL PASSED" screen.
@@ -478,13 +507,8 @@ function step(sim, dt) {
       } else {
         // Already at the top lane-capacity stage — a clean full clear
         // here sends the player to the wheel-throw bonus round instead.
-        // The attempt flags reset so another clean clear later can send
-        // them back for another round.
         sim.mode = 'bonus'
         sim.bonusLevel = createBonusLevelState()
-        sim.stageAttemptArmed = false
-        sim.stageAttemptClean = false
-        sim.wasAllLanesFull = false
       }
     }
   }
@@ -621,10 +645,9 @@ export function useGameEngine() {
     // zero, well after the player already continued from the first one.
     sim.continuePauseInMs = null
     sim.missReason = null
-    // The board's empty again after this reset — a stale "was full" flag
-    // would otherwise miss the next genuine fill-up as an edge (it'd
-    // already look full), so this always starts clean too.
-    sim.wasAllLanesFull = false
+    // Already dropped by the loseLife call site that triggered this
+    // screen, but reset defensively — the board's empty again either way.
+    sim.stageAttemptActive = false
     // Reset to whatever level the current score is already at, not back
     // to level 1 — losing a life clears the board, not your progress.
     sim.nextSpawnInMs = getLevelForScore(sim.score).spawnIntervalMs
@@ -639,9 +662,6 @@ export function useGameEngine() {
     if (sim.gameOver || !sim.awaitingStageAdvance) return
     sim.awaitingStageAdvance = false
     sim.stage += 1
-    sim.stageAttemptArmed = false
-    sim.stageAttemptClean = false
-    sim.wasAllLanesFull = false
   }, [])
 
   // Bonus-round aiming — pull back from the launch anchor, then release
