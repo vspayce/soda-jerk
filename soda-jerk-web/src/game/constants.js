@@ -230,14 +230,23 @@ export const SHAKER_CUP_SPEED_MIN_X = 14 // %/s
 export const SHAKER_CUP_SPEED_MAX_X = 22
 
 // Throw physics — a slingshot pull-back from the jerk's raised hand, same
-// shape as the BONUS_* wheel-round constants above.
-export const SHAKER_LAUNCH_ANCHOR = { x: 50, y: 80 } // centered, with room on
-// every side for the pull-back drag
-export const SHAKER_MAX_PULL = 30 // furthest the scoop can be dragged back
+// shape as the BONUS_* wheel-round constants above. The pull is a real
+// finger drag on a real screen, so the anchor's distance to the BOTTOM
+// edge (where the pull-back drag actually has to go, since every row is
+// above the anchor) is the hard ceiling on how far a throw can reach —
+// not just the MAX_PULL number. At y:80 that ceiling was only 20 (100 -
+// 80), while reaching the top row needed a pull of ~28: physically
+// further than a thumb can drag on the actual device, even though it
+// worked fine in testing via synthetic pointer coordinates that don't
+// respect the viewport edge. Retuned so the top row needs well under
+// that ceiling.
+export const SHAKER_LAUNCH_ANCHOR = { x: 50, y: 76 }
+export const SHAKER_MAX_PULL = 20 // furthest the scoop can be dragged back
 export const SHAKER_MIN_PULL = 4 // shorter than this and releasing cancels the aim
-export const SHAKER_LAUNCH_POWER = 4.6 // arena-%/s of launch velocity per arena-% pulled
-export const SHAKER_GRAVITY = 160 // arena-%/s^2 pulling the scoop back down
-// A max-strength pull's apex lands almost exactly on the top row's y —
-// weaker pulls peak lower, at the middle or bottom row instead.
+export const SHAKER_LAUNCH_POWER = 7 // arena-%/s of launch velocity per arena-% pulled
+export const SHAKER_GRAVITY = 131 // arena-%/s^2 pulling the scoop back down
+// A ~16-18 pull's apex lands close to the top row's y, comfortably
+// inside the 24-wide room below the anchor — weaker pulls peak lower,
+// at the middle or bottom row instead.
 export const SHAKER_CUP_HIT_RADIUS_X = 7 // how close to a cup's center (in x) counts as landing in it
 export const SHAKER_CUP_HIT_RADIUS_Y = 7 // how close to a row's y counts as reaching that row

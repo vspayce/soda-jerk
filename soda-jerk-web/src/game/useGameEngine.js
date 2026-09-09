@@ -422,36 +422,48 @@ function stepShaker(sim, dt) {
   }
 
   if (s.scoopState === 'flying') {
+    const prevVy = s.vy
     s.scoopX += s.vx * dt
     s.scoopY += s.vy * dt
     s.vy += C.SHAKER_GRAVITY * dt
 
-    // Same shape as the wheel round's per-cup distance check, just with
-    // separate x/y radii since these cups sit in flat horizontal rows
-    // instead of around a circle. Scaled per cup by its own size so the
-    // smaller "distant" cups aren't secretly as easy to hit as the big
-    // "near" ones — the hitbox should match what's actually on screen.
-    const landedCup = s.cups.find((c) => {
-      const cupScale = c.size / C.SHAKER_CUP_SIZE_PCT
-      return (
-        Math.abs(s.scoopY - c.y) <= C.SHAKER_CUP_HIT_RADIUS_Y * cupScale &&
-        Math.abs(s.scoopX - c.x) <= C.SHAKER_CUP_HIT_RADIUS_X * cupScale
-      )
-    })
     const offArena = s.scoopX < -15 || s.scoopX > 115 || s.scoopY > 115 || s.scoopY < -25
+    // Rows are stacked directly in the flight path here (unlike the
+    // wheel round's open radial arena), so a throw bound for the top row
+    // necessarily flies straight through the lower rows' height on its
+    // way up — checking every frame caught it on that pass-through
+    // rather than where it was actually aimed. Resolving only once, at
+    // the throw's own apex (the moment it stops rising), makes "how hard
+    // you pulled" the thing that picks the row, same as the pull was
+    // meant to.
+    const reachedApex = prevVy < 0 && s.vy >= 0
 
-    if (landedCup) {
-      s.scoopX = landedCup.x
-      s.scoopY = landedCup.y
-      s.vx = 0
-      s.vy = 0
-      sim.score += C.SHAKER_HIT_POINTS
-      s.resultText = 'HIT!'
-      s.resultHoldMs = C.SHAKER_RESULT_HOLD_MS
-      s.resolvedCount++
-      s.scoopState = 'result'
-    } else if (offArena) {
-      s.resultText = 'MISS'
+    if (reachedApex || offArena) {
+      // Same shape as the wheel round's per-cup distance check, just with
+      // separate x/y radii since these cups sit in flat horizontal rows
+      // instead of around a circle. Scaled per cup by its own size so the
+      // smaller "distant" cups aren't secretly as easy to hit as the big
+      // "near" ones — the hitbox should match what's actually on screen.
+      const landedCup =
+        !offArena &&
+        s.cups.find((c) => {
+          const cupScale = c.size / C.SHAKER_CUP_SIZE_PCT
+          return (
+            Math.abs(s.scoopY - c.y) <= C.SHAKER_CUP_HIT_RADIUS_Y * cupScale &&
+            Math.abs(s.scoopX - c.x) <= C.SHAKER_CUP_HIT_RADIUS_X * cupScale
+          )
+        })
+
+      if (landedCup) {
+        s.scoopX = landedCup.x
+        s.scoopY = landedCup.y
+        s.vx = 0
+        s.vy = 0
+        sim.score += C.SHAKER_HIT_POINTS
+        s.resultText = 'HIT!'
+      } else {
+        s.resultText = 'MISS'
+      }
       s.resultHoldMs = C.SHAKER_RESULT_HOLD_MS
       s.resolvedCount++
       s.scoopState = 'result'

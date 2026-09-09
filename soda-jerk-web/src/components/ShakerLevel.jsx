@@ -20,7 +20,9 @@ const CUP_SRC = ART_SRC('bonus-cup.png')
 const SCOOP_SRC = ART_SRC('bonus-scoop.png')
 const SCOOP_BALL_MASK_SRC = ART_SRC('bonus-scoop-ball-mask.png')
 
-// jerk-throw.png is a back-view wind-up pose — his raised hand sits at
+// jerk-throw.png is a bust crop (head/shoulders/raised arm, legs cut off)
+// of a back-view wind-up pose — legible at a much bigger on-screen size
+// than the full-body version was. His raised hand sits at
 // roughly this fraction of the image's own width/height, measured from
 // its top-left — used to plant the launch anchor exactly on it. Unlike
 // BonusLevel's JERK_SCOOP_FRACTION trick (which can convert a width-%
@@ -31,8 +33,8 @@ const SCOOP_BALL_MASK_SRC = ART_SRC('bonus-scoop-ball-mask.png')
 // translate()` in HAND_FRACTION units — percentages there resolve against
 // the element's own rendered box, not the containing block, so it lands
 // correctly regardless of the arena's aspect ratio.
-const JERK_HAND_FRACTION = { x: 0.275, y: 0.293 }
-const JERK_WIDTH_PCT = 22
+const JERK_HAND_FRACTION = { x: 0.208, y: 0.197 }
+const JERK_WIDTH_PCT = 30
 
 // Same recolor trick as BonusLevel: an opaque tint on top with
 // mix-blend-mode "color" (keeps the art's own shading, just recolors the
