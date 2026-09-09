@@ -225,7 +225,8 @@ export const SHAKER_CUP_SPEED_MAX_X = 22
 
 // Throw physics — a slingshot pull-back from the jerk's raised hand, same
 // shape as the BONUS_* wheel-round constants above.
-export const SHAKER_LAUNCH_ANCHOR = { x: 24, y: 90 }
+export const SHAKER_LAUNCH_ANCHOR = { x: 50, y: 80 } // centered, with room on
+// every side for the pull-back drag
 export const SHAKER_MAX_PULL = 30 // furthest the scoop can be dragged back
 export const SHAKER_MIN_PULL = 4 // shorter than this and releasing cancels the aim
 export const SHAKER_LAUNCH_POWER = 4.6 // arena-%/s of launch velocity per arena-% pulled
