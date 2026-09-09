@@ -28,6 +28,10 @@ export const COUNTER_HEIGHT_PX = 44
 export const MUG_TRAVEL_MS = 800
 export const GLASS_RETURN_TRAVEL_MS = 4200
 
+// How long the bartender's throw-motion sprite plays after pourDrink(),
+// before falling back to stand/run — see Player.jsx.
+export const THROW_ANIM_MS = 500
+
 // Time (ms) for a served (happy) customer to walk off after being served.
 // Fast — reads as being hustled off rather than a casual stroll, so a
 // served customer doesn't linger in the lane long enough to tempt (and
@@ -91,13 +95,17 @@ export const DRINK_TYPES = [
 // cosmetic variety, picked at random when a customer spawns.
 export const PATRON_TYPE_COUNT = 3
 
-// A hot dog drops on the counter every so often, somewhere within the
-// bartender's run range — reach it (JERK while close enough) before it
-// goes cold for a bonus. Purely optional: ignoring one costs nothing.
+// A hot dog drops on the counter every so often, somewhere in the middle
+// or right portion of the bar (never right at the end near the player,
+// where a missed customer already costs a life — this way reaching it
+// always means actually running down the bar for it) — reach it (JERK
+// while close enough) before it goes cold for a bonus. Purely optional:
+// ignoring one costs nothing.
 export const BONUS_SPAWN_INTERVAL_MIN_MS = 9000
 export const BONUS_SPAWN_INTERVAL_MAX_MS = 18000
 export const BONUS_LIFETIME_MS = 6000
 export const BONUS_REACH_X = 14
+export const BONUS_MIN_X = PLAYER_X + (PLAYER_MAX_X - PLAYER_X) * 0.45
 export const POINTS_PER_BONUS = 500
 
 // The bonus ROUND (distinct from the hot dog bonus above) — an Angry
@@ -163,21 +171,21 @@ export const BONUS_CUP_COUNT = BONUS_CUP_COLORS.length
 export const PLATES_ROUND_MS = 25000 // the round ends normally after this long
 export const PLATES_SPAWN_INTERVAL_MIN_MS = 550
 export const PLATES_SPAWN_INTERVAL_MAX_MS = 1000
-export const PLATES_TRAVEL_MS = 1300 // time for a plate to cross from spawn to the player
+export const PLATES_TRAVEL_MS = 700 // time for a plate to cross from spawn to the player
 // Odds a freshly spawned plate is each kind — must add to 1.
 export const PLATES_KIND_WEIGHTS = { dirty: 0.72, clean: 0.16, dollar: 0.12 }
 export const PLATES_DIRTY_POINTS = 25
 export const PLATES_DOLLAR_POINTS = 100
 export const PLATES_RESULT_HOLD_MS = 1800
-// Every plate starts at the same small, distant point and grows as it
-// approaches; the two side lanes also drift outward as they near the
-// player, so they read as angling in from either side, not falling
-// straight down like the center lane.
+// Three separate conveyor belts, one per lane, each entering from its own
+// direction (top-left, top-center, top-right) and growing as it approaches
+// — they read as three distinct belts converging on the player, not one
+// shared chute fanning out.
 export const PLATES_LANES = ['left', 'center', 'right']
 export const PLATES_LANE_PATHS = {
-  center: { startX: 50, startY: 20, endX: 50, endY: 92 },
-  left: { startX: 50, startY: 20, endX: 12, endY: 88 },
-  right: { startX: 50, startY: 20, endX: 88, endY: 88 },
+  center: { startX: 50, startY: 8, endX: 50, endY: 92 },
+  left: { startX: 10, startY: 16, endX: 12, endY: 88 },
+  right: { startX: 90, startY: 16, endX: 88, endY: 88 },
 }
 export const PLATES_START_SCALE = 0.12
 export const PLATES_END_SCALE = 1.15

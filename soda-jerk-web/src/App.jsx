@@ -225,6 +225,8 @@ export default function App() {
               moveDir={state.playerLane === laneIndex ? state.moveDir : 0}
               spraying={state.playerLane === laneIndex && spraying}
               sprayDrinkType={state.lastSpillDrinkType}
+              sprayPatronType={state.lastSpillPatronType}
+              throwing={state.playerLane === laneIndex && state.throwingMs > 0}
               customers={state.customers.filter((c) => c.lane === laneIndex)}
               mugs={state.mugs.filter((m) => m.lane === laneIndex)}
               glasses={state.glasses.filter((g) => g.lane === laneIndex)}

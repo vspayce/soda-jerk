@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { qualifiesForLeaderboard, addLeaderboardEntry, getLeaderboard, getLastInitials } from '../game/leaderboard.js'
 import LeaderboardList from './LeaderboardList.jsx'
+import SignButton from './SignButton.jsx'
 
 const FIRED_SRC = `${import.meta.env.BASE_URL}art/fired.png`
 
@@ -22,7 +23,18 @@ export default function GameOverScreen({ score, onRestart }) {
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-ink/90 px-8 text-center overflow-y-auto py-10">
-      <div className="font-display text-brass text-3xl mb-2 tracking-wide">GAME OVER</div>
+      <div className="relative mb-2">
+        <div className="font-display melted-text text-3xl tracking-wide">GAME OVER</div>
+        <div className="melted-drips" aria-hidden="true">
+          {[14, 32, 50, 68, 86].map((leftPct, i) => (
+            <span
+              key={leftPct}
+              className="melted-drip"
+              style={{ left: `${leftPct}%`, animationDelay: `${i * 0.5}s`, '--drip-height': `${9 + (i % 3) * 5}px` }}
+            />
+          ))}
+        </div>
+      </div>
       <img src={FIRED_SRC} alt="" className="mb-2" style={{ height: 180, width: 'auto' }} />
       <div className="text-cream/80 mb-2">Final score</div>
       <div className="font-display text-cream text-5xl mb-6">{score}</div>
@@ -54,12 +66,7 @@ export default function GameOverScreen({ score, onRestart }) {
         </div>
       )}
 
-      <button
-        onClick={onRestart}
-        className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors"
-      >
-        TAP TO REOPEN
-      </button>
+      <SignButton onPress={onRestart}>Tap to Reopen</SignButton>
     </div>
   )
 }

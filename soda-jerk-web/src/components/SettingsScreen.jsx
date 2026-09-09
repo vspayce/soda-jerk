@@ -3,6 +3,15 @@ import { refreshApp } from '../refreshApp.js'
 export default function SettingsScreen({ volume, onVolumeChange, onClose, onSkipToBonusWheel, onSkipToBonusPlates }) {
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center bg-ink/95 px-8 py-10 overflow-y-auto">
+      <button
+        onClick={onClose}
+        aria-label="Close settings"
+        className="absolute text-brass text-2xl leading-none hover:text-cream transition-colors"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 14px)', right: 18, width: 36, height: 36 }}
+      >
+        &times;
+      </button>
+
       <div className="font-display text-brass text-2xl mb-8 tracking-wide">SETTINGS</div>
 
       <div className="w-full max-w-xs mb-8">
@@ -46,13 +55,6 @@ export default function SettingsScreen({ volume, onVolumeChange, onClose, onSkip
           SKIP TO PLATE BONUS
         </button>
       )}
-
-      <button
-        onClick={onClose}
-        className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
-      >
-        CLOSE
-      </button>
 
       <button
         onClick={refreshApp}

@@ -31,67 +31,85 @@ function SprayBurst({ x, y }) {
   )
 }
 
-// The dishwasher plates emerge from, at the shared vanishing point every
-// lane path starts from. Built entirely in CSS, same spirit as
-// PerspectiveBackdrop — no art asset for this exists yet.
-function Dishwasher() {
+// Three conveyor belts, one per lane, each running from its own direction
+// (see PLATES_LANE_PATHS) into the player. Drawn as an SVG overlay stretched
+// exactly over the play area — viewBox 0-100 with preserveAspectRatio="none"
+// so a lane's line endpoints land on the very same percentages plateLayout()
+// positions its plates at — with an animated dashed tread standing in for
+// belt motion. vector-effect keeps stroke/dash widths in real screen pixels
+// despite the viewBox's non-uniform (aspect-distorting) stretch.
+function ConveyorBelts() {
   return (
-    <div
-      className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-      style={{ left: `${PLATES_LANE_PATHS.center.startX}%`, top: `${PLATES_LANE_PATHS.center.startY}%`, width: '30%', zIndex: 0 }}
-    >
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="dishwasher-steam absolute rounded-full"
-          style={{
-            left: `${30 + i * 15}%`,
-            bottom: '78%',
-            width: 5,
-            height: 14,
-            background: 'rgba(255,255,255,0.6)',
-            filter: 'blur(1.5px)',
-            animationDelay: `${i * 700}ms`,
-          }}
-        />
+    <svg className="absolute inset-0 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ zIndex: 0 }}>
+      {Object.entries(PLATES_LANE_PATHS).map(([lane, path]) => (
+        <g key={lane}>
+          <line
+            x1={path.startX}
+            y1={path.startY}
+            x2={path.endX}
+            y2={path.endY}
+            stroke="#3A3D42"
+            strokeWidth={5}
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+          <line
+            className="conveyor-belt-tread"
+            x1={path.startX}
+            y1={path.startY}
+            x2={path.endX}
+            y2={path.endY}
+            stroke="#9AA2AA"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeDasharray="3 5"
+            vectorEffect="non-scaling-stroke"
+          />
+        </g>
       ))}
-      <div
-        className="relative rounded-md"
-        style={{
-          aspectRatio: '4 / 3',
-          background: 'linear-gradient(180deg, #C7CDD3 0%, #8A9198 55%, #5B6167 100%)',
-          border: '2px solid #3A3D42',
-          boxShadow: '0 6px 14px rgba(0,0,0,0.6), inset 0 2px 3px rgba(255,255,255,0.4)',
-        }}
-      >
+    </svg>
+  )
+}
+
+// A small dark "mouth" at each belt's start, where plates emerge from —
+// with the same steam-puff flair the old shared dishwasher had.
+function ConveyorMouths() {
+  return (
+    <>
+      {Object.entries(PLATES_LANE_PATHS).map(([lane, path]) => (
         <div
-          className="absolute rounded-full"
-          style={{ left: '10%', top: '14%', width: '10%', aspectRatio: '1/1', background: '#6FBF6F', boxShadow: '0 0 5px #6FBF6F' }}
-        />
-        <div
-          className="absolute rounded-full"
-          style={{ left: '24%', top: '14%', width: '10%', aspectRatio: '1/1', background: '#D9662B' }}
-        />
-        <div
-          className="absolute font-display text-center"
-          style={{ left: '50%', top: '18%', transform: 'translateX(-50%)', fontSize: '10%', color: '#2A2D31', letterSpacing: 1 }}
+          key={lane}
+          className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+          style={{ left: `${path.startX}%`, top: `${path.startY}%`, zIndex: 0 }}
         >
-          WASH-O-MATIC
+          {[0, 1].map((i) => (
+            <div
+              key={i}
+              className="dishwasher-steam absolute rounded-full"
+              style={{
+                left: -3 + i * 10,
+                bottom: 6,
+                width: 4,
+                height: 11,
+                background: 'rgba(255,255,255,0.6)',
+                filter: 'blur(1.2px)',
+                animationDelay: `${lane.length * 200 + i * 700}ms`,
+              }}
+            />
+          ))}
+          <div
+            className="rounded-sm"
+            style={{
+              width: 26,
+              height: 10,
+              background: '#151014',
+              border: '2px solid #3A3D42',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.8)',
+            }}
+          />
         </div>
-        {/* the slot plates slide out of */}
-        <div
-          className="absolute rounded-sm"
-          style={{
-            left: '18%',
-            bottom: '10%',
-            width: '64%',
-            height: '20%',
-            background: '#151014',
-            boxShadow: 'inset 0 3px 6px rgba(0,0,0,0.8)',
-          }}
-        />
-      </div>
-    </div>
+      ))}
+    </>
   )
 }
 
@@ -125,6 +143,9 @@ export default function PlatesLevel({ platesLevel, onPlateClick }) {
   // dog's Celebration.
   const [pops, setPops] = useState([])
   const [bursts, setBursts] = useState([])
+  // Bumped on every spray so the jerk's pump animation can be force-restarted
+  // (via a React `key`) even when clicks land faster than the animation.
+  const [pumpCount, setPumpCount] = useState(0)
 
   const handleClick = (plate) => {
     if (plate.kind !== 'clean') {
@@ -135,6 +156,7 @@ export default function PlatesLevel({ platesLevel, onPlateClick }) {
       setTimeout(() => setPops((prev) => prev.filter((p) => p.id !== id)), 800)
       setBursts((prev) => [...prev, { id, x, y }])
       setTimeout(() => setBursts((prev) => prev.filter((b) => b.id !== id)), 400)
+      setPumpCount((n) => n + 1)
     }
     onPlateClick(plate.id)
   }
@@ -152,7 +174,8 @@ export default function PlatesLevel({ platesLevel, onPlateClick }) {
       </div>
 
       <div className="absolute inset-0">
-        <Dishwasher />
+        <ConveyorBelts />
+        <ConveyorMouths />
 
         {platesLevel.plates.map((plate) => {
           const { x, y, size, z } = plateLayout(plate)
@@ -192,12 +215,15 @@ export default function PlatesLevel({ platesLevel, onPlateClick }) {
       </div>
 
       {/* the soda jerk, seen from behind, spray bottle raised — the
-          player's own point of view in this round */}
+          player's own point of view in this round. Re-mounted (via `key`)
+          on every spray so the pump animation restarts cleanly even when
+          clicks land faster than the animation itself. */}
       <img
+        key={pumpCount}
         src={JERK_BACK_SRC}
         alt=""
-        className="absolute pointer-events-none"
-        style={{ left: '50%', bottom: 0, transform: 'translateX(-50%)', height: '34vh', width: 'auto', zIndex: 900 }}
+        className="absolute pointer-events-none jerk-spray-pump"
+        style={{ left: '50%', bottom: 0, height: '34vh', width: 'auto', zIndex: 900 }}
       />
 
       {platesLevel.ended && (

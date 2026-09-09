@@ -35,7 +35,12 @@ function createBonusLevelState() {
 function createPlatesLevelState() {
   return {
     remainingMs: C.PLATES_ROUND_MS,
-    nextSpawnInMs: randomBetween(C.PLATES_SPAWN_INTERVAL_MIN_MS, C.PLATES_SPAWN_INTERVAL_MAX_MS),
+    // One independent spawn timer per lane/conveyor belt — see stepPlates —
+    // so all three run concurrently instead of one shared timer picking a
+    // single random lane each time.
+    nextSpawnInMs: Object.fromEntries(
+      C.PLATES_LANES.map((lane) => [lane, randomBetween(C.PLATES_SPAWN_INTERVAL_MIN_MS, C.PLATES_SPAWN_INTERVAL_MAX_MS)])
+    ),
     plates: [], // { id, lane, progress (0-1), kind: 'dirty'|'clean'|'dollar' }
     popCount: 0, // bumped whenever a dirty/dollar plate is sprayed — App.jsx
     // watches this for a little sfx, same pattern as celebrateCount etc.
@@ -106,13 +111,17 @@ function createInitialSim() {
     spillCount: 0, // bumped whenever an unserved customer reaches the end
     // of the bar in the player's own lane — App.jsx watches this to fire
     // the seltzer-in-the-face reaction.
+    throwingMs: 0, // counts down after pourDrink() — Player.jsx plays the
+    // throw-motion sprite while this is > 0, then falls back to stand/run
     lastSpillDrinkType: 0, // whose drink they wanted — picks which patron sprays
+    lastSpillPatronType: 0, // and which illustration — picks which patron sprays
     missedGlassCount: 0, // bumped whenever a returning glass slides off
     // the counter uncaught — App.jsx watches this to play the shatter sfx
     mugCrashCount: 0, // bumped whenever a thrown mug sails past with no
     // one to catch it — App.jsx watches this to play the crash sfx
     pendingSprayDrinkType: null, // set while the bartender is being
     // recalled to the counter after a spill, until he's actually back
+    pendingSprayPatronType: 0,
     continuePauseInMs: null, // counts down while he's held at the counter
     // getting sprayed, before awaitingContinue kicks in
     nextSpawnInMs: LEVELS[0].spawnIntervalMs,
@@ -297,10 +306,12 @@ function stepPlates(sim, dt) {
     return
   }
 
-  p.nextSpawnInMs -= dt * 1000
-  if (p.nextSpawnInMs <= 0) {
-    p.plates.push({ id: p.nextId++, lane: pick(C.PLATES_LANES), progress: 0, kind: pickPlateKind() })
-    p.nextSpawnInMs = randomBetween(C.PLATES_SPAWN_INTERVAL_MIN_MS, C.PLATES_SPAWN_INTERVAL_MAX_MS)
+  for (const lane of C.PLATES_LANES) {
+    p.nextSpawnInMs[lane] -= dt * 1000
+    if (p.nextSpawnInMs[lane] <= 0) {
+      p.plates.push({ id: p.nextId++, lane, progress: 0, kind: pickPlateKind() })
+      p.nextSpawnInMs[lane] = randomBetween(C.PLATES_SPAWN_INTERVAL_MIN_MS, C.PLATES_SPAWN_INTERVAL_MAX_MS)
+    }
   }
 
   for (const plate of p.plates) {
@@ -327,6 +338,9 @@ function step(sim, dt) {
   if (sim.awaitingStageAdvance) return
 
   sim.survivalMs += dt * 1000
+  if (sim.throwingMs > 0) {
+    sim.throwingMs = Math.max(0, sim.throwingMs - dt * 1000)
+  }
   const levelInfo = getLevelForScore(sim.score)
   sim.level = levelInfo.level
   const spawnInterval = levelInfo.spawnIntervalMs
@@ -367,6 +381,7 @@ function step(sim, dt) {
   if (sim.pendingSprayDrinkType !== null && sim.playerX <= C.PLAYER_X) {
     sim.spillCount++
     sim.lastSpillDrinkType = sim.pendingSprayDrinkType
+    sim.lastSpillPatronType = sim.pendingSprayPatronType
     sim.pendingSprayDrinkType = null
     sim.moveDir = 0
     // Hold him there getting sprayed for a couple seconds before pausing
@@ -393,7 +408,7 @@ function step(sim, dt) {
     sim.bonus = {
       id: sim.nextId++,
       lane: Math.floor(Math.random() * C.LANE_COUNT),
-      x: randomBetween(C.PLAYER_X, C.PLAYER_MAX_X),
+      x: randomBetween(C.BONUS_MIN_X, C.PLAYER_MAX_X),
       remainingMs: C.BONUS_LIFETIME_MS,
     }
     sim.nextBonusInMs = randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS)
@@ -523,10 +538,12 @@ function step(sim, dt) {
       // wait for.
       if (c.lane === sim.playerLane) {
         sim.pendingSprayDrinkType = c.drinkType
+        sim.pendingSprayPatronType = c.patronType
         sim.moveDir = -1
       } else if (!sim.gameOver) {
         sim.spillCount++
         sim.lastSpillDrinkType = c.drinkType
+        sim.lastSpillPatronType = c.patronType
         sim.continuePauseInMs = C.SPRAY_OTHER_LANE_HOLD_MS
       }
     } else if (c.status === 'leaving-happy' && c.x >= C.OFFSCREEN_X) {
@@ -647,6 +664,7 @@ export function useGameEngine() {
     sim.playerX = C.PLAYER_X
     sim.moveDir = 0
     sim.runTargetX = null
+    sim.throwingMs = C.THROW_ANIM_MS
 
     const lane = sim.playerLane
 

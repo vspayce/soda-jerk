@@ -20,16 +20,24 @@ const PATRON_SRC = [
 ]
 // Some illustrations (e.g. the mom-and-son pair) are wider than others,
 // so each patronType gets its own height to read at a consistent scale.
-const PATRON_HEIGHT = [65, 58, 65]
+const PATRON_HEIGHT = [65, 66, 65]
 
-// Real 8-frame walk-cycle sprite sheets (PixelLab-generated from the mom-and-son
-// illustration), used only while patronType 1 is actively walking in — everyone
-// else still gets the CSS-bob stand-in below. Each entry's aspectRatio (native
-// frame width / height) keeps the sprite from stretching at PATRON_HEIGHT.
+// Real 6-frame walk-cycle sprite sheets (PixelLab-generated from each static
+// illustration), used while a patron is actively walking in. Each entry's
+// aspectRatio (native frame width / height) keeps the sprite from stretching
+// at PATRON_HEIGHT.
 const PATRON_WALK_SHEETS = {
+  0: [
+    { src: `${import.meta.env.BASE_URL}art/patron-orange-walk.png`, aspectRatio: 137 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron-pink-walk.png`, aspectRatio: 131 / 256 },
+  ],
   1: [
     { src: `${import.meta.env.BASE_URL}art/patron2-orange-walk.png`, aspectRatio: 235 / 256 },
     { src: `${import.meta.env.BASE_URL}art/patron2-pink-walk.png`, aspectRatio: 238 / 256 },
+  ],
+  2: [
+    { src: `${import.meta.env.BASE_URL}art/patron3-orange-walk.png`, aspectRatio: 147 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron3-pink-walk.png`, aspectRatio: 144 / 256 },
   ],
 }
 
@@ -39,7 +47,7 @@ export default function Customer({ x, drinkType, patronType, status, drinkName }
 
   return (
     <div
-      className="absolute z-10"
+      className="absolute z-10 customer-emerge"
       style={{
         left: `${x}%`,
         top: `calc(50% + ${COUNTER_HEIGHT_PX / 2}px)`,
