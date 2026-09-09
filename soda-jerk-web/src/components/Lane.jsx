@@ -172,11 +172,6 @@ export default function Lane({
           <img
             src={DRINK_ICON_SRC(DRINK_TYPES[m.drinkType].icon)}
             alt=""
-            // Only Orange Creme has a straw in its art — spinning a glass
-            // with no straw would just look like a rotating blob of soda,
-            // so the spin stays specific to the one drink that reads as
-            // "spinning" rather than "glitching."
-            className={m.drinkType === 0 ? 'mug-spin' : ''}
             style={{ height: 27, width: 'auto', display: 'block' }}
           />
         </div>

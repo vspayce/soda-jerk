@@ -180,7 +180,7 @@ export const BONUS_CUP_COUNT = BONUS_CUP_COLORS.length
 export const PLATES_ROUND_MS = 25000 // the round ends normally after this long
 export const PLATES_SPAWN_INTERVAL_MIN_MS = 550
 export const PLATES_SPAWN_INTERVAL_MAX_MS = 1000
-export const PLATES_TRAVEL_MS = 700 // time for a plate to cross from spawn to the player
+export const PLATES_TRAVEL_MS = 1050 // time for a plate to cross from spawn to the player
 // Odds a freshly spawned plate is each kind — must add to 1.
 export const PLATES_KIND_WEIGHTS = { dirty: 0.72, clean: 0.16, dollar: 0.12 }
 export const PLATES_DIRTY_POINTS = 25
@@ -268,5 +268,10 @@ export const SHAKER_GRAVITY = 131 // arena-%/s^2 pulling the scoop back down
 // A ~16-18 pull's apex lands close to the top row's y, comfortably
 // inside the 24-wide room below the anchor — weaker pulls peak lower,
 // at the middle or bottom row instead.
-export const SHAKER_CUP_HIT_RADIUS_X = 7 // how close to a cup's center (in x) counts as landing in it
-export const SHAKER_CUP_HIT_RADIUS_Y = 7 // how close to a row's y counts as reaching that row
+// Widened from 7/7 — landing on a cup at all is only half the job now
+// that flavor has to match too (a 1-in-4 shot even when you land clean),
+// and the wider cup spacing (SHAKER_CUP_SPACING_PCT) already made just
+// landing harder. Without more forgiveness here a genuine HIT (and its
+// jargon) got rare enough to barely show up.
+export const SHAKER_CUP_HIT_RADIUS_X = 9 // how close to a cup's center (in x) counts as landing in it
+export const SHAKER_CUP_HIT_RADIUS_Y = 9 // how close to a row's y counts as reaching that row

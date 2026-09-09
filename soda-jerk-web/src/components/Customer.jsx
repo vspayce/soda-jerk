@@ -22,9 +22,9 @@ const PATRON_SRC = [
 ]
 // Some illustrations (e.g. the mom-and-son pair) are wider than others,
 // so each patronType gets its own height to read at a consistent scale.
-// 25% bigger across the board — small enough to miss details like the
-// tramp/professor caricatures at the old size.
-const PATRON_HEIGHT = [81, 83, 81, 81, 81]
+// 25% bigger across the board, then another 10% on top of that — small
+// enough to miss details like the tramp/professor caricatures otherwise.
+const PATRON_HEIGHT = [89, 91, 89, 89, 89]
 
 // Real 8-frame walk-cycle sprite sheets (PixelLab-generated from each static
 // illustration), used while a patron is actively walking in. Each entry's

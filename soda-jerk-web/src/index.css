@@ -70,23 +70,6 @@ body {
   animation: glass-fall 700ms ease-in forwards;
 }
 
-/* Orange Creme's mug has a straw baked into its art — spinning it as it
-   slides down the counter gives it a little personality the plain pink
-   one (no straw) doesn't have. A flat side-view sprite can't actually
-   spin around its own vertical axis, so this fakes it the way sprite
-   games usually do: squash-and-flip horizontally instead of rotating in
-   the picture plane (rotate() just tips the glass over sideways, which
-   reads as falling, not spinning). The glass itself stays upright the
-   whole time — it's the straw sweeping from side to side that actually
-   sells the spin. */
-@keyframes mug-spin-twirl {
-  0%, 100% { transform: scaleX(1); }
-  50% { transform: scaleX(-1); }
-}
-.mug-spin {
-  animation: mug-spin-twirl 650ms linear infinite;
-}
-
 /* The glass art itself is a nearly-white, mostly-transparent outline —
    easy to lose against the counter even with the glow above — so this
    sits behind it as a warm glowing puck for a strong, unmissable anchor
