@@ -9,12 +9,13 @@ import {
 } from '../game/constants.js'
 
 // The third bonus round — the jerk again seen from behind (same viewpoint
-// as the plate wash), this time facing three shaker cups that each slide
-// back and forth along their own row. Tapping a row throws a scoop into
-// it; the scoop always lands at SHAKER_TARGET_X after a fixed travel
-// time, so landing it is purely about tapping when that row's cup is
-// passing through the target zone — see stepShaker()/shakerThrow() in
-// useGameEngine.js for the actual timing/hit logic this mirrors visually.
+// as the plate wash), this time facing three rows of shaker cups packed
+// right next to each other, scrolling past like a sushi conveyor belt.
+// Tapping a row throws a scoop into it; the scoop always lands at
+// SHAKER_TARGET_X after a fixed travel time, so landing it is purely
+// about tapping when one of that row's cups is passing through the
+// target zone — see stepShaker()/shakerThrow() in useGameEngine.js for
+// the actual timing/hit logic this mirrors visually.
 
 const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 const JERK_BACK_SRC = ART_SRC('jerk-back.png')
@@ -56,7 +57,7 @@ export default function ShakerLevel({ shakerLevel, onThrow }) {
     <div className="absolute inset-0 z-20 overflow-hidden bg-ink" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 78px)' }}>
       <div className="flex flex-col items-center">
         <div className="font-display text-brass text-lg tracking-[0.2em] mb-1">SHAKER SHUFFLE</div>
-        <div className="text-cream/60 text-[11px] tracking-[0.2em] mb-1">TAP A ROW WHEN THE CUP LINES UP</div>
+        <div className="text-cream/60 text-[11px] tracking-[0.2em] mb-1">TAP A ROW WHEN A CUP LINES UP</div>
         <div className="font-display text-cream/80 text-sm tracking-widest">
           {shakerLevel.throwsLeft} {shakerLevel.throwsLeft === 1 ? 'THROW' : 'THROWS'} LEFT
         </div>
@@ -75,29 +76,39 @@ export default function ShakerLevel({ shakerLevel, onThrow }) {
           }}
         />
 
-        {shakerLevel.cups.map((cup) => (
+        {SHAKER_ROWS.map((row) => (
           <div
-            key={cup.lane}
+            key={row.lane}
             className="absolute inset-x-0 -translate-y-1/2"
-            style={{ top: `${cup.y}%`, height: '18%', touchAction: 'none' }}
+            style={{ top: `${row.y}%`, height: '18%', touchAction: 'none' }}
             onPointerDown={(e) => {
               e.preventDefault()
-              onThrow(cup.lane)
+              onThrow(row.lane)
             }}
           >
-            <div
-              className="absolute -translate-x-1/2 -translate-y-1/2"
-              style={{ left: `${cup.x}%`, top: '50%', width: `${SHAKER_CUP_SIZE_PCT}%`, aspectRatio: '509 / 734' }}
-            >
-              <img src={CUP_SRC} alt="" className="absolute inset-0 w-full h-full" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }} />
-              <ColorTint src={CUP_SRC} color={BONUS_CUP_COLORS[cup.color].color} />
-            </div>
+            {shakerLevel.cups
+              .filter((cup) => cup.lane === row.lane)
+              .map((cup) => (
+                <div
+                  key={cup.id}
+                  className="absolute -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: `${cup.x}%`, top: '50%', width: `${SHAKER_CUP_SIZE_PCT}%`, aspectRatio: '509 / 734' }}
+                >
+                  <img src={CUP_SRC} alt="" className="absolute inset-0 w-full h-full" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }} />
+                  <ColorTint src={CUP_SRC} color={BONUS_CUP_COLORS[cup.color].color} />
+                </div>
+              ))}
           </div>
         ))}
 
         {shakerLevel.scoops.map((scoop) => {
           const row = ROW_BY_LANE[scoop.lane]
-          const cup = shakerLevel.cups.find((c) => c.lane === scoop.lane)
+          const laneCups = shakerLevel.cups.filter((c) => c.lane === scoop.lane)
+          const closestCup = laneCups.reduce(
+            (closest, c) =>
+              !closest || Math.abs(c.x - SHAKER_TARGET_X) < Math.abs(closest.x - SHAKER_TARGET_X) ? c : closest,
+            null
+          )
           const t = Math.min(scoop.progress, 1)
           const x = LAUNCH_X + (SHAKER_TARGET_X - LAUNCH_X) * t
           const y = LAUNCH_Y + (row.y - LAUNCH_Y) * t
@@ -108,7 +119,7 @@ export default function ShakerLevel({ shakerLevel, onThrow }) {
               style={{ left: `${x}%`, top: `${y}%`, width: '8%', aspectRatio: '170 / 205', zIndex: 500, filter: 'drop-shadow(0 3px 4px rgba(0,0,0,0.6))' }}
             >
               <img src={SCOOP_SRC} alt="" className="absolute inset-0 w-full h-full" />
-              <ColorTint src={SCOOP_BALL_MASK_SRC} color={BONUS_CUP_COLORS[cup?.color ?? 0].color} />
+              <ColorTint src={SCOOP_BALL_MASK_SRC} color={BONUS_CUP_COLORS[closestCup?.color ?? 0].color} />
             </div>
           )
         })}

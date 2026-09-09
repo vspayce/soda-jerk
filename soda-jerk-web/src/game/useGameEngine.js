@@ -53,20 +53,40 @@ function createPlatesLevelState() {
   }
 }
 
-// Fresh state for a shaker-cup bonus-round attempt — one cup per row,
-// each starting at a random position and direction so a replay never
-// looks identical to the last.
+// Bounds of the belt each row's cups travel along — padded off both edges
+// of the screen so cups scroll on/off seamlessly instead of popping.
+const SHAKER_TRACK_MIN_X = -C.SHAKER_TRACK_PAD_PCT
+const SHAKER_TRACK_MAX_X = 100 + C.SHAKER_TRACK_PAD_PCT
+const SHAKER_TRACK_LENGTH = SHAKER_TRACK_MAX_X - SHAKER_TRACK_MIN_X
+
+// Fresh state for a shaker-cup bonus-round attempt — each row is a train
+// of cups packed SHAKER_CUP_SPACING_PCT apart spanning the whole belt, all
+// moving together at one speed so the spacing (and the sushi-conveyor
+// look) holds steady as they scroll past.
 function createShakerLevelState() {
+  const spacing = C.SHAKER_CUP_SPACING_PCT
+  const count = Math.ceil(SHAKER_TRACK_LENGTH / spacing) + 1
+  const cups = []
+  for (const row of C.SHAKER_ROWS) {
+    const speed = randomBetween(C.SHAKER_CUP_SPEED_MIN_X, C.SHAKER_CUP_SPEED_MAX_X)
+    const phase = Math.random() * spacing
+    for (let i = 0; i < count; i++) {
+      const raw = SHAKER_TRACK_MIN_X + phase + i * spacing
+      const x = (((raw - SHAKER_TRACK_MIN_X) % SHAKER_TRACK_LENGTH) + SHAKER_TRACK_LENGTH) % SHAKER_TRACK_LENGTH + SHAKER_TRACK_MIN_X
+      cups.push({
+        id: `${row.lane}-${i}`,
+        lane: row.lane,
+        y: row.y,
+        x,
+        dir: row.dir,
+        speed,
+        color: Math.floor(Math.random() * C.BONUS_CUP_COUNT), // purely cosmetic variety
+      })
+    }
+  }
   return {
     throwsLeft: C.SHAKER_ROUND_THROWS,
-    cups: C.SHAKER_ROWS.map((row) => ({
-      lane: row.lane,
-      y: row.y,
-      x: randomBetween(C.SHAKER_CUP_MIN_X, C.SHAKER_CUP_MAX_X),
-      dir: Math.random() < 0.5 ? 1 : -1,
-      speed: randomBetween(C.SHAKER_CUP_SPEED_MIN_X, C.SHAKER_CUP_SPEED_MAX_X),
-      color: Math.floor(Math.random() * C.BONUS_CUP_COUNT), // purely cosmetic variety
-    })),
+    cups,
     scoops: [], // in-flight throws: { id, lane, progress (0-1) }
     resultText: null, // 'HIT!' | 'MISS' — brief flash after each throw resolves
     resultHoldMs: 0,
@@ -355,11 +375,12 @@ function stepPlates(sim, dt) {
   p.plates = p.plates.filter((pl) => !pl._remove)
 }
 
-// The shaker-cup bonus round — three cups, each bouncing back and forth
-// along its own row; a throw always lands at SHAKER_TARGET_X after a fixed
-// travel time, so scoring is purely about tapping a row at the moment its
-// cup is passing through that x — see shakerThrow() for where a throw
-// actually gets fired.
+// The shaker-cup bonus round — three rows, each a belt of cups packed
+// right next to each other and scrolling past like a sushi conveyor; a
+// throw always lands at SHAKER_TARGET_X after a fixed travel time, so
+// scoring is purely about tapping a row at the moment one of its cups is
+// passing through that x — see shakerThrow() for where a throw actually
+// gets fired.
 function stepShaker(sim, dt) {
   const s = sim.shakerLevel
   if (!s) return
@@ -377,20 +398,16 @@ function stepShaker(sim, dt) {
 
   for (const cup of s.cups) {
     cup.x += cup.dir * cup.speed * dt
-    if (cup.x <= C.SHAKER_CUP_MIN_X) {
-      cup.x = C.SHAKER_CUP_MIN_X
-      cup.dir = 1
-    } else if (cup.x >= C.SHAKER_CUP_MAX_X) {
-      cup.x = C.SHAKER_CUP_MAX_X
-      cup.dir = -1
-    }
+    if (cup.x > SHAKER_TRACK_MAX_X) cup.x -= SHAKER_TRACK_LENGTH
+    else if (cup.x < SHAKER_TRACK_MIN_X) cup.x += SHAKER_TRACK_LENGTH
   }
 
   for (const scoop of s.scoops) {
     scoop.progress += (dt * 1000) / C.SHAKER_THROW_TRAVEL_MS
     if (scoop.progress >= 1) {
-      const cup = s.cups.find((c) => c.lane === scoop.lane)
-      const hit = cup && Math.abs(cup.x - C.SHAKER_TARGET_X) <= C.SHAKER_TARGET_TOLERANCE_PCT
+      const hit = s.cups.some(
+        (c) => c.lane === scoop.lane && Math.abs(c.x - C.SHAKER_TARGET_X) <= C.SHAKER_TARGET_TOLERANCE_PCT
+      )
       if (hit) {
         sim.score += C.SHAKER_HIT_POINTS
         s.resultText = 'HIT!'
