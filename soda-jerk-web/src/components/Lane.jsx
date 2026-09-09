@@ -32,7 +32,7 @@ const HOTDOG_SRC = ART_SRC('hotdog.png')
 // The three new ones sit a little further left and a little larger than
 // the original — they're bulkier illustrations that read better with room.
 const FOUNTAIN_X = PLAYER_X - 3
-const FOUNTAIN_HEIGHT = 60
+const FOUNTAIN_HEIGHT = 72
 const NEW_FOUNTAIN_HEIGHT = FOUNTAIN_HEIGHT * 1.3
 const FOUNTAIN_BY_LANE = [
   { src: ART_SRC('fountain.png'), x: FOUNTAIN_X, height: FOUNTAIN_HEIGHT },
