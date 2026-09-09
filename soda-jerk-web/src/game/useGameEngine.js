@@ -93,8 +93,8 @@ function createInitialSim() {
     awaitingContinue: false, // true right after a life is lost (but the
     // game isn't over) — freezes the sim until continueAfterDeath() is
     // called, when the "YOU MISSED" button is tapped
-    missReason: null, // 'spray' | 'glass' | 'mug' | 'other' — which kind
-    // of miss most recently triggered awaitingContinue, so the UI can
+    missReason: null, // 'spray' | 'glass' | 'mug' | 'no-patron' | 'other' — which
+    // kind of miss most recently triggered awaitingContinue, so the UI can
     // show the matching sprite
     customers: [],
     mugs: [],
@@ -479,6 +479,10 @@ function step(sim, dt) {
       m._arrived = true
     } else if (m.x >= C.OFFSCREEN_X) {
       m._missed = true
+      // Distinguishes a drink thrown at the wrong-colored customer (still
+      // someone there to miss) from one thrown down a lane with no one
+      // walking in it at all — the UI shows a different message/art for each.
+      m._hadPatron = sim.customers.some((c) => c.lane === m.lane && c.status === 'walking')
     }
   }
   const missedMugCount = sim.mugs.filter((m) => m._missed).length
@@ -490,7 +494,7 @@ function step(sim, dt) {
       sim.stageAttemptActive = false
     }
     if (!sim.gameOver) {
-      sim.missReason = 'mug'
+      sim.missReason = sim.mugs.some((m) => m._missed && !m._hadPatron) ? 'no-patron' : 'mug'
       sim.awaitingContinue = true
     }
   }

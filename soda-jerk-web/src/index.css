@@ -146,6 +146,57 @@ body {
   animation: patron-walk 450ms ease-in-out infinite;
 }
 
+/* Real 6-frame walk cycle (PixelLab-generated) for the mom-and-son patron.
+   background-size scales the whole sheet to 6x the element's own box, so each
+   1/6 horizontal slice lands exactly on one frame regardless of the sheet's
+   native resolution. The "to" position is NOT 100%: background-position
+   percentages resolve against (bg size - box size), i.e. 5 box-widths of
+   travel, but steps(6) samples 6 evenly-spaced points across the keyframe's
+   full 0-100 range — so hitting all 6 frame boundaries exactly needs the
+   range to span 6 box-widths of travel, which is 120% (6/5 * 100%). At 100%
+   every step but the first lands between two frames, showing a torn blend
+   of both — this is what read as stutter/backwards motion in testing. */
+@keyframes patron-walk-cycle {
+  from { background-position-x: 0%; }
+  to { background-position-x: 120%; }
+}
+.patron-walk-cycle-sprite {
+  background-repeat: no-repeat;
+  background-size: 600% 100%;
+  animation: patron-walk-cycle 750ms steps(6) infinite;
+}
+
+/* Plate-wash bonus round: a burst of spray droplets + an expanding ring,
+   fired at the click point when a dirty/dollar plate gets sprayed clean.
+   Pure CSS — no clean spray-effect art to work with (the source JPG's
+   background couldn't be separated from its own soft white edges). Each
+   droplet travels outward along its own rotated axis, set via --angle. */
+@keyframes spray-droplet {
+  0% { transform: rotate(var(--angle)) translateX(0) scale(1); opacity: 1; }
+  100% { transform: rotate(var(--angle)) translateX(48px) scale(0.3); opacity: 0; }
+}
+.spray-droplet {
+  animation: spray-droplet 550ms ease-out forwards;
+}
+
+@keyframes spray-ring {
+  0% { transform: scale(0.3); opacity: 0.9; }
+  100% { transform: scale(3); opacity: 0; }
+}
+.spray-ring {
+  animation: spray-ring 550ms ease-out forwards;
+}
+
+/* Faint steam rising off the dishwasher in the plate-wash round. */
+@keyframes dishwasher-steam {
+  0% { transform: translateY(0) scaleX(1); opacity: 0; }
+  20% { opacity: 0.5; }
+  100% { transform: translateY(-22px) scaleX(1.4); opacity: 0; }
+}
+.dishwasher-steam {
+  animation: dishwasher-steam 2600ms ease-out infinite;
+}
+
 @media (min-width: 460px) {
   .phone-frame {
     height: 900px;

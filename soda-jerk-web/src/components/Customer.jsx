@@ -22,8 +22,20 @@ const PATRON_SRC = [
 // so each patronType gets its own height to read at a consistent scale.
 const PATRON_HEIGHT = [65, 58, 65]
 
+// Real 8-frame walk-cycle sprite sheets (PixelLab-generated from the mom-and-son
+// illustration), used only while patronType 1 is actively walking in — everyone
+// else still gets the CSS-bob stand-in below. Each entry's aspectRatio (native
+// frame width / height) keeps the sprite from stretching at PATRON_HEIGHT.
+const PATRON_WALK_SHEETS = {
+  1: [
+    { src: `${import.meta.env.BASE_URL}art/patron2-orange-walk.png`, aspectRatio: 235 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron2-pink-walk.png`, aspectRatio: 238 / 256 },
+  ],
+}
+
 export default function Customer({ x, drinkType, patronType, status, drinkName }) {
   const isUrgent = status === 'walking' && x <= DANGER_X
+  const walkSheet = status === 'walking' ? PATRON_WALK_SHEETS[patronType]?.[drinkType] : null
 
   return (
     <div
@@ -38,18 +50,29 @@ export default function Customer({ x, drinkType, patronType, status, drinkName }
       }}
       title={drinkName}
     >
-      <div className="patron-walk">
-        <img
-          src={PATRON_SRC[patronType][drinkType]}
-          alt=""
+      {walkSheet ? (
+        <div
+          className="patron-walk-cycle-sprite"
           style={{
             height: PATRON_HEIGHT[patronType],
-            width: 'auto',
-            display: 'block',
-            transform: status === 'leaving-happy' ? 'scaleX(-1)' : 'none',
+            width: PATRON_HEIGHT[patronType] * walkSheet.aspectRatio,
+            backgroundImage: `url(${walkSheet.src})`,
           }}
         />
-      </div>
+      ) : (
+        <div className="patron-walk">
+          <img
+            src={PATRON_SRC[patronType][drinkType]}
+            alt=""
+            style={{
+              height: PATRON_HEIGHT[patronType],
+              width: 'auto',
+              display: 'block',
+              transform: status === 'leaving-happy' ? 'scaleX(-1)' : 'none',
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

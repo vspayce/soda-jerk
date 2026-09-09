@@ -2,11 +2,21 @@ import DecoButton from './DecoButton.jsx'
 
 const SPRAY_SRC = `${import.meta.env.BASE_URL}art/spray-closeup.png`
 const BROKEN_GLASS_SRC = `${import.meta.env.BASE_URL}art/broken-glass.png`
+const SPILLED_MILKSHAKE_SRC = `${import.meta.env.BASE_URL}art/spilled-milkshake.png`
 
 export default function LifeLostScreen({ score, lives, missReason, onContinue }) {
   const isBrokenGlass = missReason === 'glass' || missReason === 'mug'
-  const image = missReason === 'spray' ? SPRAY_SRC : isBrokenGlass ? BROKEN_GLASS_SRC : null
-  const title = missReason === 'glass' ? 'YOU MISSED A GLASS!' : missReason === 'mug' ? 'WRONG DRINK!' : missReason === 'spray' ? 'YOU GOT SPRAYED!' : null
+  const image =
+    missReason === 'spray' ? SPRAY_SRC
+    : missReason === 'no-patron' ? SPILLED_MILKSHAKE_SRC
+    : isBrokenGlass ? BROKEN_GLASS_SRC
+    : null
+  const title =
+    missReason === 'glass' ? 'YOU MISSED A GLASS!'
+    : missReason === 'mug' ? 'WRONG DRINK!'
+    : missReason === 'no-patron' ? 'NO PATRON!'
+    : missReason === 'spray' ? 'YOU GOT SPRAYED!'
+    : null
   const subtext = `SCORE ${score} · ${lives} ${lives === 1 ? 'LIFE' : 'LIVES'} LEFT`
 
   if (!image) {
