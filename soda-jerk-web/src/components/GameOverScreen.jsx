@@ -24,7 +24,7 @@ export default function GameOverScreen({ score, onRestart }) {
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-ink/90 px-8 text-center overflow-y-auto py-10">
       <div className="relative mb-2">
-        <div className="font-display melted-text text-3xl tracking-wide">GAME OVER</div>
+        <div className="font-display melted-text text-3xl tracking-wide">GAME OVER, POP BOY</div>
         <div className="melted-drips" aria-hidden="true">
           {[14, 32, 50, 68, 86].map((leftPct, i) => (
             <span

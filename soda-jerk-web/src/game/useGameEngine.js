@@ -70,6 +70,7 @@ function createPlatesLevelState() {
 const SHAKER_TRACK_MIN_X = -C.SHAKER_TRACK_PAD_PCT
 const SHAKER_TRACK_MAX_X = 100 + C.SHAKER_TRACK_PAD_PCT
 const SHAKER_TRACK_LENGTH = SHAKER_TRACK_MAX_X - SHAKER_TRACK_MIN_X
+const SHAKER_ROW_BY_LANE = Object.fromEntries(C.SHAKER_ROWS.map((row) => [row.lane, row]))
 
 // Fresh state for a shaker-cup bonus-round attempt — each row is a train
 // of evenly-spaced cups spanning the whole belt, all cups within a row
@@ -103,13 +104,17 @@ function createShakerLevelState() {
         dir: row.dir,
         speed,
         size: C.SHAKER_CUP_SIZE_PCT * row.scale,
-        color: Math.floor(Math.random() * C.BONUS_CUP_COUNT), // purely cosmetic variety
+        color: Math.floor(Math.random() * C.BONUS_CUP_COUNT), // which flavor
+        // this cup is — landing on one that doesn't match iceCreamColor
+        // below is a WRONG CUP, same idea as the wheel round
       })
     }
   }
   return {
     throwsLeft: C.SHAKER_ROUND_THROWS,
     cups,
+    iceCreamColor: Math.floor(Math.random() * C.BONUS_CUP_COUNT), // index into
+    // BONUS_CUP_COLORS — which flavor this throw's scoop needs to land in
     scoopState: 'ready', // 'ready' | 'aiming' | 'flying' | 'result' — same
     // shape as the wheel round's bonusLevel.scoopState
     scoopX: C.SHAKER_LAUNCH_ANCHOR.x,
@@ -118,7 +123,12 @@ function createShakerLevelState() {
     aimDY: 0,
     vx: 0,
     vy: 0,
-    resultText: null, // 'HIT!' | 'MISS' — brief flash after each throw resolves
+    resultText: null, // e.g. 'GLOB! +75' | 'WRONG CUP' | 'MISS' — brief
+    // flash after each throw resolves. Real jerk-jargon terms on a hit
+    // (see SHAKER_HIT_JARGON) mean this can't be string-matched to tell
+    // whether it landed — that's what resultKind is for.
+    resultKind: null, // 'hit' | 'wrong' | 'miss'
+    resultSubtext: null, // the jargon term's plain-English meaning, only set on a hit
     resultHoldMs: 0,
     resolvedCount: 0, // bumped every time a throw resolves — App.jsx watches
     // this (alongside resultText) to fire the matching hit/miss sfx
@@ -479,10 +489,22 @@ function stepShaker(sim, dt) {
         s.scoopY = landedCup.y
         s.vx = 0
         s.vy = 0
-        sim.score += C.SHAKER_HIT_POINTS
-        s.resultText = 'HIT!'
+        if (landedCup.color === s.iceCreamColor) {
+          const points = SHAKER_ROW_BY_LANE[landedCup.lane].points
+          sim.score += points
+          const jargon = pick(C.SHAKER_HIT_JARGON)
+          s.resultText = `${jargon.term.toUpperCase()}! +${points}`
+          s.resultSubtext = jargon.def
+          s.resultKind = 'hit'
+        } else {
+          s.resultText = 'WRONG CUP'
+          s.resultSubtext = null
+          s.resultKind = 'wrong'
+        }
       } else {
         s.resultText = 'MISS'
+        s.resultSubtext = null
+        s.resultKind = 'miss'
       }
       s.resultHoldMs = C.SHAKER_RESULT_HOLD_MS
       s.resolvedCount++
@@ -501,6 +523,9 @@ function stepShaker(sim, dt) {
         s.aimDX = 0
         s.aimDY = 0
         s.resultText = null
+        s.resultKind = null
+        s.resultSubtext = null
+        s.iceCreamColor = Math.floor(Math.random() * C.BONUS_CUP_COUNT)
       } else {
         s.ended = true
         s.resultHoldMs = C.SHAKER_ROUND_END_HOLD_MS

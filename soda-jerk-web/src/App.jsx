@@ -159,7 +159,7 @@ export default function App() {
     const resolvedCount = state.shakerLevel?.resolvedCount ?? 0
     if (resolvedCount !== prevShakerResolvedRef.current) {
       prevShakerResolvedRef.current = resolvedCount
-      if (state.shakerLevel?.resultText === 'HIT!') playCelebration()
+      if (state.shakerLevel?.resultKind === 'hit') playCelebration()
     }
   }, [state.shakerLevel?.resolvedCount])
 

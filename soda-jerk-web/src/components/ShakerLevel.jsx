@@ -8,11 +8,13 @@ import {
 // The third bonus round — the jerk again seen from behind (same viewpoint
 // as the plate wash), facing three rows of shaker cups scrolling past
 // like a sushi conveyor belt on its own counter shelf. The throw is
-// Angry-Birds style, same pull-back-and-release
-// physics as BonusLevel's wheel round: pull harder to arc higher and reach
-// an upper row, then land wherever that arc actually carries the scoop —
-// see stepShaker()/shakerAimStart/Move/End in useGameEngine.js for the
-// actual timing/hit logic this mirrors visually.
+// Angry-Birds style, same pull-back-and-release physics as BonusLevel's
+// wheel round: pull harder to arc higher and reach an upper (smaller,
+// harder, higher-paying — see SHAKER_ROWS) row, then land wherever that
+// arc actually carries the scoop. Landing on a cup only scores if its
+// color matches this throw's flavor (shown up top) — same WRONG CUP
+// idea as the wheel round — see stepShaker()/shakerAimStart/Move/End in
+// useGameEngine.js for the actual timing/hit logic this mirrors visually.
 
 const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 const JERK_THROW_SRC = ART_SRC('jerk-throw.png')
@@ -124,7 +126,7 @@ export default function ShakerLevel({ shakerLevel, onAimStart, onAimMove, onAimE
 
   const scoopX = shakerLevel.scoopState === 'aiming' ? SHAKER_LAUNCH_ANCHOR.x + shakerLevel.aimDX : shakerLevel.scoopX
   const scoopY = shakerLevel.scoopState === 'aiming' ? SHAKER_LAUNCH_ANCHOR.y + shakerLevel.aimDY : shakerLevel.scoopY
-  const flavor = BONUS_CUP_COLORS[shakerLevel.resolvedCount % BONUS_CUP_COLORS.length]
+  const flavor = BONUS_CUP_COLORS[shakerLevel.iceCreamColor]
 
   return (
     <div
@@ -138,7 +140,13 @@ export default function ShakerLevel({ shakerLevel, onAimStart, onAimMove, onAimE
     >
       <div className="flex flex-col items-center pointer-events-none">
         <div className="font-display text-brass text-lg tracking-[0.2em] mb-1">SHAKER SHUFFLE</div>
-        <div className="text-cream/60 text-[11px] tracking-[0.2em] mb-1">PULL BACK &amp; LAUNCH THE SCOOP</div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <div className="rounded-full" style={{ width: 10, height: 10, background: flavor.color, border: '1px solid rgba(255,255,255,0.5)' }} />
+          <div className="text-cream/80 text-[11px] tracking-[0.2em]">MATCH THE {flavor.name.toUpperCase()} CUP</div>
+        </div>
+        <div className="text-cream/60 text-[11px] tracking-[0.2em] mb-1">
+          FAR ROW WORTH MORE — PULL BACK &amp; LAUNCH
+        </div>
         <div className="font-display text-cream/80 text-sm tracking-widest">
           {shakerLevel.throwsLeft} {shakerLevel.throwsLeft === 1 ? 'THROW' : 'THROWS'} LEFT
         </div>
@@ -229,16 +237,23 @@ export default function ShakerLevel({ shakerLevel, onAimStart, onAimMove, onAimE
         </div>
 
         {shakerLevel.resultText && shakerLevel.resultHoldMs > 0 && (
-          <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 1000 }}>
+          <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ zIndex: 1000 }}>
             <div
-              className="font-display text-3xl tracking-wide px-6 py-2 text-center"
+              className="font-display text-3xl tracking-wide px-6 text-center"
               style={{
-                color: shakerLevel.resultText === 'HIT!' ? '#E8C878' : '#E0596B',
+                color: shakerLevel.resultKind === 'hit' ? '#E8C878' : '#E0596B',
                 textShadow: '0 3px 10px rgba(0,0,0,0.8)',
               }}
             >
               {shakerLevel.resultText}
             </div>
+            {/* real 1950s soda-jerk counter slang, so a player who's never
+                heard "GLOB!" shouted at them knows it meant they won */}
+            {shakerLevel.resultSubtext && (
+              <div className="text-cream/70 text-xs tracking-[0.15em] mt-1 px-6 text-center" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.8)' }}>
+                ({shakerLevel.resultSubtext})
+              </div>
+            )}
           </div>
         )}
       </div>

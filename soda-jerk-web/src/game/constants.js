@@ -210,19 +210,35 @@ export const PLATES_BASE_SIZE_PCT = 30 // plate width at scale 1, % of screen wi
 // percentages of the full phone-frame, same as the plate wash. See
 // ShakerLevel.jsx / stepShaker().
 export const SHAKER_ROUND_THROWS = 6
-export const SHAKER_HIT_POINTS = 75
 export const SHAKER_RESULT_HOLD_MS = 900 // brief HIT!/MISS pause before the next throw's allowed
 export const SHAKER_ROUND_END_HOLD_MS = 1800 // how long the final result shows before returning to the bar
+// Real 1950s soda-jerk counter slang, shouted back to the fountain when
+// an order came in — same glossary DRINK_TYPES' "In the Hay" comes from.
+// A landed HIT picks one of these at random to shout instead of a plain
+// "HIT!" (see stepShaker/ShakerLevel.jsx).
+export const SHAKER_HIT_JARGON = [
+  { term: 'All Black', def: 'chocolate soda with chocolate ice cream' },
+  { term: 'Black Bottom', def: 'chocolate sundae with chocolate syrup' },
+  { term: 'Black Cow', def: 'root beer' },
+  { term: 'Canary Island Special', def: 'vanilla soda with chocolate cream' },
+  { term: 'Choc In', def: 'chocolate soda' },
+  { term: 'Give', def: 'large glass of fresh milk' },
+  { term: 'Glob', def: 'plain sundae' },
+  { term: 'Oh Gee', def: 'orangeade' },
+  { term: 'Rhinelander', def: 'chocolate soda with vanilla ice cream' },
+  { term: 'Saltwater Man', def: 'ice cream mixer' },
+]
 // Row order top-to-bottom; alternating dir gives the belts visual variety,
 // same spirit as the plate wash's three different conveyor entry points.
-// `scale` shrinks the top row and grows the bottom one, so the belts read
-// as receding into the distance like the rest of the venue's perspective
-// (see PerspectiveBackdrop's converging walls) instead of three flat,
-// same-size lanes.
+// `scale` shrinks the top row and grows the bottom one (and its hit
+// radius along with it — see stepShaker), so the far row is a genuinely
+// smaller target than the near one, matching the venue's perspective
+// (see PerspectiveBackdrop's converging walls). `points` rewards that
+// difficulty — the hard-to-hit back row pays out the most.
 export const SHAKER_ROWS = [
-  { lane: 'top', y: 28, dir: 1, scale: 0.72 },
-  { lane: 'middle', y: 50, dir: -1, scale: 1 },
-  { lane: 'bottom', y: 72, dir: 1, scale: 1.1 },
+  { lane: 'top', y: 28, dir: 1, scale: 0.72, points: 150 },
+  { lane: 'middle', y: 50, dir: -1, scale: 1, points: 75 },
+  { lane: 'bottom', y: 72, dir: 1, scale: 1.1, points: 40 },
 ]
 export const SHAKER_CUP_SIZE_PCT = 13 // cup width at scale 1, % of screen width
 // Roughly every-other-cup gaps now, not packed shoulder to shoulder — at
