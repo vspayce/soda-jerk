@@ -260,24 +260,24 @@ body {
   animation: patron-walk 450ms ease-in-out infinite;
 }
 
-/* Real 6-frame walk cycle (PixelLab-generated) for the mom-and-son patron.
-   background-size scales the whole sheet to 6x the element's own box, so each
-   1/6 horizontal slice lands exactly on one frame regardless of the sheet's
+/* Real 8-frame walk cycle (PixelLab-generated) for every patron type.
+   background-size scales the whole sheet to 8x the element's own box, so each
+   1/8 horizontal slice lands exactly on one frame regardless of the sheet's
    native resolution. The "to" position is NOT 100%: background-position
-   percentages resolve against (bg size - box size), i.e. 5 box-widths of
-   travel, but steps(6) samples 6 evenly-spaced points across the keyframe's
-   full 0-100 range — so hitting all 6 frame boundaries exactly needs the
-   range to span 6 box-widths of travel, which is 120% (6/5 * 100%). At 100%
-   every step but the first lands between two frames, showing a torn blend
-   of both — this is what read as stutter/backwards motion in testing. */
+   percentages resolve against (bg size - box size), i.e. 7 box-widths of
+   travel, but steps(8) samples 8 evenly-spaced points across the keyframe's
+   full 0-100 range — so hitting all 8 frame boundaries exactly needs the
+   range to span 8 box-widths of travel, which is ~114.286% (8/7 * 100%). At
+   100% every step but the first lands between two frames, showing a torn
+   blend of both — this is what read as stutter/backwards motion in testing. */
 @keyframes patron-walk-cycle {
   from { background-position-x: 0%; }
-  to { background-position-x: 120%; }
+  to { background-position-x: 114.2857%; }
 }
 .patron-walk-cycle-sprite {
   background-repeat: no-repeat;
-  background-size: 600% 100%;
-  animation: patron-walk-cycle 750ms steps(6) infinite;
+  background-size: 800% 100%;
+  animation: patron-walk-cycle 900ms steps(8) infinite;
 }
 
 /* Plate-wash bonus round: a burst of spray droplets + an expanding ring,

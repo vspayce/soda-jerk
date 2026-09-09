@@ -11,6 +11,7 @@ import LifeLostScreen from './components/LifeLostScreen.jsx'
 import StagePassedScreen from './components/StagePassedScreen.jsx'
 import BonusLevel from './components/BonusLevel.jsx'
 import PlatesLevel from './components/PlatesLevel.jsx'
+import ShakerLevel from './components/ShakerLevel.jsx'
 import LeaderboardScreen from './components/LeaderboardScreen.jsx'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
@@ -46,8 +47,10 @@ export default function App() {
     bonusAimMove,
     bonusAimEnd,
     plateClick,
+    shakerThrow,
     skipToBonusWheel,
     skipToBonusPlates,
+    skipToBonusShaker,
     skipToNewVenue,
   } = useGameEngine()
   const music = useMusic(MUSIC_SRC, { volume: 0.22 })
@@ -63,6 +66,7 @@ export default function App() {
   const prevBonusResultRef = useRef(null)
   const prevPlatePopRef = useRef(0)
   const prevPlatesResultRef = useRef(null)
+  const prevShakerResolvedRef = useRef(0)
   const gestureRef = useRef({ dragging: false, startX: 0, startY: 0, laneLatched: false, runDir: 0 })
 
   // Wrap each control so the very first tap also starts the music —
@@ -146,6 +150,16 @@ export default function App() {
     }
     prevPlatesResultRef.current = resultText
   }, [state.platesLevel?.resultText])
+
+  // A cheerful sting when a shaker throw lands — silent on a miss, same
+  // as the wheel round.
+  useEffect(() => {
+    const resolvedCount = state.shakerLevel?.resolvedCount ?? 0
+    if (resolvedCount !== prevShakerResolvedRef.current) {
+      prevShakerResolvedRef.current = resolvedCount
+      if (state.shakerLevel?.resultText === 'HIT!') playCelebration()
+    }
+  }, [state.shakerLevel?.resolvedCount])
 
   const handleGestureStart = (e) => {
     if (!state.started || state.gameOver) return
@@ -253,6 +267,10 @@ export default function App() {
         <PlatesLevel platesLevel={state.platesLevel} onPlateClick={withAudio(plateClick)} />
       )}
 
+      {state.mode === 'bonusShaker' && state.shakerLevel && (
+        <ShakerLevel shakerLevel={state.shakerLevel} onThrow={withAudio(shakerThrow)} />
+      )}
+
       {state.mode === 'bar' && state.started && !state.gameOver && !state.awaitingContinue && !state.awaitingStageAdvance && (
         <Controls
           selectedDrink={state.selectedDrink}
@@ -332,6 +350,14 @@ export default function App() {
               ? withAudio(() => {
                   setShowSettings(false)
                   skipToBonusPlates()
+                })
+              : null
+          }
+          onSkipToBonusShaker={
+            state.started && !state.gameOver && state.mode === 'bar'
+              ? withAudio(() => {
+                  setShowSettings(false)
+                  skipToBonusShaker()
                 })
               : null
           }

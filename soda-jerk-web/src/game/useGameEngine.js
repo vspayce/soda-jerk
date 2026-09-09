@@ -53,6 +53,30 @@ function createPlatesLevelState() {
   }
 }
 
+// Fresh state for a shaker-cup bonus-round attempt — one cup per row,
+// each starting at a random position and direction so a replay never
+// looks identical to the last.
+function createShakerLevelState() {
+  return {
+    throwsLeft: C.SHAKER_ROUND_THROWS,
+    cups: C.SHAKER_ROWS.map((row) => ({
+      lane: row.lane,
+      y: row.y,
+      x: randomBetween(C.SHAKER_CUP_MIN_X, C.SHAKER_CUP_MAX_X),
+      dir: Math.random() < 0.5 ? 1 : -1,
+      speed: randomBetween(C.SHAKER_CUP_SPEED_MIN_X, C.SHAKER_CUP_SPEED_MAX_X),
+      color: Math.floor(Math.random() * C.BONUS_CUP_COUNT), // purely cosmetic variety
+    })),
+    scoops: [], // in-flight throws: { id, lane, progress (0-1) }
+    resultText: null, // 'HIT!' | 'MISS' — brief flash after each throw resolves
+    resultHoldMs: 0,
+    resolvedCount: 0, // bumped every time a throw resolves — App.jsx watches
+    // this (alongside resultText) to fire the matching hit/miss sfx
+    ended: false,
+    nextId: 1,
+  }
+}
+
 function pickPlateKind() {
   const r = Math.random()
   if (r < C.PLATES_KIND_WEIGHTS.dirty) return 'dirty'
@@ -63,11 +87,13 @@ function pickPlateKind() {
 function createInitialSim() {
   return {
     started: false,
-    mode: 'bar', // 'bar' | 'bonusWheel' | 'bonusPlates' — swaps the whole
-    // gameplay loop over to one of the two bonus mini-games; see
-    // stepBonus()/BonusLevel.jsx and stepPlates()/PlatesLevel.jsx
+    mode: 'bar', // 'bar' | 'bonusWheel' | 'bonusPlates' | 'bonusShaker' — swaps
+    // the whole gameplay loop over to one of the three bonus mini-games; see
+    // stepBonus()/BonusLevel.jsx, stepPlates()/PlatesLevel.jsx, and
+    // stepShaker()/ShakerLevel.jsx
     bonusLevel: null, // set to createBonusLevelState() while mode is 'bonusWheel'
     platesLevel: null, // set to createPlatesLevelState() while mode is 'bonusPlates'
+    shakerLevel: null, // set to createShakerLevelState() while mode is 'bonusShaker'
     playerLane: 0,
     playerX: C.PLAYER_X,
     moveDir: 0, // -1 left, 0 still, 1 right — set by holding a run button
@@ -160,7 +186,8 @@ function trySpawnCustomer(sim, travelMs) {
   const lane = pick(openLanes)
   const speed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (travelMs / 1000)
   const drinkType = Math.floor(Math.random() * C.DRINK_TYPES.length)
-  const patronType = Math.floor(Math.random() * C.PATRON_TYPE_COUNT)
+  const patronTypeCount = sim.stage >= 2 ? C.PATRON_TYPE_COUNT_FOUNTAIN : C.PATRON_TYPE_COUNT
+  const patronType = Math.floor(Math.random() * patronTypeCount)
 
   sim.customers.push({
     id: sim.nextId++,
@@ -266,11 +293,15 @@ function stepBonus(sim, dt) {
         b.resultText = null
         b.iceCreamColor = Math.floor(Math.random() * C.BONUS_CUP_COUNT)
       } else {
-        // Wheel round's over — on to the plate-wash round before heading
-        // back to the bar (see stepPlates for that final leg).
-        sim.mode = 'bonusPlates'
+        // Wheel round's over — a clean full clear sends the player to
+        // exactly one of the three bonus rounds (see the trigger in
+        // step()), so this one's done on its own, straight back to the bar.
+        // Reset the stage-clear attempt so a future clean full-clear can
+        // send the player to a bonus round again.
+        sim.mode = 'bar'
         sim.bonusLevel = null
-        sim.platesLevel = createPlatesLevelState()
+        sim.stageAttemptActive = false
+        sim.stageAttemptClean = false
       }
     }
   }
@@ -324,6 +355,61 @@ function stepPlates(sim, dt) {
   p.plates = p.plates.filter((pl) => !pl._remove)
 }
 
+// The shaker-cup bonus round — three cups, each bouncing back and forth
+// along its own row; a throw always lands at SHAKER_TARGET_X after a fixed
+// travel time, so scoring is purely about tapping a row at the moment its
+// cup is passing through that x — see shakerThrow() for where a throw
+// actually gets fired.
+function stepShaker(sim, dt) {
+  const s = sim.shakerLevel
+  if (!s) return
+
+  if (s.ended) {
+    s.resultHoldMs -= dt * 1000
+    if (s.resultHoldMs <= 0) {
+      sim.mode = 'bar'
+      sim.shakerLevel = null
+      sim.stageAttemptActive = false
+      sim.stageAttemptClean = false
+    }
+    return
+  }
+
+  for (const cup of s.cups) {
+    cup.x += cup.dir * cup.speed * dt
+    if (cup.x <= C.SHAKER_CUP_MIN_X) {
+      cup.x = C.SHAKER_CUP_MIN_X
+      cup.dir = 1
+    } else if (cup.x >= C.SHAKER_CUP_MAX_X) {
+      cup.x = C.SHAKER_CUP_MAX_X
+      cup.dir = -1
+    }
+  }
+
+  for (const scoop of s.scoops) {
+    scoop.progress += (dt * 1000) / C.SHAKER_THROW_TRAVEL_MS
+    if (scoop.progress >= 1) {
+      const cup = s.cups.find((c) => c.lane === scoop.lane)
+      const hit = cup && Math.abs(cup.x - C.SHAKER_TARGET_X) <= C.SHAKER_TARGET_TOLERANCE_PCT
+      if (hit) {
+        sim.score += C.SHAKER_HIT_POINTS
+        s.resultText = 'HIT!'
+      } else {
+        s.resultText = 'MISS'
+      }
+      s.resultHoldMs = C.SHAKER_RESULT_HOLD_MS
+      s.resolvedCount++
+      scoop._remove = true
+    }
+  }
+  s.scoops = s.scoops.filter((sc) => !sc._remove)
+
+  if (s.throwsLeft <= 0 && s.scoops.length === 0) {
+    s.ended = true
+    s.resultHoldMs = C.SHAKER_ROUND_END_HOLD_MS
+  }
+}
+
 function step(sim, dt) {
   if (!sim.started) return
   if (sim.mode === 'bonusWheel') {
@@ -332,6 +418,10 @@ function step(sim, dt) {
   }
   if (sim.mode === 'bonusPlates') {
     stepPlates(sim, dt)
+    return
+  }
+  if (sim.mode === 'bonusShaker') {
+    stepShaker(sim, dt)
     return
   }
   if (sim.awaitingContinue) return
@@ -602,9 +692,13 @@ function step(sim, dt) {
         sim.awaitingStageAdvance = true
       } else {
         // Already at the top lane-capacity stage — a clean full clear
-        // here sends the player to the wheel-throw bonus round instead.
-        sim.mode = 'bonusWheel'
-        sim.bonusLevel = createBonusLevelState()
+        // here sends the player to a random one of the three bonus rounds
+        // instead.
+        const bonusMode = pick(['bonusWheel', 'bonusPlates', 'bonusShaker'])
+        sim.mode = bonusMode
+        if (bonusMode === 'bonusWheel') sim.bonusLevel = createBonusLevelState()
+        else if (bonusMode === 'bonusPlates') sim.platesLevel = createPlatesLevelState()
+        else sim.shakerLevel = createShakerLevelState()
       }
     }
   }
@@ -826,7 +920,19 @@ export function useGameEngine() {
     p.lastPopKind = plate.kind
   }, [])
 
-  // Dev/test shortcuts — jump straight into either bonus round from
+  // Tapping a shaker row fires a scoop into it — it always lands at
+  // SHAKER_TARGET_X, resolved once it arrives (see stepShaker). One
+  // throw per tap; blocked once throwsLeft runs out, same as the wheel.
+  const shakerThrow = useCallback((lane) => {
+    const sim = simRef.current
+    const s = sim.shakerLevel
+    if (!s || s.ended || s.throwsLeft <= 0) return
+    if (s.scoops.some((sc) => sc.lane === lane)) return
+    s.throwsLeft -= 1
+    s.scoops.push({ id: s.nextId++, lane, progress: 0 })
+  }, [])
+
+  // Dev/test shortcuts — jump straight into any bonus round from
   // anywhere mid-game, no need to actually clear two full stages first.
   const skipToBonusWheel = useCallback(() => {
     const sim = simRef.current
@@ -840,6 +946,13 @@ export function useGameEngine() {
     if (sim.gameOver || !sim.started) return
     sim.mode = 'bonusPlates'
     sim.platesLevel = createPlatesLevelState()
+  }, [])
+
+  const skipToBonusShaker = useCallback(() => {
+    const sim = simRef.current
+    if (sim.gameOver || !sim.started) return
+    sim.mode = 'bonusShaker'
+    sim.shakerLevel = createShakerLevelState()
   }, [])
 
   // Dev shortcut — jumps straight to the stage-2+ soda-fountain venue
@@ -880,8 +993,10 @@ export function useGameEngine() {
     bonusAimMove,
     bonusAimEnd,
     plateClick,
+    shakerThrow,
     skipToBonusWheel,
     skipToBonusPlates,
+    skipToBonusShaker,
     skipToNewVenue,
   }
 }

@@ -92,8 +92,11 @@ export const DRINK_TYPES = [
 ]
 
 // How many different patron illustrations exist per drink color — purely
-// cosmetic variety, picked at random when a customer spawns.
+// cosmetic variety, picked at random when a customer spawns. The two
+// extra caricature patrons (indices 3 and 4) only show up once the
+// stage-2+ soda-fountain venue kicks in — see trySpawnCustomer.
 export const PATRON_TYPE_COUNT = 3
+export const PATRON_TYPE_COUNT_FOUNTAIN = 5
 
 // A hot dog drops on the counter every so often, somewhere in the middle
 // or right portion of the bar (never right at the end near the player,
@@ -190,3 +193,30 @@ export const PLATES_LANE_PATHS = {
 export const PLATES_START_SCALE = 0.12
 export const PLATES_END_SCALE = 1.15
 export const PLATES_BASE_SIZE_PCT = 30 // plate width at scale 1, % of screen width
+
+// The third bonus round — the jerk again seen from behind (same viewpoint
+// as the plate wash), this time facing three shaker cups that each slide
+// back and forth along their own row. Tapping a row throws a scoop into
+// it; the scoop always lands at SHAKER_TARGET_X after a fixed travel time,
+// so landing it is purely about timing the tap to when that row's cup is
+// passing through the target zone. All coordinates are percentages of the
+// full phone-frame, same as the plate wash. See ShakerLevel.jsx.
+export const SHAKER_ROUND_THROWS = 6
+export const SHAKER_HIT_POINTS = 75
+export const SHAKER_RESULT_HOLD_MS = 700 // brief HIT!/MISS pause before the next throw's allowed
+export const SHAKER_ROUND_END_HOLD_MS = 1800 // how long the final result shows before returning to the bar
+// Row order top-to-bottom; each cup bounces between 12 and 88 within its
+// own row.
+export const SHAKER_ROWS = [
+  { lane: 'top', y: 28 },
+  { lane: 'middle', y: 50 },
+  { lane: 'bottom', y: 72 },
+]
+export const SHAKER_CUP_MIN_X = 12
+export const SHAKER_CUP_MAX_X = 88
+export const SHAKER_CUP_SPEED_MIN_X = 18 // %/s
+export const SHAKER_CUP_SPEED_MAX_X = 34
+export const SHAKER_CUP_SIZE_PCT = 13 // cup width, % of screen width
+export const SHAKER_TARGET_X = 50 // every thrown scoop lands here
+export const SHAKER_TARGET_TOLERANCE_PCT = 11 // how close the cup's center must be to SHAKER_TARGET_X to count as a hit
+export const SHAKER_THROW_TRAVEL_MS = 450 // time for a scoop to fly from the jerk up to a row
