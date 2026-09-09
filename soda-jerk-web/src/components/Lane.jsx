@@ -172,6 +172,11 @@ export default function Lane({
           <img
             src={DRINK_ICON_SRC(DRINK_TYPES[m.drinkType].icon)}
             alt=""
+            // Only Orange Creme has a straw in its art — spinning a glass
+            // with no straw would just look like a rotating blob of soda,
+            // so the spin stays specific to the one drink that reads as
+            // "spinning" rather than "glitching."
+            className={m.drinkType === 0 ? 'mug-spin' : ''}
             style={{ height: 27, width: 'auto', display: 'block' }}
           />
         </div>
@@ -184,7 +189,7 @@ export default function Lane({
         <div
           key={g.id}
           className="absolute z-20 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center"
-          style={{ left: `${g.x}%`, top: COUNTER_SURFACE_Y, padding: 12 }}
+          style={{ left: `${g.x}%`, top: COUNTER_SURFACE_Y, padding: 12, pointerEvents: g._missed ? 'none' : 'auto' }}
           onPointerDown={(e) => {
             e.preventDefault()
             onGrabGlass(g.id)
@@ -193,14 +198,18 @@ export default function Lane({
           <img
             src={GLASS_EMPTY_SRC}
             alt=""
-            className="glass-return relative"
+            className={`relative ${g._missed ? 'glass-falling' : 'glass-return'}`}
             style={{ height: 44, width: 'auto', display: 'block' }}
           />
           {/* two glints catching the light at different spots on the glass,
               twinkling out of sync so it reads as sparkle rather than a
-              single pulsing highlight */}
-          <div className="glass-glint absolute" style={{ top: '28%', left: '32%' }} />
-          <div className="glass-glint absolute" style={{ top: '62%', left: '64%', width: 6, height: 6, animationDelay: '0.4s' }} />
+              single pulsing highlight — only while it's still catchable */}
+          {!g._missed && (
+            <>
+              <div className="glass-glint absolute" style={{ top: '28%', left: '32%' }} />
+              <div className="glass-glint absolute" style={{ top: '62%', left: '64%', width: 6, height: 6, animationDelay: '0.4s' }} />
+            </>
+          )}
         </div>
       ))}
 

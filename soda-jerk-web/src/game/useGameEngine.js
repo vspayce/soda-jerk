@@ -186,7 +186,10 @@ function createInitialSim() {
     // recalled to the counter after a spill, until he's actually back
     pendingSprayPatronType: 0,
     continuePauseInMs: null, // counts down while he's held at the counter
-    // getting sprayed, before awaitingContinue kicks in
+    // getting sprayed (or a missed glass plays its fall animation),
+    // before awaitingContinue kicks in
+    pendingMissReason: null, // which missReason to apply once
+    // continuePauseInMs elapses — see the handler for it below
     nextSpawnInMs: LEVELS[0].spawnIntervalMs,
     nextBonusInMs: randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS),
     nextId: 1,
@@ -558,13 +561,15 @@ function step(sim, dt) {
     // instant he reached the end of the bar, this is just letting it
     // play out.
     sim.continuePauseInMs = C.SPRAY_HOLD_MS
+    sim.pendingMissReason = 'spray'
   }
   if (sim.continuePauseInMs !== null) {
     sim.continuePauseInMs -= dt * 1000
     if (sim.continuePauseInMs <= 0) {
       sim.continuePauseInMs = null
       if (!sim.gameOver) {
-        sim.missReason = 'spray'
+        sim.missReason = sim.pendingMissReason
+        sim.pendingMissReason = null
         sim.awaitingContinue = true
       }
     }
@@ -714,6 +719,7 @@ function step(sim, dt) {
         sim.lastSpillDrinkType = c.drinkType
         sim.lastSpillPatronType = c.patronType
         sim.continuePauseInMs = C.SPRAY_OTHER_LANE_HOLD_MS
+        sim.pendingMissReason = 'spray'
       }
     } else if (c.status === 'leaving-happy' && c.x >= C.OFFSCREEN_X) {
       c._remove = true
@@ -723,31 +729,41 @@ function step(sim, dt) {
 
   // Returning glasses — missed if one slides all the way back to the
   // counter's edge uncaught, but running over one anywhere along the way
-  // auto-grabs it, same as tapping it directly.
+  // auto-grabs it, same as tapping it directly. A missed one stops right
+  // there and plays a tumble-off-the-counter animation (see Lane.jsx)
+  // for GLASS_FALL_HOLD_MS before it's actually cleared out, instead of
+  // just vanishing the instant it's missed.
   for (const g of sim.glasses) {
+    if (g._missed || g._caught) continue
     g.x -= g.speed * dt
     if (g.lane === sim.playerLane && Math.abs(g.x - sim.playerX) <= C.GLASS_REACH_X) {
       g._caught = true
     } else if (g.x <= C.PLAYER_X) {
       g._missed = true
+      g.x = C.PLAYER_X
+      g.fallMs = C.GLASS_FALL_HOLD_MS
     }
   }
-  const missedCount = sim.glasses.filter((g) => g._missed).length
-  if (missedCount > 0) {
+  for (const g of sim.glasses) {
+    if (g._missed) g.fallMs -= dt * 1000
+  }
+  const newlyMissed = sim.glasses.filter((g) => g._missed && !g._consequenceApplied)
+  for (const g of newlyMissed) g._consequenceApplied = true
+  if (newlyMissed.length > 0) {
     sim.missedGlassCount++
-    loseLife(sim, missedCount)
+    loseLife(sim, newlyMissed.length)
     if (sim.stageAttemptActive) {
       sim.stageAttemptClean = false
       sim.stageAttemptActive = false
     }
     if (!sim.gameOver) {
-      sim.missReason = 'glass'
-      sim.awaitingContinue = true
+      sim.continuePauseInMs = C.GLASS_FALL_HOLD_MS
+      sim.pendingMissReason = 'glass'
     }
   }
   const autoCaughtCount = sim.glasses.filter((g) => g._caught).length
   if (autoCaughtCount > 0) sim.score += autoCaughtCount * C.POINTS_PER_CAUGHT_GLASS
-  sim.glasses = sim.glasses.filter((g) => !g._missed && !g._caught)
+  sim.glasses = sim.glasses.filter((g) => !g._caught && !(g._missed && g.fallMs <= 0))
 
   // Stage advance: the moment every lane fills up at once arms a fresh
   // attempt and freezes spawning (see the spawn block above) — that

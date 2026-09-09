@@ -74,6 +74,8 @@ export const SPRAY_HOLD_MS = 2000
 // recall animation to wait for, just a short beat with the spray sound
 // before the "YOU GOT SPRAYED!" screen shows up.
 export const SPRAY_OTHER_LANE_HOLD_MS = 900
+export const GLASS_FALL_HOLD_MS = 700 // how long a missed glass's tumble-off-
+// the-counter animation plays before the "YOU MISSED" screen shows up
 
 // How close (in x) the bartender has to run to a returning glass to
 // auto-grab it just by being there, same as tapping it directly.

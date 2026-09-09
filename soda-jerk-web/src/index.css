@@ -57,6 +57,30 @@ body {
   animation: glass-pulse 0.7s ease-in-out infinite;
 }
 
+/* A missed glass tips off the counter's edge and drops out of sight
+   instead of just vanishing — plays once (GLASS_FALL_HOLD_MS in
+   constants.js is tuned to roughly match this duration) while the sim
+   holds input frozen for it, same beat as the spray-recall pause. */
+@keyframes glass-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  30% { transform: translateY(4px) rotate(35deg); opacity: 1; }
+  100% { transform: translateY(70px) rotate(100deg); opacity: 0; }
+}
+.glass-falling {
+  animation: glass-fall 700ms ease-in forwards;
+}
+
+/* Orange Creme's mug has a straw baked into its art — spinning it as it
+   slides down the counter gives it a little personality the plain pink
+   one (no straw) doesn't have. */
+@keyframes mug-spin-rotate {
+  to { transform: rotate(360deg); }
+}
+.mug-spin {
+  animation: mug-spin-rotate 650ms linear infinite;
+  transform-origin: 50% 55%;
+}
+
 /* The glass art itself is a nearly-white, mostly-transparent outline —
    easy to lose against the counter even with the glow above — so this
    sits behind it as a warm glowing puck for a strong, unmissable anchor
