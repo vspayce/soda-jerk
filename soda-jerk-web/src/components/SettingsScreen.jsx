@@ -1,6 +1,6 @@
 import { refreshApp } from '../refreshApp.js'
 
-export default function SettingsScreen({ volume, onVolumeChange, onClose, onSkipToBonusWheel, onSkipToBonusPlates }) {
+export default function SettingsScreen({ volume, onVolumeChange, onClose, onSkipToBonusWheel, onSkipToBonusPlates, onSkipToNewVenue }) {
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center bg-ink/95 px-8 py-10 overflow-y-auto">
       <button
@@ -53,6 +53,18 @@ export default function SettingsScreen({ volume, onVolumeChange, onClose, onSkip
           className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
         >
           SKIP TO PLATE BONUS
+        </button>
+      )}
+
+      {/* Temporary dev shortcut for trying the stage-2+ soda-fountain
+          venue reskin without clearing a bonus round first — remove once
+          it's no longer needed for testing. */}
+      {onSkipToNewVenue && (
+        <button
+          onClick={onSkipToNewVenue}
+          className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
+        >
+          SKIP TO NEW VENUE
         </button>
       )}
 

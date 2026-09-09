@@ -842,6 +842,15 @@ export function useGameEngine() {
     sim.platesLevel = createPlatesLevelState()
   }, [])
 
+  // Dev shortcut — jumps straight to the stage-2+ soda-fountain venue
+  // (see PerspectiveBackdrop.jsx / Lane.jsx, which reskin once
+  // state.stage >= 2) without having to actually clear a bonus round.
+  const skipToNewVenue = useCallback(() => {
+    const sim = simRef.current
+    if (sim.gameOver || !sim.started) return
+    sim.stage = Math.max(sim.stage, 2)
+  }, [])
+
   const startGame = useCallback(() => {
     simRef.current.started = true
     setTick((n) => n + 1)
@@ -873,5 +882,6 @@ export function useGameEngine() {
     plateClick,
     skipToBonusWheel,
     skipToBonusPlates,
+    skipToNewVenue,
   }
 }

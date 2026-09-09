@@ -48,6 +48,7 @@ export default function App() {
     plateClick,
     skipToBonusWheel,
     skipToBonusPlates,
+    skipToNewVenue,
   } = useGameEngine()
   const music = useMusic(MUSIC_SRC, { volume: 0.22 })
   const [spraying, setSpraying] = useState(false)
@@ -198,7 +199,7 @@ export default function App() {
           'radial-gradient(120% 80% at 50% 0%, #1B6F62 0%, #0E4B43 35%, #151014 100%)',
       }}
     >
-      <PerspectiveBackdrop />
+      <PerspectiveBackdrop stage={state.stage} />
 
       <HUD
         score={state.score}
@@ -220,6 +221,7 @@ export default function App() {
             <Lane
               key={laneIndex}
               laneIndex={laneIndex}
+              stage={state.stage}
               isPlayerLane={state.playerLane === laneIndex}
               playerX={state.playerX}
               moveDir={state.playerLane === laneIndex ? state.moveDir : 0}
@@ -330,6 +332,14 @@ export default function App() {
               ? withAudio(() => {
                   setShowSettings(false)
                   skipToBonusPlates()
+                })
+              : null
+          }
+          onSkipToNewVenue={
+            state.started && !state.gameOver && state.mode === 'bar' && state.stage < 2
+              ? withAudio(() => {
+                  setShowSettings(false)
+                  skipToNewVenue()
                 })
               : null
           }

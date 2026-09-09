@@ -13,6 +13,10 @@ const COUNTER_SURFACE_Y = `calc(50% - ${COUNTER_HEIGHT_PX / 2 + 10}px)`
 const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 const DRINK_ICON_SRC = (icon) => ART_SRC(icon)
 const BAR_COUNTER_SRC = ART_SRC('bar-counter.png')
+// From stage 2 on, the bar gets a permanent soda-fountain-diner reskin —
+// see also PerspectiveBackdrop's `stage` prop for the matching wall/light
+// palette swap.
+const BAR_COUNTER_FOUNTAIN_SRC = ART_SRC('bar-counter-fountain.png')
 const SALOON_DOOR_LEFT_SRC = ART_SRC('saloon-door-left.png')
 const SALOON_DOOR_RIGHT_SRC = ART_SRC('saloon-door-right.png')
 const DOOR_HEIGHT = 55
@@ -56,6 +60,7 @@ export default function Lane({
   sprayPatronType,
   throwing,
   laneIndex,
+  stage,
   onGrabBonus,
   onGrabGlass,
 }) {
@@ -88,7 +93,7 @@ export default function Lane({
       {/* bar counter — spans the full lane so patrons are always walking
           along the bar itself */}
       <img
-        src={BAR_COUNTER_SRC}
+        src={stage >= 2 ? BAR_COUNTER_FOUNTAIN_SRC : BAR_COUNTER_SRC}
         alt=""
         className="absolute left-0 right-0 top-1/2 -translate-y-1/2"
         style={{ width: '100%', height: COUNTER_HEIGHT_PX, objectFit: 'cover', boxShadow: '0 3px 6px rgba(0,0,0,0.6)' }}

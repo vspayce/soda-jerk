@@ -99,6 +99,28 @@ body {
   animation: melted-drip-fall 2.6s ease-in infinite;
 }
 
+/* The Wurlitzer, looking played: a gentle rhythmic sway/brighten on the
+   whole console, plus a few small lights over the stop-tab row that flare
+   on in a staggered loop, like tabs being pulled in and out as the tune
+   goes. Bakes in the element's own -translate-x-1/2 centering since an
+   animated transform fully replaces any other transform, not just the
+   parts it names. */
+@keyframes organ-play {
+  0%, 100% { transform: translateX(-50%) translateY(0) scale(1); filter: brightness(1); }
+  50% { transform: translateX(-50%) translateY(-1.5px) scale(1.008); filter: brightness(1.05); }
+}
+.organ-playing {
+  animation: organ-play 900ms ease-in-out infinite;
+}
+@keyframes organ-stop-glint {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.85; }
+}
+.organ-stop-glint {
+  background: radial-gradient(circle, rgba(255,240,190,0.95) 0%, rgba(255,240,190,0) 75%);
+  animation: organ-stop-glint 1.6s ease-in-out infinite;
+}
+
 .glass-glint {
   width: 9px;
   height: 9px;
