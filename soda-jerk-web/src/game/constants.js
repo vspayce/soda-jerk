@@ -98,11 +98,13 @@ export const DRINK_TYPES = [
 // extra caricature patrons (indices 3 and 4) only show up once the
 // stage-2+ soda-fountain venue kicks in — see trySpawnCustomer.
 export const PATRON_TYPE_COUNT = 3
-export const PATRON_TYPE_COUNT_FOUNTAIN = 5
-// Relative spawn odds for the 5 fountain-venue patron types — the
-// professor (Einstein-styled, index 4) is weighted well above an even
-// share so he shows up noticeably more often than the others.
-export const PATRON_TYPE_WEIGHTS_FOUNTAIN = [1, 1, 1, 1, 3]
+export const PATRON_TYPE_COUNT_FOUNTAIN = 8
+// Relative spawn odds for the 8 fountain-venue patron types — the
+// professor (Einstein-styled, index 4) is weighted above an even share
+// so he keeps showing up noticeably more than the others; the three
+// newest caricatures (aviator/showman/gangster, indices 5-7) get a
+// smaller bump of their own since they're new.
+export const PATRON_TYPE_WEIGHTS_FOUNTAIN = [1, 1, 1, 1, 3, 2, 2, 2]
 
 // A hot dog drops on the counter every so often, somewhere in the middle
 // or right portion of the bar (never right at the end near the player,

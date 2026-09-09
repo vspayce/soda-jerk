@@ -15,6 +15,9 @@ const SPRAY_SRC = [
   [`${import.meta.env.BASE_URL}art/spray-patron3-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron3-pink.png`],
   [`${import.meta.env.BASE_URL}art/spray-patron4-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron4-pink.png`],
   [`${import.meta.env.BASE_URL}art/spray-patron5-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron5-pink.png`],
+  [`${import.meta.env.BASE_URL}art/spray-patron6-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron6-pink.png`],
+  [`${import.meta.env.BASE_URL}art/spray-patron7-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron7-pink.png`],
+  [`${import.meta.env.BASE_URL}art/spray-patron8-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron8-pink.png`],
 ]
 
 export default function Player({ x, spraying, sprayDrinkType, sprayPatronType, throwing, moveDir }) {

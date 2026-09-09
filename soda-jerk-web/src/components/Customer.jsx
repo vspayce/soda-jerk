@@ -19,12 +19,15 @@ const PATRON_SRC = [
   [`${import.meta.env.BASE_URL}art/patron3-orange.png`, `${import.meta.env.BASE_URL}art/patron3-pink.png`],
   [`${import.meta.env.BASE_URL}art/patron4-orange.png`, `${import.meta.env.BASE_URL}art/patron4-pink.png`],
   [`${import.meta.env.BASE_URL}art/patron5-orange.png`, `${import.meta.env.BASE_URL}art/patron5-pink.png`],
+  [`${import.meta.env.BASE_URL}art/patron6-orange.png`, `${import.meta.env.BASE_URL}art/patron6-pink.png`],
+  [`${import.meta.env.BASE_URL}art/patron7-orange.png`, `${import.meta.env.BASE_URL}art/patron7-pink.png`],
+  [`${import.meta.env.BASE_URL}art/patron8-orange.png`, `${import.meta.env.BASE_URL}art/patron8-pink.png`],
 ]
 // Some illustrations (e.g. the mom-and-son pair) are wider than others,
 // so each patronType gets its own height to read at a consistent scale.
 // 25% bigger across the board, then another 10% on top of that — small
-// enough to miss details like the tramp/professor caricatures otherwise.
-const PATRON_HEIGHT = [89, 91, 89, 89, 89]
+// enough to miss details like the caricature patrons otherwise.
+const PATRON_HEIGHT = [89, 91, 89, 89, 89, 89, 89, 89]
 
 // Real 8-frame walk-cycle sprite sheets (PixelLab-generated from each static
 // illustration), used while a patron is actively walking in. Each entry's
@@ -50,6 +53,18 @@ const PATRON_WALK_SHEETS = {
   4: [
     { src: `${import.meta.env.BASE_URL}art/patron5-orange-walk.png`, aspectRatio: 137 / 256 },
     { src: `${import.meta.env.BASE_URL}art/patron5-pink-walk.png`, aspectRatio: 137 / 256 },
+  ],
+  5: [
+    { src: `${import.meta.env.BASE_URL}art/patron6-orange-walk.png`, aspectRatio: 138 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron6-pink-walk.png`, aspectRatio: 138 / 256 },
+  ],
+  6: [
+    { src: `${import.meta.env.BASE_URL}art/patron7-orange-walk.png`, aspectRatio: 138 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron7-pink-walk.png`, aspectRatio: 138 / 256 },
+  ],
+  7: [
+    { src: `${import.meta.env.BASE_URL}art/patron8-orange-walk.png`, aspectRatio: 138 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron8-pink-walk.png`, aspectRatio: 138 / 256 },
   ],
 }
 
