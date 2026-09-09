@@ -322,6 +322,19 @@ body {
   animation: conveyor-belt-move 500ms linear infinite;
 }
 
+/* Shaker Shuffle's dumbwaiter track — scrolls the riveted-trough tile
+   horizontally by exactly one tile width (--track-shift, set per row
+   since each row's tile is scaled for perspective) so the loop is
+   seamless. */
+@keyframes shaker-track-move {
+  to { background-position-x: calc(-1 * var(--track-shift, 128px)); }
+}
+.shaker-track-scroll {
+  animation-name: shaker-track-move;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
 /* A quick lean-and-recoil on the soda jerk (seen from behind) each time he
    sprays a plate — re-triggered via a React `key` remount in PlatesLevel.jsx
    rather than a CSS class toggle, so rapid-fire clicks each restart it

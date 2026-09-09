@@ -25,8 +25,9 @@ export function playGlassShatter() {
   audio.play().catch(() => {})
 }
 
-// Real recording — a bigger crash, for a missed mug or running out of
-// lives entirely.
+// Real recording — a bigger crash, reserved for running out of lives
+// entirely so it reads as a distinct "it's over" beat, not just another
+// miss (every other miss uses the shorter playGlassShatter).
 export function playCrash() {
   const audio = new Audio(CRASH_SRC)
   audio.volume = 0.8

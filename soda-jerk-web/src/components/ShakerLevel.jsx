@@ -6,9 +6,9 @@ import {
 } from '../game/constants.js'
 
 // The third bonus round — the jerk again seen from behind (same viewpoint
-// as the plate wash), facing three rows of shaker cups packed right next
-// to each other, scrolling past like a sushi conveyor belt on its own
-// counter shelf. The throw is Angry-Birds style, same pull-back-and-release
+// as the plate wash), facing three rows of shaker cups scrolling past
+// like a sushi conveyor belt on its own counter shelf. The throw is
+// Angry-Birds style, same pull-back-and-release
 // physics as BonusLevel's wheel round: pull harder to arc higher and reach
 // an upper row, then land wherever that arc actually carries the scoop —
 // see stepShaker()/shakerAimStart/Move/End in useGameEngine.js for the
@@ -59,34 +59,34 @@ function ColorTint({ src, color }) {
   )
 }
 
-// A steel counter shelf running the width of the screen under each row's
-// cups — same dashed-tread trick PlatesLevel's conveyor belts use, just
-// horizontal, and flipped per row to roughly match that row's scroll
-// direction.
+const TRACK_SRC = ART_SRC('shaker-track.png')
+const TRACK_NATIVE_WIDTH = 128 // shaker-track.png's own tile width, for backgroundSize
+
+// A steel dumbwaiter track running the width of the screen under each
+// row's cups — actual PixelLab-generated art (a repeating riveted trough)
+// instead of a plain CSS line, scrolling in sync with that row's cups so
+// it reads as the thing they're physically sliding along.
 function ShakerShelves() {
   return (
-    <svg className="absolute inset-0 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ zIndex: 0 }}>
-      {SHAKER_ROWS.map((row) => {
-        const shelfY = row.y + 9 * row.scale
-        return (
-          <g key={row.lane}>
-            <line x1={0} y1={shelfY} x2={100} y2={shelfY} stroke="#2A2D31" strokeWidth={4} vectorEffect="non-scaling-stroke" />
-            <line
-              className="conveyor-belt-tread"
-              x1={0}
-              y1={shelfY}
-              x2={100}
-              y2={shelfY}
-              stroke="#8A929A"
-              strokeWidth={1.6}
-              strokeDasharray="3 5"
-              vectorEffect="non-scaling-stroke"
-              style={{ animationDirection: row.dir < 0 ? 'reverse' : 'normal' }}
-            />
-          </g>
-        )
-      })}
-    </svg>
+    <>
+      {SHAKER_ROWS.map((row) => (
+        <div
+          key={row.lane}
+          className="absolute inset-x-0 shaker-track-scroll"
+          style={{
+            top: `${row.y + 9 * row.scale}%`,
+            height: `${10 * row.scale}px`,
+            backgroundImage: `url(${TRACK_SRC})`,
+            backgroundRepeat: 'repeat-x',
+            backgroundSize: `${TRACK_NATIVE_WIDTH * row.scale}px 100%`,
+            boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+            '--track-shift': `${TRACK_NATIVE_WIDTH * row.scale}px`,
+            animationDirection: row.dir < 0 ? 'reverse' : 'normal',
+            animationDuration: `${2 * row.scale}s`,
+          }}
+        />
+      ))}
+    </>
   )
 }
 

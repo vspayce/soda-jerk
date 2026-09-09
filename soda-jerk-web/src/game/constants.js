@@ -195,10 +195,10 @@ export const PLATES_END_SCALE = 1.15
 export const PLATES_BASE_SIZE_PCT = 30 // plate width at scale 1, % of screen width
 
 // The third bonus round — the jerk again seen from behind (same viewpoint
-// as the plate wash), this time facing three rows of shaker cups packed
-// right next to each other, each row a continuous belt of cups scrolling
-// past like a sushi conveyor. The throw itself is Angry-Birds style, same
-// pull-back-and-release physics as the wheel round (see BONUS_* above):
+// as the plate wash), this time facing three rows of shaker cups, each
+// row a continuous belt of cups scrolling past like a sushi conveyor.
+// The throw itself is Angry-Birds style, same pull-back-and-release
+// physics as the wheel round (see BONUS_* above):
 // pull harder to arc higher and reach an upper row, land the scoop on a
 // cup wherever the arc actually carries it. All coordinates are
 // percentages of the full phone-frame, same as the plate wash. See
@@ -216,15 +216,13 @@ export const SHAKER_ROUND_END_HOLD_MS = 1800 // how long the final result shows 
 export const SHAKER_ROWS = [
   { lane: 'top', y: 28, dir: 1, scale: 0.72 },
   { lane: 'middle', y: 50, dir: -1, scale: 1 },
-  { lane: 'bottom', y: 72, dir: 1, scale: 1.3 },
+  { lane: 'bottom', y: 72, dir: 1, scale: 1.1 },
 ]
 export const SHAKER_CUP_SIZE_PCT = 13 // cup width at scale 1, % of screen width
-// Cups in a row sit right next to each other — spacing is only a hair
-// wider than the cup itself — and the belt runs off both edges of the
-// screen so the train reads as endless, not a fixed row of props. Also
-// at scale 1; scaled per-row same as the cup size so smaller/bigger cups
-// still pack snugly instead of gapping or overlapping.
-export const SHAKER_CUP_SPACING_PCT = 17
+// Roughly every-other-cup gaps now, not packed shoulder to shoulder — at
+// scale 1; scaled per-row same as the cup size so smaller/bigger cups
+// keep proportionally the same gap instead of one row looking tighter.
+export const SHAKER_CUP_SPACING_PCT = 32
 export const SHAKER_TRACK_PAD_PCT = 20 // offscreen overhang each side, for a seamless wrap
 export const SHAKER_CUP_SPEED_MIN_X = 14 // %/s
 export const SHAKER_CUP_SPEED_MAX_X = 22

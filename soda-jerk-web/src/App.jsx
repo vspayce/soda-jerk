@@ -98,7 +98,7 @@ export default function App() {
   useEffect(() => {
     if (state.mugCrashCount !== prevMugCrashRef.current) {
       prevMugCrashRef.current = state.mugCrashCount
-      playCrash()
+      playGlassShatter()
     }
   }, [state.mugCrashCount])
 
@@ -148,7 +148,7 @@ export default function App() {
   useEffect(() => {
     const resultText = state.platesLevel?.resultText ?? null
     if (resultText && resultText !== prevPlatesResultRef.current && resultText !== "TIME'S UP!") {
-      playCrash()
+      playGlassShatter()
     }
     prevPlatesResultRef.current = resultText
   }, [state.platesLevel?.resultText])

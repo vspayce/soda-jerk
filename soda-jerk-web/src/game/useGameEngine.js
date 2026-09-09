@@ -60,8 +60,8 @@ const SHAKER_TRACK_MAX_X = 100 + C.SHAKER_TRACK_PAD_PCT
 const SHAKER_TRACK_LENGTH = SHAKER_TRACK_MAX_X - SHAKER_TRACK_MIN_X
 
 // Fresh state for a shaker-cup bonus-round attempt — each row is a train
-// of cups packed snugly together spanning the whole belt, all cups within
-// a row moving at one shared speed so the spacing (and the sushi-conveyor
+// of evenly-spaced cups spanning the whole belt, all cups within a row
+// moving at one shared speed so the spacing (and the sushi-conveyor
 // look) holds steady as they scroll past.
 function createShakerLevelState() {
   const cups = []
@@ -392,12 +392,12 @@ function stepPlates(sim, dt) {
   p.plates = p.plates.filter((pl) => !pl._remove)
 }
 
-// The shaker-cup bonus round — three rows, each a belt of cups packed
-// right next to each other and scrolling past like a sushi conveyor. The
-// throw itself is the same Angry-Birds pull-back-and-release physics as
-// the wheel round (see stepBonus above): pull harder to arc higher and
-// reach an upper row, then land wherever that arc actually carries the
-// scoop — see shakerAimStart/Move/End for where a throw actually fires.
+// The shaker-cup bonus round — three rows, each a belt of cups scrolling
+// past like a sushi conveyor. The throw itself is the same Angry-Birds
+// pull-back-and-release physics as the wheel round (see stepBonus
+// above): pull harder to arc higher and reach an upper row, then land
+// wherever that arc actually carries the scoop — see
+// shakerAimStart/Move/End for where a throw actually fires.
 function stepShaker(sim, dt) {
   const s = sim.shakerLevel
   if (!s) return
