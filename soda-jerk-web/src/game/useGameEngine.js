@@ -6,6 +6,18 @@ function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
+// Picks an index 0..weights.length-1, biased by each entry's weight
+// (e.g. [1, 1, 3] picks index 2 three times as often as index 0 or 1).
+function pickWeightedIndex(weights) {
+  const total = weights.reduce((sum, w) => sum + w, 0)
+  let r = Math.random() * total
+  for (let i = 0; i < weights.length; i++) {
+    r -= weights[i]
+    if (r < 0) return i
+  }
+  return weights.length - 1
+}
+
 function randomBetween(min, max) {
   return min + Math.random() * (max - min)
 }
@@ -226,8 +238,13 @@ function trySpawnCustomer(sim, travelMs) {
   const lane = pick(openLanes)
   const speed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (travelMs / 1000)
   const drinkType = Math.floor(Math.random() * C.DRINK_TYPES.length)
-  const patronTypeCount = sim.stage >= 2 ? C.PATRON_TYPE_COUNT_FOUNTAIN : C.PATRON_TYPE_COUNT
-  const patronType = Math.floor(Math.random() * patronTypeCount)
+  // Fountain venue's patron types aren't picked evenly — see
+  // PATRON_TYPE_WEIGHTS_FOUNTAIN — while stage 1 stays a plain uniform
+  // pick across its 3 types.
+  const patronType =
+    sim.stage >= 2
+      ? pickWeightedIndex(C.PATRON_TYPE_WEIGHTS_FOUNTAIN)
+      : Math.floor(Math.random() * C.PATRON_TYPE_COUNT)
 
   sim.customers.push({
     id: sim.nextId++,
