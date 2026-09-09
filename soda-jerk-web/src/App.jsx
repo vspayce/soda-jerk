@@ -237,7 +237,6 @@ export default function App() {
             <Lane
               key={laneIndex}
               laneIndex={laneIndex}
-              stage={state.stage}
               isPlayerLane={state.playerLane === laneIndex}
               playerX={state.playerX}
               moveDir={state.playerLane === laneIndex ? state.moveDir : 0}
