@@ -163,7 +163,7 @@ export const BONUS_CUP_COUNT = BONUS_CUP_COLORS.length
 export const PLATES_ROUND_MS = 25000 // the round ends normally after this long
 export const PLATES_SPAWN_INTERVAL_MIN_MS = 550
 export const PLATES_SPAWN_INTERVAL_MAX_MS = 1000
-export const PLATES_TRAVEL_MS = 2600 // time for a plate to cross from spawn to the player
+export const PLATES_TRAVEL_MS = 1300 // time for a plate to cross from spawn to the player
 // Odds a freshly spawned plate is each kind — must add to 1.
 export const PLATES_KIND_WEIGHTS = { dirty: 0.72, clean: 0.16, dollar: 0.12 }
 export const PLATES_DIRTY_POINTS = 25
