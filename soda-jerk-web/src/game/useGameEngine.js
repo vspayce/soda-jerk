@@ -672,6 +672,17 @@ function step(sim, dt) {
           c.pauseMs = randomBetween(C.WALK_PAUSE_MIN_MS, C.WALK_PAUSE_MAX_MS)
         }
       }
+    } else if (c.status === 'toasting') {
+      // A beat standing still to show off the drink they just caught,
+      // before turning around and walking out. Held still on purpose —
+      // the held-drink art is a single pose, so sliding it along the
+      // counter would moonwalk exactly the way the old static walk-out
+      // did.
+      c.toastMs -= dt * 1000
+      if (c.toastMs <= 0) {
+        c.status = 'leaving-happy'
+        c.speed = (C.OFFSCREEN_X - c.x) / (C.CUSTOMER_WALK_OUT_MS / 1000)
+      }
     } else if (c.status === 'leaving-happy') {
       c.x += c.speed * dt
     }
@@ -693,8 +704,10 @@ function step(sim, dt) {
       sim.score += C.POINTS_PER_SERVE
       target.drinksNeeded -= 1
       if (target.drinksNeeded <= 0) {
-        target.status = 'leaving-happy'
-        target.speed = (C.OFFSCREEN_X - target.x) / (C.CUSTOMER_WALK_OUT_MS / 1000)
+        // Pause to show the drink off before heading out — the walk-out
+        // speed gets set when that beat ends (see the 'toasting' branch).
+        target.status = 'toasting'
+        target.toastMs = C.CUSTOMER_TOAST_MS
       }
 
       // One returning glass per lane at a time — otherwise catching the

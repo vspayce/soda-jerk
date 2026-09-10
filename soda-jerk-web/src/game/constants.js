@@ -46,6 +46,9 @@ export const THROW_ANIM_MS = 500
 // distinguishing them. Telling them apart is now the job of a clear
 // visual cue instead (see Customer.jsx's leaving-happy styling).
 export const CUSTOMER_WALK_OUT_MS = 900
+// How long a served patron stands still holding the drink they just
+// caught, before turning to leave — see the 'toasting' status.
+export const CUSTOMER_TOAST_MS = 620
 
 // A walking-in customer occasionally pauses for a beat instead of
 // marching in a dead straight line — feels more like browsing, less

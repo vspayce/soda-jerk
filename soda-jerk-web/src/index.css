@@ -373,3 +373,15 @@ body {
     box-shadow: 0 0 0 10px #000, 0 20px 60px rgba(0,0,0,0.6);
   }
 }
+
+/* The catch beat: a served patron holds the drink up for a moment before
+   turning to leave. A small lift-and-settle so the pause reads as raising
+   the glass rather than the sprite simply freezing mid-walk. */
+@keyframes patron-toast-lift {
+  0%   { transform: translateY(2px) scale(0.99); }
+  35%  { transform: translateY(-3px) scale(1.02); }
+  100% { transform: translateY(0) scale(1); }
+}
+.patron-toast {
+  animation: patron-toast-lift 620ms ease-out both;
+}

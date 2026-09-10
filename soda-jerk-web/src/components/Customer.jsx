@@ -29,6 +29,23 @@ const PATRON_SRC = [
 // enough to miss details like the caricature patrons otherwise.
 const PATRON_HEIGHT = [89, 91, 89, 89, 89, 89, 89, 89]
 
+// The moment-of-catch pose: the same portrait art with the drink they
+// actually ordered placed in their outstretched hand, so the reward for a
+// correct serve is legible. The glass is the very same art the player taps
+// on the tap handle, composited in — not a redrawn one — so the colour
+// reads identically to the drink they chose. Padded symmetrically around
+// the body, so swapping this in doesn't jog the patron sideways.
+const PATRON_HELD_SRC = [
+  [`${import.meta.env.BASE_URL}art/patron-orange-held.png`, `${import.meta.env.BASE_URL}art/patron-pink-held.png`],
+  [`${import.meta.env.BASE_URL}art/patron2-orange-held.png`, `${import.meta.env.BASE_URL}art/patron2-pink-held.png`],
+  [`${import.meta.env.BASE_URL}art/patron3-orange-held.png`, `${import.meta.env.BASE_URL}art/patron3-pink-held.png`],
+  [`${import.meta.env.BASE_URL}art/patron4-orange-held.png`, `${import.meta.env.BASE_URL}art/patron4-pink-held.png`],
+  [`${import.meta.env.BASE_URL}art/patron5-orange-held.png`, `${import.meta.env.BASE_URL}art/patron5-pink-held.png`],
+  [`${import.meta.env.BASE_URL}art/patron6-orange-held.png`, `${import.meta.env.BASE_URL}art/patron6-pink-held.png`],
+  [`${import.meta.env.BASE_URL}art/patron7-orange-held.png`, `${import.meta.env.BASE_URL}art/patron7-pink-held.png`],
+  [`${import.meta.env.BASE_URL}art/patron8-orange-held.png`, `${import.meta.env.BASE_URL}art/patron8-pink-held.png`],
+]
+
 // Real 8-frame walk-cycle sprite sheets (PixelLab-generated from each static
 // illustration), used while a patron is actively walking in. Each entry's
 // aspectRatio (native frame width / height) keeps the sprite from stretching
@@ -112,6 +129,11 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
   // sprite across the counter with motionless legs, which reads as
   // moonwalking backwards rather than walking out.
   const isLeaving = status === 'leaving-happy'
+  // Standing still showing off the drink they just caught — held at full
+  // brightness, since this is the reward beat, not the "already served,
+  // don't throw at me" state that follows it.
+  const isToasting = status === 'toasting'
+  const heldSrc = isToasting ? PATRON_HELD_SRC[patronType]?.[drinkType] : null
   const walkSheet =
     status === 'walking' || isLeaving ? PATRON_WALK_SHEETS[patronType]?.[drinkType] : null
 
@@ -140,7 +162,14 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
       }}
       title={drinkName}
     >
-      {walkSheet ? (
+      {heldSrc ? (
+        <img
+          src={heldSrc}
+          alt=""
+          className="patron-toast"
+          style={{ height: PATRON_HEIGHT[patronType], width: 'auto', display: 'block' }}
+        />
+      ) : walkSheet ? (
         <div
           className="patron-walk-cycle-sprite"
           style={{
