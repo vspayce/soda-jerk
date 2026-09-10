@@ -155,6 +155,7 @@ export default function Lane({
           patronType={c.patronType}
           status={c.status}
           drinkName={c.drinkName}
+          speed={c.speed}
         />
       ))}
 

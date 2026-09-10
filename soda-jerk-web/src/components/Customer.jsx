@@ -33,42 +33,78 @@ const PATRON_HEIGHT = [89, 91, 89, 89, 89, 89, 89, 89]
 // illustration), used while a patron is actively walking in. Each entry's
 // aspectRatio (native frame width / height) keeps the sprite from stretching
 // at PATRON_HEIGHT.
+//
+// `stride` is how far the leading foot travels across the cycle, as a
+// fraction of the frame's width — i.e. how much ground one step covers.
+// It's measured off the art itself and varies almost 2x between sheets
+// (0.20 to 0.39), because each was animated separately. It matters
+// because it sets how fast the legs have to cycle to keep the planted
+// foot still on the ground — see walkCycleMs().
 const PATRON_WALK_SHEETS = {
   0: [
-    { src: `${import.meta.env.BASE_URL}art/patron-orange-walk.png`, aspectRatio: 137 / 256 },
-    { src: `${import.meta.env.BASE_URL}art/patron-pink-walk.png`, aspectRatio: 131 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron-orange-walk.png`, aspectRatio: 137 / 256, stride: 0.372 },
+    { src: `${import.meta.env.BASE_URL}art/patron-pink-walk.png`, aspectRatio: 131 / 256, stride: 0.393 },
   ],
   1: [
-    { src: `${import.meta.env.BASE_URL}art/patron2-orange-walk.png`, aspectRatio: 235 / 256 },
-    { src: `${import.meta.env.BASE_URL}art/patron2-pink-walk.png`, aspectRatio: 238 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron2-orange-walk.png`, aspectRatio: 235 / 256, stride: 0.270 },
+    { src: `${import.meta.env.BASE_URL}art/patron2-pink-walk.png`, aspectRatio: 238 / 256, stride: 0.201 },
   ],
   2: [
-    { src: `${import.meta.env.BASE_URL}art/patron3-orange-walk.png`, aspectRatio: 147 / 256 },
-    { src: `${import.meta.env.BASE_URL}art/patron3-pink-walk.png`, aspectRatio: 144 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron3-orange-walk.png`, aspectRatio: 147 / 256, stride: 0.379 },
+    { src: `${import.meta.env.BASE_URL}art/patron3-pink-walk.png`, aspectRatio: 144 / 256, stride: 0.379 },
   ],
   3: [
-    { src: `${import.meta.env.BASE_URL}art/patron4-orange-walk.png`, aspectRatio: 137 / 256 },
-    { src: `${import.meta.env.BASE_URL}art/patron4-pink-walk.png`, aspectRatio: 137 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron4-orange-walk.png`, aspectRatio: 137 / 256, stride: 0.278 },
+    { src: `${import.meta.env.BASE_URL}art/patron4-pink-walk.png`, aspectRatio: 137 / 256, stride: 0.339 },
   ],
   4: [
-    { src: `${import.meta.env.BASE_URL}art/patron5-orange-walk.png`, aspectRatio: 137 / 256 },
-    { src: `${import.meta.env.BASE_URL}art/patron5-pink-walk.png`, aspectRatio: 137 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron5-orange-walk.png`, aspectRatio: 137 / 256, stride: 0.281 },
+    { src: `${import.meta.env.BASE_URL}art/patron5-pink-walk.png`, aspectRatio: 137 / 256, stride: 0.355 },
   ],
   5: [
-    { src: `${import.meta.env.BASE_URL}art/patron6-orange-walk.png`, aspectRatio: 138 / 256 },
-    { src: `${import.meta.env.BASE_URL}art/patron6-pink-walk.png`, aspectRatio: 138 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron6-orange-walk.png`, aspectRatio: 138 / 256, stride: 0.354 },
+    { src: `${import.meta.env.BASE_URL}art/patron6-pink-walk.png`, aspectRatio: 138 / 256, stride: 0.339 },
   ],
   6: [
-    { src: `${import.meta.env.BASE_URL}art/patron7-orange-walk.png`, aspectRatio: 138 / 256 },
-    { src: `${import.meta.env.BASE_URL}art/patron7-pink-walk.png`, aspectRatio: 138 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron7-orange-walk.png`, aspectRatio: 138 / 256, stride: 0.345 },
+    { src: `${import.meta.env.BASE_URL}art/patron7-pink-walk.png`, aspectRatio: 138 / 256, stride: 0.227 },
   ],
   7: [
-    { src: `${import.meta.env.BASE_URL}art/patron8-orange-walk.png`, aspectRatio: 138 / 256 },
-    { src: `${import.meta.env.BASE_URL}art/patron8-pink-walk.png`, aspectRatio: 138 / 256 },
+    { src: `${import.meta.env.BASE_URL}art/patron8-orange-walk.png`, aspectRatio: 138 / 256, stride: 0.269 },
+    { src: `${import.meta.env.BASE_URL}art/patron8-pink-walk.png`, aspectRatio: 138 / 256, stride: 0.371 },
   ],
 }
 
-export default function Customer({ x, drinkType, patronType, status, drinkName }) {
+// The legs have to cycle at whatever rate keeps the planted foot from
+// sliding along the floor. That rate isn't a constant: the game walks
+// patrons ~2.3x faster at the top level than the first (see
+// customerTravelMs in levels.js), and a served patron walks out faster
+// still, while the sheets themselves differ ~2x in how much ground one
+// step covers. A fixed duration therefore only ever matched one
+// combination, and everything else moonwalked — worst on the
+// short-stride sheets, which is why the two original hand-supplied
+// patrons (the longest strides in the set) looked fine while the
+// generated ones didn't.
+//
+// The reference point is patron-orange at the level-1 walk-in speed,
+// which is the combination that already read correctly; everything else
+// is scaled off it, so this is a pure ratio and needs no lane-width or
+// pixel conversion.
+const REF_CYCLE_MS = 900
+const REF_STRIDE = 0.372
+const REF_WIDTH = 89 * (137 / 256)
+const REF_SPEED = (108 - 16) / (14702 / 1000) // lane-% per second, level 1
+
+function walkCycleMs(sheet, widthPx, speed) {
+  if (!speed) return REF_CYCLE_MS
+  const groundPerCycle = (sheet.stride * widthPx) / (REF_STRIDE * REF_WIDTH)
+  const ms = REF_CYCLE_MS * groundPerCycle * (REF_SPEED / Math.abs(speed))
+  // Keep it inside a believable gait even if a level or exit speed goes
+  // to an extreme.
+  return Math.max(260, Math.min(1500, ms))
+}
+
+export default function Customer({ x, drinkType, patronType, status, drinkName, speed }) {
   const isUrgent = status === 'walking' && x <= DANGER_X
   // A served customer walks back out too, so they keep the walk cycle —
   // just mirrored, since they're now heading the other way. Leaving them
@@ -111,9 +147,12 @@ export default function Customer({ x, drinkType, patronType, status, drinkName }
             height: PATRON_HEIGHT[patronType],
             width: PATRON_HEIGHT[patronType] * walkSheet.aspectRatio,
             backgroundImage: `url(${walkSheet.src})`,
-            // Safe to set alongside the sprite animation — that animates
-            // background-position-x, not transform.
+            // Both safe to set alongside the sprite animation — it only
+            // animates background-position-x, so it owns neither of these.
             transform: isLeaving ? 'scaleX(-1)' : 'none',
+            animationDuration: `${Math.round(
+              walkCycleMs(walkSheet, PATRON_HEIGHT[patronType] * walkSheet.aspectRatio, speed)
+            )}ms`,
           }}
         />
       ) : (
