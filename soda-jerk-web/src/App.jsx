@@ -16,6 +16,7 @@ import LeaderboardScreen from './components/LeaderboardScreen.jsx'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
 import Celebration from './components/Celebration.jsx'
+import LingoScreen from './components/LingoScreen.jsx'
 import SettingsScreen from './components/SettingsScreen.jsx'
 import InstructionsScreen from './components/InstructionsScreen.jsx'
 
@@ -61,6 +62,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showInstructions, setShowInstructions] = useState(false)
+  const [showLingo, setShowLingo] = useState(false)
   const prevSpillRef = useRef(state.spillCount)
   const prevCelebrateRef = useRef(state.celebrateCount)
   const prevMissedGlassRef = useRef(state.missedGlassCount)
@@ -312,6 +314,7 @@ export default function App() {
             prevMugCrashRef.current = 0
             restart()
           })}
+          onShowLingo={() => setShowLingo(true)}
         />
       )}
 
@@ -343,6 +346,7 @@ export default function App() {
           volume={music.volume}
           onVolumeChange={music.setVolume}
           onClose={() => setShowSettings(false)}
+          onShowLingo={() => setShowLingo(true)}
           onSkipToBonusWheel={
             state.started && !state.gameOver && state.mode === 'bar'
               ? withAudio(() => {
@@ -377,6 +381,10 @@ export default function App() {
           }
         />
       )}
+
+      {/* Sits above the settings panel it can be opened from, so closing
+          it drops the player back to settings rather than out of it. */}
+      {showLingo && <LingoScreen onClose={() => setShowLingo(false)} />}
     </div>
   )
 }

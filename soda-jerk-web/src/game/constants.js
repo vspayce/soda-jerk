@@ -93,18 +93,19 @@ export const DRINK_TYPES = [
   { name: 'In the Hay', color: '#D9668A', icon: 'drink-pink.png', tapIcon: 'tap-pink.png' },
 ]
 
-// How many different patron illustrations exist per drink color — purely
-// cosmetic variety, picked at random when a customer spawns. The two
-// extra caricature patrons (indices 3 and 4) only show up once the
-// stage-2+ soda-fountain venue kicks in — see trySpawnCustomer.
-export const PATRON_TYPE_COUNT = 3
-export const PATRON_TYPE_COUNT_FOUNTAIN = 8
-// Relative spawn odds for the 8 fountain-venue patron types — the
-// professor (Einstein-styled, index 4) is weighted above an even share
-// so he keeps showing up noticeably more than the others; the three
-// newest caricatures (aviator/showman/gangster, indices 5-7) get a
-// smaller bump of their own since they're new.
-export const PATRON_TYPE_WEIGHTS_FOUNTAIN = [1, 1, 1, 1, 3, 2, 2, 2]
+// Relative spawn odds for the 8 patron illustrations (per drink color),
+// picked when a customer spawns — see trySpawnCustomer. The professor
+// (Einstein-styled, index 4) is weighted above an even share so he shows
+// up noticeably more than the others; the three newest caricatures
+// (aviator/showman/gangster, indices 5-7) get a smaller bump of their own.
+//
+// These used to be gated to the stage-2+ fountain venue, with stage 1
+// limited to the first three types. But reaching stage 2 means filling
+// every lane at once and then clearing all of them without losing a
+// life — demanding enough that a player could go a long time without
+// ever laying eyes on the caricatures, which are the most fun art in the
+// game. They spawn from the first customer now.
+export const PATRON_TYPE_WEIGHTS = [1, 1, 1, 1, 3, 2, 2, 2]
 
 // A hot dog drops on the counter every so often, somewhere in the middle
 // or right portion of the bar (never right at the end near the player,
@@ -214,22 +215,47 @@ export const PLATES_BASE_SIZE_PCT = 30 // plate width at scale 1, % of screen wi
 export const SHAKER_ROUND_THROWS = 6
 export const SHAKER_RESULT_HOLD_MS = 900 // brief HIT!/MISS pause before the next throw's allowed
 export const SHAKER_ROUND_END_HOLD_MS = 1800 // how long the final result shows before returning to the bar
-// Real 1950s soda-jerk counter slang, shouted back to the fountain when
-// an order came in — same glossary DRINK_TYPES' "In the Hay" comes from.
-// A landed HIT picks one of these at random to shout instead of a plain
-// "HIT!" (see stepShaker/ShakerLevel.jsx).
-export const SHAKER_HIT_JARGON = [
+// Real 1950s soda-fountain counter slang — the jargon a jerk shouted
+// back to the fountain when an order came in. This is the one source of
+// truth for it: the lingo glossary screen lists all of it, DRINK_TYPES'
+// "In the Hay" and the game-over screen's "Pop Boy" come from it, and
+// the shaker round shouts a subset on a landed hit (see below).
+export const JERK_LINGO = [
+  { term: 'Add Another', def: 'coffee' },
   { term: 'All Black', def: 'chocolate soda with chocolate ice cream' },
+  { term: 'Baby', def: 'glass of fresh milk' },
   { term: 'Black Bottom', def: 'chocolate sundae with chocolate syrup' },
   { term: 'Black Cow', def: 'root beer' },
+  { term: 'C. O. Cocktail', def: 'castor oil prepared in soda' },
   { term: 'Canary Island Special', def: 'vanilla soda with chocolate cream' },
   { term: 'Choc In', def: 'chocolate soda' },
+  { term: 'Choker Holes', def: 'doughnuts' },
+  { term: 'Coffee And', def: 'cup of coffee and cake' },
+  { term: 'Cowcumber', def: 'pickle' },
+  { term: 'Draw Some Mud', def: 'coffee' },
   { term: 'Give', def: 'large glass of fresh milk' },
   { term: 'Glob', def: 'plain sundae' },
+  { term: 'In the Hay', def: 'strawberry milkshake' },
+  { term: "Maiden's Delight", def: 'cherries' },
+  { term: 'Mug of Murk', def: 'cup of coffee without cream' },
+  { term: 'Ninety-Five', def: 'customer walking out without paying' },
   { term: 'Oh Gee', def: 'orangeade' },
+  { term: 'One On The House', def: 'water' },
+  { term: 'Pop Boy', def: "soda man who doesn't know his business" },
   { term: 'Rhinelander', def: 'chocolate soda with vanilla ice cream' },
   { term: 'Saltwater Man', def: 'ice cream mixer' },
+  { term: 'Scandal Soup', def: 'tea' },
+  { term: 'Yum-Yum', def: 'sugar' },
 ]
+
+// A landed shaker HIT shouts one of these instead of a plain "HIT!" (see
+// stepShaker/ShakerLevel.jsx) — only the terms that name something you'd
+// plausibly be scooping, so the shout fits what just happened.
+const SHAKER_HIT_TERMS = [
+  'All Black', 'Black Bottom', 'Black Cow', 'Canary Island Special', 'Choc In',
+  'Give', 'Glob', 'Oh Gee', 'Rhinelander', 'Saltwater Man',
+]
+export const SHAKER_HIT_JARGON = JERK_LINGO.filter((e) => SHAKER_HIT_TERMS.includes(e.term))
 // Row order top-to-bottom; alternating dir gives the belts visual variety,
 // same spirit as the plate wash's three different conveyor entry points.
 // `scale` shrinks the top row and grows the bottom one (and its hit

@@ -5,7 +5,7 @@ import SignButton from './SignButton.jsx'
 
 const FIRED_SRC = `${import.meta.env.BASE_URL}art/fired.png`
 
-export default function GameOverScreen({ score, onRestart }) {
+export default function GameOverScreen({ score, onRestart, onShowLingo }) {
   const [qualifies] = useState(() => qualifiesForLeaderboard(score))
   const [saved, setSaved] = useState(false)
   const [initials, setInitials] = useState(getLastInitials())
@@ -24,7 +24,18 @@ export default function GameOverScreen({ score, onRestart }) {
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-ink/90 px-8 text-center overflow-y-auto py-10">
       <div className="relative mb-2">
-        <div className="font-display melted-text text-3xl tracking-wide">GAME OVER, POP BOY</div>
+        {/* "Pop Boy" is real counter slang for a soda man who doesn't
+            know his business — tapping it explains itself, and the rest
+            of the lingo with it. */}
+        <div className="font-display melted-text text-3xl tracking-wide">
+          GAME OVER,{' '}
+          <button
+            onClick={onShowLingo}
+            className="melted-text underline underline-offset-4 decoration-dotted"
+          >
+            POP BOY
+          </button>
+        </div>
         <div className="melted-drips" aria-hidden="true">
           {[14, 32, 50, 68, 86].map((leftPct, i) => (
             <span

@@ -226,6 +226,26 @@ function loseLife(sim, n = 1) {
   }
 }
 
+// Hands control back to the bar after a bonus round. A bonus round is
+// triggered the moment the last CUSTOMER is gone (see the trigger in
+// step()), which says nothing about glasses or mugs — either can still
+// be mid-slide at that instant. The bar's own step() is skipped entirely
+// while a bonus round runs, so anything left over just freezes in place
+// and is still sitting there, stale, when the player comes back (a
+// returning glass frozen past the counter's edge then counts as missed
+// immediately). Clear the board on the way back instead.
+function returnToBar(sim) {
+  sim.mode = 'bar'
+  sim.bonusLevel = null
+  sim.platesLevel = null
+  sim.shakerLevel = null
+  sim.glasses = []
+  sim.mugs = []
+  // Let a future clean full-clear send the player to a bonus round again.
+  sim.stageAttemptActive = false
+  sim.stageAttemptClean = false
+}
+
 function trySpawnCustomer(sim, travelMs) {
   // Cap how many active (still walking) customers can queue in the same
   // lane at once — one at stage 1, two at stage 2 (see STAGE_LANE_CAPACITY)
@@ -248,13 +268,8 @@ function trySpawnCustomer(sim, travelMs) {
   const lane = pick(openLanes)
   const speed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (travelMs / 1000)
   const drinkType = Math.floor(Math.random() * C.DRINK_TYPES.length)
-  // Fountain venue's patron types aren't picked evenly — see
-  // PATRON_TYPE_WEIGHTS_FOUNTAIN — while stage 1 stays a plain uniform
-  // pick across its 3 types.
-  const patronType =
-    sim.stage >= 2
-      ? pickWeightedIndex(C.PATRON_TYPE_WEIGHTS_FOUNTAIN)
-      : Math.floor(Math.random() * C.PATRON_TYPE_COUNT)
+  // Patron types aren't picked evenly — see PATRON_TYPE_WEIGHTS.
+  const patronType = pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
 
   sim.customers.push({
     id: sim.nextId++,
@@ -363,12 +378,7 @@ function stepBonus(sim, dt) {
         // Wheel round's over — a clean full clear sends the player to
         // exactly one of the three bonus rounds (see the trigger in
         // step()), so this one's done on its own, straight back to the bar.
-        // Reset the stage-clear attempt so a future clean full-clear can
-        // send the player to a bonus round again.
-        sim.mode = 'bar'
-        sim.bonusLevel = null
-        sim.stageAttemptActive = false
-        sim.stageAttemptClean = false
+        returnToBar(sim)
       }
     }
   }
@@ -385,13 +395,8 @@ function stepPlates(sim, dt) {
   if (p.ended) {
     p.resultHoldMs -= dt * 1000
     if (p.resultHoldMs <= 0) {
-      // Round's over — back to the bar. Reset the stage-clear attempt so
-      // a future clean full-clear can send the player back through both
-      // bonus rounds again.
-      sim.mode = 'bar'
-      sim.platesLevel = null
-      sim.stageAttemptActive = false
-      sim.stageAttemptClean = false
+      // Round's over — back to the bar.
+      returnToBar(sim)
     }
     return
   }
@@ -435,10 +440,7 @@ function stepShaker(sim, dt) {
   if (s.ended) {
     s.resultHoldMs -= dt * 1000
     if (s.resultHoldMs <= 0) {
-      sim.mode = 'bar'
-      sim.shakerLevel = null
-      sim.stageAttemptActive = false
-      sim.stageAttemptClean = false
+      returnToBar(sim)
     }
     return
   }

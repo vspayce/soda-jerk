@@ -4,6 +4,7 @@ export default function SettingsScreen({
   volume,
   onVolumeChange,
   onClose,
+  onShowLingo,
   onSkipToBonusWheel,
   onSkipToBonusPlates,
   onSkipToBonusShaker,
@@ -45,6 +46,13 @@ export default function SettingsScreen({
           <li>Don't let a patron reach the end of the bar — you'll lose a life and get sprayed.</li>
         </ul>
       </div>
+
+      <button
+        onClick={onShowLingo}
+        className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
+      >
+        SODA JERK LINGO
+      </button>
 
       {onSkipToBonusWheel && (
         <button

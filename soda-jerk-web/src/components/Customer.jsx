@@ -5,14 +5,14 @@ import { PLAYER_X, COUNTER_HEIGHT_PX } from '../game/constants.js'
 // customers no longer stop and wait; they just keep coming.
 const DANGER_X = PLAYER_X + 22
 
-// Patron illustrations, one row per patronType (picked at random at
-// spawn — see PATRON_TYPE_COUNT in constants.js) and one column per drink
-// type. They face left (the direction they walk in), so served customers
-// get flipped to face right as they head back out.
+// Patron illustrations, one row per patronType (picked at spawn — see
+// PATRON_TYPE_WEIGHTS in constants.js) and one column per drink type.
+// They face left (the direction they walk in), so served customers get
+// flipped to face right as they head back out.
 //
 // To add another patron type: drop in `patronN-orange.png` /
-// `patronN-pink.png`, add a row here (and a height below), and bump
-// PATRON_TYPE_COUNT in constants.js to match.
+// `patronN-pink.png`, add a row here (and a height below), plus a walk
+// sheet, and add a weight to PATRON_TYPE_WEIGHTS in constants.js.
 const PATRON_SRC = [
   [`${import.meta.env.BASE_URL}art/patron-orange.png`, `${import.meta.env.BASE_URL}art/patron-pink.png`],
   [`${import.meta.env.BASE_URL}art/patron2-orange.png`, `${import.meta.env.BASE_URL}art/patron2-pink.png`],
@@ -70,7 +70,14 @@ const PATRON_WALK_SHEETS = {
 
 export default function Customer({ x, drinkType, patronType, status, drinkName }) {
   const isUrgent = status === 'walking' && x <= DANGER_X
-  const walkSheet = status === 'walking' ? PATRON_WALK_SHEETS[patronType]?.[drinkType] : null
+  // A served customer walks back out too, so they keep the walk cycle —
+  // just mirrored, since they're now heading the other way. Leaving them
+  // on the static portrait (as this used to) slid a frozen, mid-stride
+  // sprite across the counter with motionless legs, which reads as
+  // moonwalking backwards rather than walking out.
+  const isLeaving = status === 'leaving-happy'
+  const walkSheet =
+    status === 'walking' || isLeaving ? PATRON_WALK_SHEETS[patronType]?.[drinkType] : null
 
   return (
     <div
@@ -92,6 +99,9 @@ export default function Customer({ x, drinkType, patronType, status, drinkName }
             height: PATRON_HEIGHT[patronType],
             width: PATRON_HEIGHT[patronType] * walkSheet.aspectRatio,
             backgroundImage: `url(${walkSheet.src})`,
+            // Safe to set alongside the sprite animation — that animates
+            // background-position-x, not transform.
+            transform: isLeaving ? 'scaleX(-1)' : 'none',
           }}
         />
       ) : (
