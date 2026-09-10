@@ -86,9 +86,21 @@ export default function Customer({ x, drinkType, patronType, status, drinkName }
         left: `${x}%`,
         top: `calc(50% + ${COUNTER_HEIGHT_PX / 2}px)`,
         transform: 'translate(-50%, -100%)',
-        filter: isUrgent ? 'drop-shadow(0 0 5px #7A1F2B)' : 'none',
-        opacity: status === 'leaving-happy' ? 0.75 : 1,
-        transition: 'opacity 200ms',
+        // A served customer walks out the same way an unserved one walks
+        // in — from the same side, toward the same door — so without a
+        // clear "already served" cue the player can't tell them apart and
+        // throws a drink at someone who can't take it (a mug only ever
+        // targets a customer whose status is still 'walking', so it sails
+        // straight through and is wasted). Ghosting them well back, plus
+        // desaturating, makes it unmistakable at a glance. 0.75 opacity
+        // alone was far too subtle against this dark bar.
+        filter: isUrgent
+          ? 'drop-shadow(0 0 5px #7A1F2B)'
+          : isLeaving
+            ? 'grayscale(0.55)'
+            : 'none',
+        opacity: isLeaving ? 0.4 : 1,
+        transition: 'opacity 200ms, filter 200ms',
       }}
       title={drinkName}
     >

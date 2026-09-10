@@ -33,10 +33,19 @@ export const GLASS_RETURN_TRAVEL_MS = 4200
 export const THROW_ANIM_MS = 500
 
 // Time (ms) for a served (happy) customer to walk off after being served.
-// Fast — reads as being hustled off rather than a casual stroll, so a
-// served customer doesn't linger in the lane long enough to tempt (and
-// then waste) another matching drink thrown their way.
-export const CUSTOMER_WALK_OUT_MS = 280
+// One full walk cycle (see the 900ms patron-walk-cycle animation), so a
+// served customer takes exactly one stride's worth of animation to clear
+// the lane and actually reads as walking out.
+//
+// This used to be 280ms to stop a served customer lingering long enough
+// to tempt another (wasted) drink thrown their way. That backfired: at
+// that speed they crossed most of the screen in about two frames of an
+// eight-frame cycle, so their legs were nearly frozen — it read as
+// moonwalking backwards, not walking out. And it never actually solved
+// the wasted-drink problem, because speed was the only thing
+// distinguishing them. Telling them apart is now the job of a clear
+// visual cue instead (see Customer.jsx's leaving-happy styling).
+export const CUSTOMER_WALK_OUT_MS = 900
 
 // A walking-in customer occasionally pauses for a beat instead of
 // marching in a dead straight line — feels more like browsing, less
