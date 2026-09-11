@@ -201,6 +201,8 @@ function createInitialSim() {
     // hot dog; overridden the instant manual dragging starts
     selectedDrink: 0, // index into C.DRINK_TYPES — what the next mug pours
     lives: C.STARTING_LIVES,
+    nextExtraLifeAt: C.EXTRA_LIFE_EVERY, // score that earns the next one
+    extraLifeCount: 0, // bumped on each award — App watches it for the fanfare
     score: 0,
     survivalMs: 0,
     level: 1, // current difficulty level — see levels.js
@@ -756,6 +758,17 @@ function step(sim, dt) {
   // straight over live play, and the belts/patrons kept right on moving
   // underneath it.
   if (sim.paused) return
+
+  // Checked here, before the mode dispatch, so it catches points from
+  // anywhere — bar serves, any of the bonus rounds, the level-clear trick.
+  // A while loop rather than an if, since a single big bonus can cross more
+  // than one threshold at once.
+  while (!sim.gameOver && sim.score >= sim.nextExtraLifeAt) {
+    sim.lives += 1
+    sim.extraLifeCount += 1
+    sim.nextExtraLifeAt += C.EXTRA_LIFE_EVERY
+  }
+
   if (sim.mode === 'bonusWheel') {
     stepBonus(sim, dt)
     return

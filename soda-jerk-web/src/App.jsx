@@ -84,6 +84,8 @@ export default function App() {
   const prevPlatePopRef = useRef(0)
   const prevPlatesResultRef = useRef(null)
   const prevShakerResolvedRef = useRef(0)
+  const prevExtraLifeRef = useRef(0)
+  const [extraLife, setExtraLife] = useState(false)
   const gestureRef = useRef({ dragging: false, startX: 0, startY: 0, laneLatched: false, runDir: 0 })
 
   // Wrap each control so the very first tap also starts the music —
@@ -177,6 +179,20 @@ export default function App() {
       if (state.shakerLevel?.resultKind === 'hit') playCelebration()
     }
   }, [state.shakerLevel?.resolvedCount])
+
+  // An extra life every 10,000 points — worth announcing, since the lives
+  // badge ticking up on its own is easy to miss mid-round.
+  useEffect(() => {
+    if (state.extraLifeCount !== prevExtraLifeRef.current) {
+      prevExtraLifeRef.current = state.extraLifeCount
+      if (state.extraLifeCount > 0) {
+        playCelebration()
+        setExtraLife(true)
+        const t = setTimeout(() => setExtraLife(false), 2200)
+        return () => clearTimeout(t)
+      }
+    }
+  }, [state.extraLifeCount])
 
   const handleGestureStart = (e) => {
     if (!state.started || state.gameOver) return
@@ -428,6 +444,22 @@ export default function App() {
 
       {/* Sits above the settings panel it can be opened from, so closing
           it drops the player back to settings rather than out of it. */}
+      {extraLife && (
+        <div className="absolute inset-x-0 flex justify-center pointer-events-none" style={{ top: '32%', zIndex: 70 }}>
+          <div
+            className="px-5 py-2 rounded-lg font-display text-xl tracking-[0.18em]"
+            style={{
+              background: 'rgba(12,10,13,0.85)',
+              border: '1px solid rgba(232,200,120,0.6)',
+              color: '#F2D58C',
+              boxShadow: '0 6px 24px rgba(0,0,0,0.6)',
+            }}
+          >
+            EXTRA LIFE
+          </div>
+        </div>
+      )}
+
       {showLingo && <LingoScreen onClose={() => setShowLingo(false)} />}
     </div>
   )

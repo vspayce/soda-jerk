@@ -3,6 +3,10 @@
 
 export const LANE_COUNT = 4
 export const STARTING_LIVES = 3
+// An extra life every time the score crosses another multiple of this, the
+// way the arcade cabinets did it. Repeating rather than one-off, so a long
+// run keeps being rewarded.
+export const EXTRA_LIFE_EVERY = 10000
 
 // x-position (%) of the bartender's home spot at the near end of the
 // counter, and how far right they can run along it (left/right controls),
@@ -357,19 +361,19 @@ export const SLIDE_END_HOLD_MS = 1900
 
 // Near ends are kept well clear of the bottom edge for the same reason.
 export const SLIDE_BARS = [
-  { lane: 'top',    near: { x: 86, y: 45 }, far: { x: 12, y: 15 } },
-  { lane: 'middle', near: { x: 86, y: 62 }, far: { x: 12, y: 32 } },
-  { lane: 'bottom', near: { x: 86, y: 79 }, far: { x: 12, y: 49 } },
+  { lane: 'top',    near: { x: 86, y: 51 }, far: { x: 12, y: 21 } },
+  { lane: 'middle', near: { x: 86, y: 68 }, far: { x: 12, y: 38 } },
+  { lane: 'bottom', near: { x: 86, y: 85 }, far: { x: 12, y: 55 } },
 ]
 
 export const SLIDE_POINTS = 90
 export const SLIDE_HIT_T = 0.07 // how close along the bar counts as meeting a patron
 
 // Patrons come down from the far end toward you, and keep coming faster.
-export const SLIDE_PATRON_SPEED_MIN = 0.055 // t per second
-export const SLIDE_PATRON_SPEED_MAX = 0.085
-export const SLIDE_SPAWN_MIN_MS = 1100
-export const SLIDE_SPAWN_MAX_MS = 2300
+export const SLIDE_PATRON_SPEED_MIN = 0.11 // t per second
+export const SLIDE_PATRON_SPEED_MAX = 0.17
+export const SLIDE_SPAWN_MIN_MS = 850
+export const SLIDE_SPAWN_MAX_MS = 1700
 export const SLIDE_SPAWN_RAMP_MS = 45000 // how long until spawning is at its fastest
 export const SLIDE_SPAWN_RAMP = 0.4 // final interval as a fraction of the starting one
 

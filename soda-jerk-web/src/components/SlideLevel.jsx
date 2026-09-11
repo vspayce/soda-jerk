@@ -133,7 +133,12 @@ export default function SlideLevel({ slideLevel, onFlick }) {
               height: `${13 - 6 * p.t}%`,
               width: 'auto',
               maxWidth: 'none',
-              transform: 'translate(-50%, -88%)',
+              // They walk toward the player, i.e. down and to the RIGHT,
+              // but the patron art is drawn facing left — so it has to be
+              // mirrored or they moonwalk down the bar. scaleX comes after
+              // the centring translate, so it flips about their own middle
+              // and they stay on the bar.
+              transform: 'translate(-50%, -88%) scaleX(-1)',
               filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.6))',
             }}
           />
