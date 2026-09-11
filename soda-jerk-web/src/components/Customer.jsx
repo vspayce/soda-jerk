@@ -75,8 +75,8 @@ const PATRON_WALK_SHEETS = {
     { src: `${import.meta.env.BASE_URL}art/patron4-pink-walk.png`, aspectRatio: 137 / 256, stride: 0.339 },
   ],
   4: [
-    { src: `${import.meta.env.BASE_URL}art/patron5-orange-walk.png`, aspectRatio: 137 / 256, stride: 0.281 },
-    { src: `${import.meta.env.BASE_URL}art/patron5-pink-walk.png`, aspectRatio: 137 / 256, stride: 0.355 },
+    { src: `${import.meta.env.BASE_URL}art/patron5-orange-walk.png`, aspectRatio: 136 / 256, stride: 0.167 },
+    { src: `${import.meta.env.BASE_URL}art/patron5-pink-walk.png`, aspectRatio: 136 / 256, stride: 0.499 },
   ],
   5: [
     { src: `${import.meta.env.BASE_URL}art/patron6-orange-walk.png`, aspectRatio: 138 / 256, stride: 0.354 },
