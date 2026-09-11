@@ -41,7 +41,7 @@ export default function SettingsScreen({
         <ul className="text-cream/80 text-xs leading-relaxed space-y-2.5 list-disc list-inside">
           <li>Tap a lane to jump to it, or swipe up/down to move one at a time.</li>
           <li>Drag left or right to run along the counter.</li>
-          <li>Tap the drink matching a patron's outfit color to pour it their way.</li>
+          <li>Tap the drink matching a patron's outfit color to slide the glass their way.</li>
           <li>Tap a returning glass or a hot dog to grab it, or just run over one.</li>
           <li>Don't let a patron reach the end of the bar — you'll lose a life and get sprayed.</li>
         </ul>

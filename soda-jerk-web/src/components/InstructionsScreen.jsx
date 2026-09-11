@@ -29,7 +29,7 @@ export default function InstructionsScreen({ onContinue }) {
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-ink/95 px-8 text-center overflow-y-auto py-8">
       <div className="font-display text-brass text-2xl mb-2 tracking-wide">HOW TO SCORE</div>
-      <div className="text-cream/50 text-xs tracking-[0.2em] mb-6">TAP A DRINK TO POUR IT — MATCH THEIR OUTFIT</div>
+      <div className="text-cream/50 text-xs tracking-[0.2em] mb-6">TAP A DRINK TO SLIDE THE GLASS — MATCH THEIR OUTFIT</div>
 
       <div className="w-full max-w-xs mb-6">
         {ROWS.map(({ label, points, icons, glow }, i) => (

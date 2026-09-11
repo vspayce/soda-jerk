@@ -24,7 +24,7 @@ export default function DrinkSelector({ selected, onSelect }) {
               border: `2.5px solid ${selected === i ? '#EDE3D0' : 'rgba(21,16,20,0.6)'}`,
               boxShadow: selected === i ? '0 0 10px 3px rgba(237,227,208,0.6)' : '0 1px 4px rgba(0,0,0,0.5)',
             }}
-            aria-label={`Pour ${drink.name}`}
+            aria-label={`Slide ${drink.name}`}
             title={drink.name}
           >
             <img src={ICON_SRC(drink.tapIcon)} alt="" className="w-full h-full object-contain p-1" />
