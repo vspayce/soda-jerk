@@ -339,38 +339,39 @@ export const SHAKER_RIM_OFFSET_FACTOR = 0.36 // x cup width, above cup centre
 export const SHAKER_RIM_HALF_WIDTH_FACTOR = 0.46 // x cup width, the mouth's half-span
 
 
-// The fourth bonus round — three bars running away from the player at an
-// angle, a customer waiting at the far end of each. Swipe up a bar to
-// send a glass sliding along it: the flick's length sets how hard it goes,
-// friction slows it, and where it comes to rest is the whole game. Stop it
-// in the customer's reach and it's served; too soft and it stalls short;
-// too hard and it goes off the end and smashes. Smashing costs the points,
-// never a life — the bonus rounds stay a reward.
+// The fourth bonus round — an endless glass slide. Three bars run away
+// from the player at a hard left angle, and patrons keep coming down them
+// toward you. Swipe a glass up a bar to meet one; the flick's length sets
+// how far it goes and friction does the rest. Miss enough and one reaches
+// the near end, which ends the round. No throw limit — you keep swiping as
+// fast as you can until one gets through.
 //
-// Every bar is parameterised 0 (near end, in front of the player) to 1
-// (the far end where the customer stands), so one set of numbers describes
-// all three regardless of their on-screen angle. See SlideLevel.jsx for
-// how a t maps back to a screen position.
-export const SLIDE_ROUND_SLIDES = 6
-export const SLIDE_RESULT_HOLD_MS = 850
-export const SLIDE_ROUND_END_HOLD_MS = 1800
+// The steep leftward angle is deliberate: a near-vertical bar puts the
+// swipe right on the bottom edge of the screen, where iOS reads it as the
+// app-switcher gesture instead.
+//
+// Every bar is parameterised 0 (the near end, in front of the player) to 1
+// (the far end the patrons come from), so one set of numbers describes all
+// three regardless of on-screen angle. See SlideLevel.jsx.
+export const SLIDE_END_HOLD_MS = 1900
 
-// Where each bar sits on screen, near end to far end, in frame percentages.
-// They fan out from the player so they read as receding into the room.
+// Near ends are kept well clear of the bottom edge for the same reason.
 export const SLIDE_BARS = [
-  { lane: 'left',   near: { x: 16, y: 96 }, far: { x: 30, y: 30 } },
-  { lane: 'middle', near: { x: 50, y: 99 }, far: { x: 55, y: 26 } },
-  { lane: 'right',  near: { x: 84, y: 96 }, far: { x: 80, y: 30 } },
+  { lane: 'top',    near: { x: 86, y: 45 }, far: { x: 12, y: 15 } },
+  { lane: 'middle', near: { x: 86, y: 62 }, far: { x: 12, y: 32 } },
+  { lane: 'bottom', near: { x: 86, y: 79 }, far: { x: 12, y: 49 } },
 ]
 
-// The customer's reach at the far end. Land inside this band and the slide
-// is served; past 1 the glass leaves the bar entirely.
-export const SLIDE_TARGET_MIN_T = 0.78
-export const SLIDE_TARGET_MAX_T = 0.98
-export const SLIDE_PERFECT_MIN_T = 0.88 // tighter band inside it, worth more
+export const SLIDE_POINTS = 90
+export const SLIDE_HIT_T = 0.07 // how close along the bar counts as meeting a patron
 
-export const SLIDE_POINTS = 120
-export const SLIDE_PERFECT_POINTS = 250
+// Patrons come down from the far end toward you, and keep coming faster.
+export const SLIDE_PATRON_SPEED_MIN = 0.055 // t per second
+export const SLIDE_PATRON_SPEED_MAX = 0.085
+export const SLIDE_SPAWN_MIN_MS = 1100
+export const SLIDE_SPAWN_MAX_MS = 2300
+export const SLIDE_SPAWN_RAMP_MS = 45000 // how long until spawning is at its fastest
+export const SLIDE_SPAWN_RAMP = 0.4 // final interval as a fraction of the starting one
 
 // Flick -> how far it slides. The swipe is measured along the bar's own
 // direction, as a fraction of the frame's height, so a flick feels the
@@ -386,10 +387,52 @@ export const SLIDE_PERFECT_POINTS = 250
 // aimable.
 export const SLIDE_MIN_FLICK = 0.05 // shorter than this and it's a stray tap, not a throw
 export const SLIDE_MAX_FLICK = 0.34
-export const SLIDE_MIN_DIST = 0.15 // where the gentlest real flick stops
-export const SLIDE_MAX_DIST = 1.15 // hardest flick overshoots the end, on purpose
+export const SLIDE_MIN_DIST = 0.12 // where the gentlest real flick stops
+export const SLIDE_MAX_DIST = 1.2 // hardest flick runs the whole bar and off the end
 export const SLIDE_FRICTION = 1.55 // t-per-second-squared slowing it down
 
-// Glasses shrink as they travel away, matching the bars converging.
-export const SLIDE_GLASS_NEAR_PCT = 13
-export const SLIDE_GLASS_FAR_PCT = 6
+// Glasses and patrons shrink as they get further away.
+export const SLIDE_GLASS_NEAR_PCT = 11
+export const SLIDE_GLASS_FAR_PCT = 5
+
+// EXPERIMENTAL fifth bonus round — a Tempest-style web. Spokes radiate from
+// a hub; patrons climb each one from the hub outward, and the jerk runs the
+// rim throwing back down whichever spoke he's standing on. He fires on a
+// cooldown by himself, so the only thing the player does is move — being on
+// the wrong side of the circle is the whole danger, same as Tempest.
+//
+// Slotted in as a bonus round on purpose while it's an experiment: it's
+// self-contained and can be pulled out by deleting its files and its entry
+// in the bonus rotation. If it graduates to a mode of its own, the round
+// timer is the thing to drop — "until one gets all the way up" is the real
+// premise, and the timer only exists to make it terminate like the other
+// rounds do.
+export const TEMPEST_ROUND_MS = 30000
+export const TEMPEST_END_HOLD_MS = 1800
+export const TEMPEST_SPOKES = 8
+
+// The frame is far from square, so the web is an ellipse in percentage
+// space with its own x and y radius — same approach as the wheel round's
+// BONUS_WHEEL_RADIUS_X/Y.
+// y-radius is the x-radius scaled by the frame's aspect (~420x860), or the
+// "circle" comes out as an upright oval — percentages aren't square here.
+export const TEMPEST_CENTER = { x: 50, y: 58 }
+export const TEMPEST_RADIUS_X = 42
+export const TEMPEST_RADIUS_Y = 20.5
+
+// How fast the jerk travels around the rim, in spokes per second. Low
+// enough that crossing the circle costs real time.
+export const TEMPEST_JERK_SPEED = 2.6
+
+// Patrons climb from the hub (t=0) to the rim (t=1).
+export const TEMPEST_PATRON_SPEED_MIN = 0.055 // t per second
+export const TEMPEST_PATRON_SPEED_MAX = 0.095
+export const TEMPEST_SPAWN_MIN_MS = 900
+export const TEMPEST_SPAWN_MAX_MS = 1900
+// Ramps up over the round so it keeps tightening.
+export const TEMPEST_SPAWN_RAMP = 0.55 // final interval as a fraction of the starting one
+
+export const TEMPEST_FIRE_COOLDOWN_MS = 420
+export const TEMPEST_GLASS_SPEED = 1.5 // t per second, travelling inward
+export const TEMPEST_HIT_T = 0.06 // how close along the spoke counts as a hit
+export const TEMPEST_POINTS = 60

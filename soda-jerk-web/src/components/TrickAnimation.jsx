@@ -62,6 +62,8 @@ export default function TrickAnimation({ trick, height = 165, power = 1, paused 
               // Held on the first frame until the player lets go, so the
               // trick doesn't play itself out behind the wind-up.
               animationPlayState: paused ? 'paused' : 'running',
+              WebkitTouchCallout: 'none',
+              pointerEvents: 'none', // the wrapper owns the press, not the sprites
             }}
           />
         ))}

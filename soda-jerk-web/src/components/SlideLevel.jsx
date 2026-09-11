@@ -1,8 +1,6 @@
 import { useRef, useState } from 'react'
 import {
   SLIDE_BARS,
-  SLIDE_TARGET_MIN_T,
-  SLIDE_TARGET_MAX_T,
   SLIDE_MIN_FLICK,
   SLIDE_MAX_FLICK,
   SLIDE_GLASS_NEAR_PCT,
@@ -21,19 +19,18 @@ const BAR_BY_LANE = Object.fromEntries(SLIDE_BARS.map((b) => [b.lane, b]))
 
 // Bar width in x-percent at each end — the taper is what sells the
 // perspective, since every bar runs away from the player.
-const BAR_NEAR_W = 13
-const BAR_FAR_W = 3.4
+const BAR_NEAR_W = 11
+const BAR_FAR_W = 3
 
 // Anywhere along a bar, 0 at the near end and 1 at the far end. Everything
-// on a bar — glass, customer, target band — is placed through this, so the
-// bars can be re-angled in constants.js without touching the component.
+// on a bar — glasses, patrons — is placed through this, so the bars can be
+// re-angled in constants.js without touching the component.
 const pointAt = (bar, t) => ({
   x: bar.near.x + (bar.far.x - bar.near.x) * t,
   y: bar.near.y + (bar.far.y - bar.near.y) * t,
 })
 
-// Things shrink as they travel away, so the bars read as receding.
-const scaleAt = (t) => SLIDE_GLASS_NEAR_PCT + (SLIDE_GLASS_FAR_PCT - SLIDE_GLASS_NEAR_PCT) * t
+const glassSizeAt = (t) => SLIDE_GLASS_NEAR_PCT + (SLIDE_GLASS_FAR_PCT - SLIDE_GLASS_NEAR_PCT) * t
 
 export default function SlideLevel({ slideLevel, onFlick }) {
   const arenaRef = useRef(null)
@@ -46,7 +43,7 @@ export default function SlideLevel({ slideLevel, onFlick }) {
   }
 
   const start = (lane) => (e) => {
-    if (slideLevel.glass || slideLevel.ended || slideLevel.resultHoldMs > 0) return
+    if (slideLevel.ended) return
     e.preventDefault()
     arenaRef.current.setPointerCapture(e.pointerId)
     dragRef.current = { lane, from: toPct(e) }
@@ -54,23 +51,20 @@ export default function SlideLevel({ slideLevel, onFlick }) {
   }
 
   // The flick is measured as its projection onto the bar's OWN direction, so
-  // a swipe "up the bar" counts the same on the angled outer bars as on the
-  // straight middle one — and sideways wobble doesn't add power.
+  // a swipe "up the bar" counts the same on every bar whatever its angle,
+  // and sideways wobble doesn't add power.
   const flickAlong = (lane, from, to) => {
     const bar = BAR_BY_LANE[lane]
     const bx = bar.far.x - bar.near.x
     const by = bar.far.y - bar.near.y
     const len = Math.hypot(bx, by)
-    const dx = to.x - from.x
-    const dy = to.y - from.y
-    return ((dx * bx + dy * by) / len) / 100
+    return (((to.x - from.x) * bx + (to.y - from.y) * by) / len) / 100
   }
 
   const move = (e) => {
     const d = dragRef.current
     if (!d) return
-    const amount = flickAlong(d.lane, d.from, toPct(e))
-    setAim({ lane: d.lane, amount: Math.max(0, amount) })
+    setAim({ lane: d.lane, amount: Math.max(0, flickAlong(d.lane, d.from, toPct(e))) })
   }
 
   const end = (e) => {
@@ -81,8 +75,6 @@ export default function SlideLevel({ slideLevel, onFlick }) {
     setAim(null)
     if (amount > 0) onFlick(d.lane, amount)
   }
-
-  const glass = slideLevel.glass
 
   return (
     <div
@@ -99,88 +91,79 @@ export default function SlideLevel({ slideLevel, onFlick }) {
       >
         <div className="font-display text-brass text-lg tracking-[0.2em]">GLASS SLIDE</div>
         <div className="text-cream/60 text-[11px] tracking-[0.2em] mt-1">
-          SWIPE UP A BAR — NOT TOO HARD
+          KEEP THEM BACK — SWIPE UP A BAR
         </div>
         <div className="font-display text-cream/80 text-sm tracking-widest mt-1">
-          {slideLevel.slidesLeft} {slideLevel.slidesLeft === 1 ? 'GLASS' : 'GLASSES'} LEFT
+          {slideLevel.served} SERVED
         </div>
       </div>
 
       {/* Drawn as tapered quads rather than lines: a constant-width stroke
           reads as a skewer, and the whole point is that these are counters
-          running away from you. Width is in x-percent, so the near end is
-          wide and the far end narrow. */}
+          running away from you. */}
       <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
         {SLIDE_BARS.map((bar) => {
-          const quad = (t0, t1, w0, w1) => {
-            const a = pointAt(bar, t0)
-            const b = pointAt(bar, t1)
-            return `${a.x - w0 / 2},${a.y} ${a.x + w0 / 2},${a.y} ${b.x + w1 / 2},${b.y} ${b.x - w1 / 2},${b.y}`
-          }
-          const wAt = (t) => BAR_NEAR_W + (BAR_FAR_W - BAR_NEAR_W) * t
+          const a = pointAt(bar, 0)
+          const b = pointAt(bar, 1)
+          const quad = (w0, w1) =>
+            `${a.x - w0 / 2},${a.y} ${a.x + w0 / 2},${a.y} ${b.x + w1 / 2},${b.y} ${b.x - w1 / 2},${b.y}`
           return (
             <g key={bar.lane}>
-              {/* the bar top */}
-              <polygon points={quad(0, 1, BAR_NEAR_W, BAR_FAR_W)} fill="#6B5334" />
-              {/* a lighter strip down the middle, so it reads as a polished surface */}
-              <polygon points={quad(0, 1, BAR_NEAR_W * 0.45, BAR_FAR_W * 0.45)} fill="#8A6E44" opacity={0.85} />
-              {/* the customer's reach — where the glass has to stop */}
-              <polygon
-                points={quad(SLIDE_TARGET_MIN_T, SLIDE_TARGET_MAX_T, wAt(SLIDE_TARGET_MIN_T), wAt(SLIDE_TARGET_MAX_T))}
-                fill="#C6A15B"
-                opacity={0.5}
-              />
+              <polygon points={quad(BAR_NEAR_W, BAR_FAR_W)} fill="#6B5334" />
+              <polygon points={quad(BAR_NEAR_W * 0.45, BAR_FAR_W * 0.45)} fill="#8A6E44" opacity={0.85} />
             </g>
           )
         })}
       </svg>
 
-      {/* customers waiting at the far end of each bar */}
-      {slideLevel.customers.map((c) => {
-        const bar = BAR_BY_LANE[c.lane]
-        const p = pointAt(bar, 1)
+      {/* patrons coming down the bars toward you */}
+      {slideLevel.patrons.map((p) => {
+        const bar = BAR_BY_LANE[p.lane]
+        const pt = pointAt(bar, Math.max(0, p.t))
         return (
           <img
-            key={c.lane}
-            src={PATRON_SRC(c.patronType, c.drinkType)}
+            key={p.id}
+            src={PATRON_SRC(p.patronType, p.drinkType)}
             alt=""
-            className="absolute -translate-x-1/2"
+            className="absolute"
             style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              height: '11%',
+              left: `${pt.x}%`,
+              top: `${pt.y}%`,
+              // Bigger as they get closer, so the bar reads as depth.
+              height: `${13 - 6 * p.t}%`,
               width: 'auto',
               maxWidth: 'none',
-              transform: 'translate(-50%, -100%)',
+              transform: 'translate(-50%, -88%)',
               filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.6))',
             }}
           />
         )
       })}
 
-      {/* a glass mid-slide */}
-      {glass && (() => {
-        const bar = BAR_BY_LANE[glass.lane]
-        const p = pointAt(bar, Math.min(glass.t, 1.08))
+      {/* glasses on their way up */}
+      {slideLevel.glasses.map((g) => {
+        const bar = BAR_BY_LANE[g.lane]
+        const pt = pointAt(bar, Math.min(g.t, 1.06))
         return (
           <img
-            src={ART_SRC(DRINK_TYPES[glass.drinkType].icon)}
+            key={g.id}
+            src={ART_SRC(DRINK_TYPES[g.drinkType].icon)}
             alt=""
             className="absolute"
             style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              width: `${scaleAt(Math.min(glass.t, 1))}%`,
+              left: `${pt.x}%`,
+              top: `${pt.y}%`,
+              width: `${glassSizeAt(Math.min(g.t, 1))}%`,
               height: 'auto',
               maxWidth: 'none',
-              transform: 'translate(-50%, -78%)',
+              transform: 'translate(-50%, -72%)',
               filter: 'drop-shadow(0 3px 5px rgba(0,0,0,0.55))',
             }}
           />
         )
-      })()}
+      })}
 
-      {/* how hard the flick currently is, drawn on the bar being swiped */}
+      {/* how hard the current flick is, drawn along the bar being swiped */}
       {aim && aim.amount > 0 && (() => {
         const bar = BAR_BY_LANE[aim.lane]
         const n = Math.min(1, Math.max(0, (aim.amount - SLIDE_MIN_FLICK) / (SLIDE_MAX_FLICK - SLIDE_MIN_FLICK)))
@@ -189,35 +172,36 @@ export default function SlideLevel({ slideLevel, onFlick }) {
           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
             <line
               x1={bar.near.x} y1={bar.near.y} x2={p.x} y2={p.y}
-              stroke={n > 0.92 ? '#E0596B' : '#E8C878'}
-              strokeWidth={5} strokeLinecap="round" opacity={0.85}
+              stroke="#E8C878" strokeWidth={5} strokeLinecap="round" opacity={0.85}
               vectorEffect="non-scaling-stroke"
             />
           </svg>
         )
       })()}
 
-      {/* the near end of each bar is the grab handle */}
+      {/* The near end of each bar is the grab handle. Kept up off the
+          bottom edge on purpose — a swipe starting down there gets eaten by
+          the iOS app-switcher gesture instead of reaching the game. */}
       {SLIDE_BARS.map((bar) => {
-        const p = pointAt(bar, 0.12)
+        const p = pointAt(bar, 0.1)
         return (
           <div
             key={bar.lane}
             className="absolute -translate-x-1/2 -translate-y-1/2"
-            style={{ left: `${p.x}%`, top: `${p.y}%`, width: '26%', height: '22%', touchAction: 'none' }}
+            style={{ left: `${p.x}%`, top: `${p.y}%`, width: '34%', height: '17%', touchAction: 'none' }}
             onPointerDown={start(bar.lane)}
           />
         )
       })}
 
-      {slideLevel.resultText && slideLevel.resultHoldMs > 0 && (
+      {slideLevel.ended && slideLevel.resultText && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 60 }}>
           <div
-            className="px-5 py-2 rounded-lg text-center text-2xl font-extrabold tracking-[0.06em]"
+            className="px-5 py-2 rounded-lg text-center text-xl font-extrabold tracking-[0.06em]"
             style={{
-              background: 'rgba(12,10,13,0.82)',
-              border: `1px solid ${slideLevel.resultKind === 'smash' ? 'rgba(224,89,107,0.5)' : 'rgba(232,200,120,0.5)'}`,
-              color: slideLevel.resultKind === 'smash' ? '#F07A8A' : '#F2D58C',
+              background: 'rgba(12,10,13,0.85)',
+              border: '1px solid rgba(224,89,107,0.5)',
+              color: '#F07A8A',
               boxShadow: '0 6px 20px rgba(0,0,0,0.55)',
             }}
           >

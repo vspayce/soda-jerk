@@ -13,6 +13,7 @@ import BonusLevel from './components/BonusLevel.jsx'
 import PlatesLevel from './components/PlatesLevel.jsx'
 import ShakerLevel from './components/ShakerLevel.jsx'
 import SlideLevel from './components/SlideLevel.jsx'
+import TempestLevel from './components/TempestLevel.jsx'
 import LeaderboardScreen from './components/LeaderboardScreen.jsx'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
@@ -59,6 +60,8 @@ export default function App() {
     skipToBonusShaker,
     skipToBonusSlide,
     slideFlick,
+    skipToBonusTempest,
+    tempestMoveTo,
     skipToNewVenue,
   } = useGameEngine()
   const music = useMusic(MUSIC_SRC, { volume: 0.22 })
@@ -283,7 +286,10 @@ export default function App() {
       {state.mode === 'bonusSlide' && state.slideLevel && (
 
         <SlideLevel slideLevel={state.slideLevel} onFlick={withAudio(slideFlick)} />
+      )}
 
+      {state.mode === 'bonusTempest' && state.tempestLevel && (
+        <TempestLevel tempestLevel={state.tempestLevel} onMoveTo={withAudio(tempestMoveTo)} />
       )}
 
 
@@ -398,6 +404,14 @@ export default function App() {
               ? withAudio(() => {
                   closeSettings()
                   skipToBonusSlide()
+                })
+              : null
+          }
+          onSkipToBonusTempest={
+            state.started && !state.gameOver && state.mode === 'bar'
+              ? withAudio(() => {
+                  closeSettings()
+                  skipToBonusTempest()
                 })
               : null
           }

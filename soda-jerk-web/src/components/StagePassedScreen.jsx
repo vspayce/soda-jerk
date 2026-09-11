@@ -38,8 +38,12 @@ export default function StagePassedScreen({ stage, onContinue, onTrickBonus }) {
 
   useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
 
-  const startCharge = () => {
+  const startCharge = (e) => {
     if (phase !== 'ready') return
+    // Belt and braces with -webkit-touch-callout in index.css: iOS will
+    // still try to raise its image action sheet on a long press over a
+    // sprite, and winding up this trick IS a long press.
+    e?.preventDefault?.()
     setPhase('charging')
     chargeStartRef.current = performance.now()
     const tick = () => {

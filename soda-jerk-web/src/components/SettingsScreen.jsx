@@ -9,6 +9,7 @@ export default function SettingsScreen({
   onSkipToBonusPlates,
   onSkipToBonusShaker,
   onSkipToBonusSlide,
+  onSkipToBonusTempest,
   onSkipToNewVenue,
 }) {
   return (
@@ -88,6 +89,15 @@ export default function SettingsScreen({
           className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
         >
           SKIP TO SLIDE BONUS
+        </button>
+      )}
+
+      {onSkipToBonusTempest && (
+        <button
+          onClick={onSkipToBonusTempest}
+          className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
+        >
+          SKIP TO ROUNDS BONUS
         </button>
       )}
 

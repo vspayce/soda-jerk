@@ -136,25 +136,40 @@ function createShakerLevelState() {
   }
 }
 
-// Fresh state for a glass-slide bonus-round attempt. One customer waits at
-// the far end of each bar; a flick sends a glass up it and where the glass
-// stops is the whole game — see stepSlide.
+// Fresh state for the endless glass-slide round. Patrons keep coming down
+// the bars; you keep swiping glasses up them until one gets through.
 function createSlideLevelState() {
   return {
-    slidesLeft: C.SLIDE_ROUND_SLIDES,
-    // The customer waiting at the end of each bar. Re-rolled as each one
-    // is served, so the bars don't all end up looking identical.
-    customers: C.SLIDE_BARS.map((bar) => ({
-      lane: bar.lane,
-      patronType: pickWeightedIndex(C.PATRON_TYPE_WEIGHTS),
-      drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
-    })),
-    glass: null, // { lane, t, v, drinkType } while one is actually sliding
+    elapsedMs: 0,
+    nextSpawnInMs: 700,
+    patrons: [], // { id, lane, t, speed, patronType, drinkType } coming toward you
+    glasses: [], // { id, lane, t, v, drinkType } sliding away from you
+    served: 0,
     resultText: null,
-    resultKind: null, // 'served' | 'perfect' | 'short' | 'smash'
+    resultKind: null,
     resultHoldMs: 0,
-    resolvedCount: 0,
     ended: false,
+    nextId: 1,
+  }
+}
+
+// Fresh state for the Tempest-style round. The jerk starts on spoke 0 and
+// fires down whichever spoke he's on; patrons climb outward from the hub.
+function createTempestLevelState() {
+  return {
+    remainingMs: C.TEMPEST_ROUND_MS,
+    spoke: 0, // where he is, as a (fractional) spoke index around the rim
+    targetSpoke: 0,
+    fireCooldownMs: 0,
+    nextSpawnInMs: randomBetween(C.TEMPEST_SPAWN_MIN_MS, C.TEMPEST_SPAWN_MAX_MS),
+    patrons: [], // { id, spoke, t, speed, patronType, drinkType }
+    glasses: [], // { id, spoke, t, drinkType } travelling inward
+    served: 0,
+    resultText: null,
+    resultKind: null, // 'time' | 'breach'
+    resultHoldMs: 0,
+    ended: false,
+    nextId: 1,
   }
 }
 
@@ -178,6 +193,7 @@ function createInitialSim() {
     platesLevel: null, // set to createPlatesLevelState() while mode is 'bonusPlates'
     shakerLevel: null, // set to createShakerLevelState() while mode is 'bonusShaker'
     slideLevel: null, // set to createSlideLevelState() while mode is 'bonusSlide'
+    tempestLevel: null, // set to createTempestLevelState() while mode is 'bonusTempest'
     playerLane: 0,
     playerX: C.PLAYER_X,
     moveDir: 0, // -1 left, 0 still, 1 right — set by holding a run button
@@ -265,6 +281,7 @@ function returnToBar(sim) {
   sim.platesLevel = null
   sim.shakerLevel = null
   sim.slideLevel = null
+  sim.tempestLevel = null
   sim.glasses = []
   sim.mugs = []
   // The hot dog freezes mid-countdown too — a bonus round can outlast its
@@ -566,11 +583,10 @@ function stepShaker(sim, dt) {
   }
 }
 
-// The glass-slide bonus round. A flick launches a glass up one bar; friction
-// does the rest. It resolves the moment it either runs out of speed or runs
-// off the far end — landing inside the customer's reach is a serve, short of
-// it is a stall, past the end is a smashed glass. A smash costs the points
-// and nothing else.
+// The endless glass-slide round. Patrons come down each bar toward the
+// player; a flick sends a glass up to meet one. Several glasses can be in
+// flight at once — the round is about swiping fast, not about waiting your
+// turn. One patron reaching the near end ends it.
 function stepSlide(sim, dt) {
   const s = sim.slideLevel
   if (!s) return
@@ -581,53 +597,157 @@ function stepSlide(sim, dt) {
     return
   }
 
-  if (s.resultHoldMs > 0) {
-    s.resultHoldMs -= dt * 1000
-    if (s.resultHoldMs <= 0) {
-      s.resultText = null
-      s.resultKind = null
-      if (s.slidesLeft <= 0) {
-        s.ended = true
-        s.resultHoldMs = C.SLIDE_ROUND_END_HOLD_MS
-      }
+  s.elapsedMs += dt * 1000
+
+  // Spawning tightens as the round goes on, so it always ends eventually.
+  const progress = Math.min(1, s.elapsedMs / C.SLIDE_SPAWN_RAMP_MS)
+  const ramp = 1 - (1 - C.SLIDE_SPAWN_RAMP) * progress
+  s.nextSpawnInMs -= dt * 1000
+  if (s.nextSpawnInMs <= 0) {
+    const bar = pick(C.SLIDE_BARS)
+    s.patrons.push({
+      id: s.nextId++,
+      lane: bar.lane,
+      t: 1,
+      speed: randomBetween(C.SLIDE_PATRON_SPEED_MIN, C.SLIDE_PATRON_SPEED_MAX),
+      patronType: pickWeightedIndex(C.PATRON_TYPE_WEIGHTS),
+      drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
+    })
+    s.nextSpawnInMs = randomBetween(C.SLIDE_SPAWN_MIN_MS, C.SLIDE_SPAWN_MAX_MS) * ramp
+  }
+
+  for (const p of s.patrons) p.t -= p.speed * dt
+  for (const g of s.glasses) {
+    g.t += g.v * dt
+    g.v -= C.SLIDE_FRICTION * dt
+  }
+
+  // A glass meets the nearest patron on its own bar.
+  for (const g of s.glasses) {
+    if (g._done) continue
+    let best = null
+    for (const p of s.patrons) {
+      if (p._done || p.lane !== g.lane) continue
+      if (Math.abs(p.t - g.t) <= C.SLIDE_HIT_T && (!best || p.t < best.t)) best = p
     }
+    if (best) {
+      best._done = true
+      g._done = true
+      s.served++
+      sim.score += C.SLIDE_POINTS
+    } else if (g.t > 1 || g.v <= 0) {
+      // Off the far end, or run out of steam short of anyone.
+      g._done = true
+    }
+  }
+  s.glasses = s.glasses.filter((g) => !g._done)
+  s.patrons = s.patrons.filter((p) => !p._done)
+
+  if (s.patrons.some((p) => p.t <= 0)) {
+    s.ended = true
+    s.resultKind = 'breach'
+    s.resultText = `THEY GOT THROUGH — ${s.served} SERVED`
+    s.resultHoldMs = C.SLIDE_END_HOLD_MS
+  }
+}
+
+// Shortest way round a ring of N — going anticlockwise past 0 has to be
+// cheaper than walking all the way back through the middle indices.
+function ringDelta(from, to, n) {
+  let d = (to - from) % n
+  if (d > n / 2) d -= n
+  if (d < -n / 2) d += n
+  return d
+}
+
+// The Tempest-style round. He fires down his current spoke on a cooldown by
+// himself; the player only moves him. A patron reaching the rim ends it.
+function stepTempest(sim, dt) {
+  const s = sim.tempestLevel
+  if (!s) return
+  const N = C.TEMPEST_SPOKES
+
+  if (s.ended) {
+    s.resultHoldMs -= dt * 1000
+    if (s.resultHoldMs <= 0) returnToBar(sim)
     return
   }
 
-  const g = s.glass
-  if (!g) return
+  s.remainingMs -= dt * 1000
 
-  g.t += g.v * dt
-  g.v -= C.SLIDE_FRICTION * dt
-
-  const offEnd = g.t > 1
-  if (!offEnd && g.v > 0) return
-
-  // Came to rest (or left the bar) — score where it ended up.
-  if (offEnd) {
-    s.resultText = 'SMASHED!'
-    s.resultKind = 'smash'
-  } else if (g.t >= C.SLIDE_TARGET_MIN_T && g.t <= C.SLIDE_TARGET_MAX_T) {
-    const perfect = g.t >= C.SLIDE_PERFECT_MIN_T
-    const points = perfect ? C.SLIDE_PERFECT_POINTS : C.SLIDE_POINTS
-    sim.score += points
-    s.resultText = `${perfect ? 'RIGHT ON THE NOSE' : 'SERVED'}  +${points}`
-    s.resultKind = perfect ? 'perfect' : 'served'
-    // That customer's been served — a new one steps up to the bar.
-    const c = s.customers.find((x) => x.lane === g.lane)
-    if (c) {
-      c.patronType = pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
-      c.drinkType = Math.floor(Math.random() * C.DRINK_TYPES.length)
-    }
-  } else {
-    s.resultText = 'TOO SHORT'
-    s.resultKind = 'short'
+  // Run him around the rim the short way.
+  const d = ringDelta(s.spoke, s.targetSpoke, N)
+  if (Math.abs(d) > 1e-3) {
+    const stepBy = Math.sign(d) * Math.min(Math.abs(d), C.TEMPEST_JERK_SPEED * dt)
+    s.spoke = (s.spoke + stepBy + N) % N
   }
 
-  s.glass = null
-  s.slidesLeft -= 1
-  s.resolvedCount++
-  s.resultHoldMs = C.SLIDE_RESULT_HOLD_MS
+  // Spawning tightens as the round goes on.
+  const progress = 1 - Math.max(0, s.remainingMs) / C.TEMPEST_ROUND_MS
+  const ramp = 1 - (1 - C.TEMPEST_SPAWN_RAMP) * progress
+  s.nextSpawnInMs -= dt * 1000
+  if (s.nextSpawnInMs <= 0) {
+    s.patrons.push({
+      id: s.nextId++,
+      spoke: Math.floor(Math.random() * N),
+      t: 0,
+      speed: randomBetween(C.TEMPEST_PATRON_SPEED_MIN, C.TEMPEST_PATRON_SPEED_MAX),
+      patronType: pickWeightedIndex(C.PATRON_TYPE_WEIGHTS),
+      drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
+    })
+    s.nextSpawnInMs = randomBetween(C.TEMPEST_SPAWN_MIN_MS, C.TEMPEST_SPAWN_MAX_MS) * ramp
+  }
+
+  // He throws down whatever spoke he's standing on, whenever it's loaded.
+  s.fireCooldownMs -= dt * 1000
+  const onSpoke = ((Math.round(s.spoke) % N) + N) % N
+  if (s.fireCooldownMs <= 0 && Math.abs(ringDelta(s.spoke, onSpoke, N)) < 0.2) {
+    s.glasses.push({
+      id: s.nextId++,
+      spoke: onSpoke,
+      t: 1,
+      drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
+    })
+    s.fireCooldownMs = C.TEMPEST_FIRE_COOLDOWN_MS
+  }
+
+  for (const p of s.patrons) p.t += p.speed * dt
+  for (const g of s.glasses) g.t -= C.TEMPEST_GLASS_SPEED * dt
+
+  // A glass takes out the outermost patron it reaches on its own spoke.
+  for (const g of s.glasses) {
+    if (g._done) continue
+    let best = null
+    for (const p of s.patrons) {
+      if (p._done || p.spoke !== g.spoke) continue
+      if (Math.abs(p.t - g.t) <= C.TEMPEST_HIT_T && (!best || p.t > best.t)) best = p
+    }
+    if (best) {
+      best._done = true
+      g._done = true
+      s.served++
+      sim.score += C.TEMPEST_POINTS
+    } else if (g.t <= 0) {
+      g._done = true
+    }
+  }
+  s.glasses = s.glasses.filter((g) => !g._done)
+  s.patrons = s.patrons.filter((p) => !p._done)
+
+  // One of them made it all the way up — that's the round.
+  if (s.patrons.some((p) => p.t >= 1)) {
+    s.ended = true
+    s.resultKind = 'breach'
+    s.resultText = `THEY GOT THROUGH — ${s.served} SERVED`
+    s.resultHoldMs = C.TEMPEST_END_HOLD_MS
+    return
+  }
+  if (s.remainingMs <= 0) {
+    s.ended = true
+    s.resultKind = 'time'
+    s.resultText = `CLOSING TIME — ${s.served} SERVED`
+    s.resultHoldMs = C.TEMPEST_END_HOLD_MS
+  }
 }
 
 function step(sim, dt) {
@@ -650,6 +770,10 @@ function step(sim, dt) {
   }
   if (sim.mode === 'bonusSlide') {
     stepSlide(sim, dt)
+    return
+  }
+  if (sim.mode === 'bonusTempest') {
+    stepTempest(sim, dt)
     return
   }
   if (sim.awaitingContinue) return
@@ -948,12 +1072,13 @@ function step(sim, dt) {
         // Already at the top lane-capacity stage — a clean full clear
         // here sends the player to a random one of the three bonus rounds
         // instead.
-        const bonusMode = pick(['bonusWheel', 'bonusPlates', 'bonusShaker', 'bonusSlide'])
+        const bonusMode = pick(['bonusWheel', 'bonusPlates', 'bonusShaker', 'bonusSlide', 'bonusTempest'])
         sim.mode = bonusMode
         if (bonusMode === 'bonusWheel') sim.bonusLevel = createBonusLevelState()
         else if (bonusMode === 'bonusPlates') sim.platesLevel = createPlatesLevelState()
         else if (bonusMode === 'bonusShaker') sim.shakerLevel = createShakerLevelState()
-        else sim.slideLevel = createSlideLevelState()
+        else if (bonusMode === 'bonusSlide') sim.slideLevel = createSlideLevelState()
+        else sim.tempestLevel = createTempestLevelState()
       }
     }
   }
@@ -1245,24 +1370,42 @@ export function useGameEngine() {
 
   // A flick up one of the bars sends a glass sliding. `flick` is the swipe's
   // length along that bar's own direction, as a fraction of the frame's
-  // height, so the same gesture behaves the same on every bar.
+  // height, so the same gesture behaves the same on every bar. There's no
+  // throw limit and no waiting for the last one to land — the round is about
+  // swiping as fast as you can.
   const slideFlick = useCallback((lane, flick) => {
     const sim = simRef.current
     const s = sim.slideLevel
-    if (!s || s.ended || s.glass || s.resultHoldMs > 0 || s.slidesLeft <= 0) return
+    if (!s || s.ended) return
     if (flick < C.SLIDE_MIN_FLICK) return // a tap, not a throw
 
     const n = Math.min(1, (flick - C.SLIDE_MIN_FLICK) / (C.SLIDE_MAX_FLICK - C.SLIDE_MIN_FLICK))
     const dist = C.SLIDE_MIN_DIST + (C.SLIDE_MAX_DIST - C.SLIDE_MIN_DIST) * n
-    const customer = s.customers.find((c) => c.lane === lane)
-    s.glass = {
+    s.glasses.push({
+      id: s.nextId++,
       lane,
       t: 0,
       // Derived from the distance so the control stays linear — see the
       // SLIDE_* notes in constants.js.
       v: Math.sqrt(2 * C.SLIDE_FRICTION * dist),
-      drinkType: customer ? customer.drinkType : 0,
-    }
+      drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
+    })
+  }, [])
+
+  // The only input the Tempest round takes: send him round the rim to a
+  // spoke. He fires down whichever one he's standing on by himself.
+  const tempestMoveTo = useCallback((spoke) => {
+    const sim = simRef.current
+    const s = sim.tempestLevel
+    if (!s || s.ended) return
+    s.targetSpoke = ((spoke % C.TEMPEST_SPOKES) + C.TEMPEST_SPOKES) % C.TEMPEST_SPOKES
+  }, [])
+
+  const skipToBonusTempest = useCallback(() => {
+    const sim = simRef.current
+    if (sim.gameOver || !sim.started) return
+    sim.mode = 'bonusTempest'
+    sim.tempestLevel = createTempestLevelState()
   }, [])
 
   const skipToBonusSlide = useCallback(() => {
@@ -1342,6 +1485,8 @@ export function useGameEngine() {
     skipToBonusPlates,
     skipToBonusShaker,
     skipToBonusSlide,
+    skipToBonusTempest,
+    tempestMoveTo,
     slideFlick,
     skipToNewVenue,
   }

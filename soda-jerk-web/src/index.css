@@ -35,7 +35,19 @@ body {
 /* Without this, a mouse-drag starting on any sprite (the bartender,
    customers, mugs) kicks off the browser's native image drag-and-drop
    instead of our swipe/run gesture — touch input never had this problem,
-   which is why it only shows up testing with a real mouse. */
+   which is why it only shows up testing with a real mouse.
+
+   -webkit-touch-callout is the touch equivalent, and the game needs it
+   badly: every sprite is a real <img>, so holding one down on iOS pops
+   the "Save Image / Copy" sheet over the game. That breaks any deliberate
+   press-and-hold — the level-clear trick is wound up by holding the jerk,
+   which is exactly the gesture Safari hijacks. It has to be set on the
+   frame as well as the images, since the sheet can be raised from a hold
+   that starts on either. */
+.phone-frame,
+.phone-frame img {
+  -webkit-touch-callout: none;
+}
 .phone-frame img {
   -webkit-user-drag: none;
   user-drag: none;
