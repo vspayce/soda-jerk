@@ -241,6 +241,11 @@ function returnToBar(sim) {
   sim.shakerLevel = null
   sim.glasses = []
   sim.mugs = []
+  // The hot dog freezes mid-countdown too — a bonus round can outlast its
+  // whole 6s lifetime, so it would otherwise reappear as a stale prop with
+  // a second or two left on a timer that stopped ages ago.
+  sim.bonus = null
+  sim.nextBonusInMs = randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS)
   // Let a future clean full-clear send the player to a bonus round again.
   sim.stageAttemptActive = false
   sim.stageAttemptClean = false
