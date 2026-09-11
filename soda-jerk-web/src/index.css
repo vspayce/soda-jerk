@@ -457,3 +457,67 @@ body {
   animation-fill-mode: both;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
 }
+
+/* ---- The Straw Toss -------------------------------------------------
+   A flick, not a heave: he stays on the standing pose throughout and the
+   straw does the performing — tumbling end over end, then dropping
+   upright into the waiting glass. The landing is the whole trick, so the
+   rotation has to finish on a clean 360 (upright) rather than anywhere
+   in between. */
+@keyframes trick-pose-flick {
+  0%        { transform: translateY(0) rotate(0deg); }
+  12%       { transform: translateY(1%) rotate(-2deg); }   /* small wind-up */
+  20%       { transform: translateY(0) rotate(2.5deg); }   /* the flick */
+  32%, 100% { transform: translateY(0) rotate(0deg); }
+}
+.trick-pose-flick {
+  transform-origin: 50% 100%;
+  animation-name: trick-pose-flick;
+  animation-timing-function: ease-out;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+}
+
+/* The glass just waits on the counter for the straw to arrive. */
+@keyframes trick-prop-straw-glass {
+  0%, 100% { opacity: 1; }
+  /* a tiny knock as the straw drops in */
+  66%      { transform: translateY(0) scaleY(1); }
+  70%      { transform: translateY(1.5%) scaleY(0.98); }
+  76%      { transform: translateY(0) scaleY(1); }
+}
+.trick-prop-straw-glass {
+  transform-origin: 50% 100%;
+  animation-name: trick-prop-straw-glass;
+  animation-timing-function: ease-out;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.45));
+}
+
+/* Straw: flicked out of his hand at 18%, tumbles across, then drops
+   upright into the cup. The straw's own layout position IS the landing
+   spot, so the keyframe runs from a big negative offset (his hand) back
+   to translate(0,0) — that way where it comes to rest is fixed by the
+   layout and can't drift, and it finishes on a clean 360deg so it stands
+   vertical, which is the whole point of the trick. Offsets are
+   percentages of the straw's own box: -409% x is his hand. */
+@keyframes trick-prop-straw {
+  0%, 16%   { opacity: 0; transform: translate(-409%, -26%) rotate(-20deg); }
+  18%       { opacity: 1; transform: translate(-409%, -26%) rotate(-20deg); }
+  34%       { opacity: 1; transform: translate(-300%, -190%) rotate(120deg); }
+  50%       { opacity: 1; transform: translate(-180%, -250%) rotate(250deg); }
+  64%       { opacity: 1; transform: translate(-60%, -170%) rotate(330deg); }
+  72%       { opacity: 1; transform: translate(0%, -40%) rotate(360deg); }
+  /* drops in and settles */
+  80%       { opacity: 1; transform: translate(0%, 4%) rotate(360deg); }
+  88%       { opacity: 1; transform: translate(0%, -3%) rotate(360deg); }
+  100%      { opacity: 1; transform: translate(0%, 0%) rotate(360deg); }
+}
+.trick-prop-straw {
+  animation-name: trick-prop-straw;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}

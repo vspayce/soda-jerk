@@ -1,27 +1,27 @@
 const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 
 // Plays one of the jerk's between-level flourishes (see game/tricks.js).
-// The two poses are stacked and cross-faded by keyframe, both scaled to the
-// same height and offset so their feet land on the same spot; the prop
-// arcs over the top on its own keyframe, timed so it leaves his hand
-// exactly when the throw pose appears.
+// Every layer is laid out against one anchor point on his feet and driven
+// by one shared clock, so poses and props can't drift apart from each
+// other however the animation is sized.
 export default function TrickAnimation({ trick, height = 165 }) {
   if (!trick) return null
-
-  const { stand, throw: throwPose } = trick.poses
-  const standW = height * stand.aspect
-  const throwW = height * throwPose.aspect
-  // Line both poses up on one vertical axis through his feet.
-  const standLeft = -standW * stand.feetX
-  const throwLeft = -throwW * throwPose.feetX
-
-  const propH = height * trick.prop.heightRatio
-  const propW = propH * trick.prop.aspect
-  // Launch point: his raised hand in the throw pose.
-  const propLeft = throwLeft + throwW * trick.hand.x - propW / 2
-  const propBottom = height - height * trick.hand.y - propH
-
   const ms = `${trick.durationMs}ms`
+
+  const layerStyle = (layer) => {
+    if (layer.kind === 'pose') {
+      const w = height * layer.aspect
+      return { left: -w * layer.feetX, bottom: 0, width: w, height }
+    }
+    const h = height * layer.heightRatio
+    const w = h * layer.aspect
+    return {
+      left: height * layer.x - w / 2,
+      bottom: height * layer.y - h / 2,
+      width: w,
+      height: h,
+    }
+  }
 
   return (
     <div className="relative w-full" style={{ height }}>
@@ -36,30 +36,20 @@ export default function TrickAnimation({ trick, height = 165 }) {
         }}
       />
 
-      {/* Everything below is positioned relative to this single zero-width
-          point, so the poses and the prop can't drift apart from each
-          other. The children therefore need max-width:none — Tailwind's
-          preflight caps images at max-width:100%, which against a
-          zero-width containing block collapses them to nothing. */}
+      {/* Everything hangs off this single zero-width point on his feet. The
+          children therefore need max-width:none — Tailwind's preflight caps
+          images at max-width:100%, which against a zero-width containing
+          block collapses them to nothing at all. */}
       <div className="absolute" style={{ left: '50%', bottom: 3, width: 0, height }}>
-        <img
-          src={ART_SRC(stand.src)}
-          alt=""
-          className="absolute trick-pose-stand"
-          style={{ left: standLeft, bottom: 0, width: standW, height, animationDuration: ms, maxWidth: 'none' }}
-        />
-        <img
-          src={ART_SRC(throwPose.src)}
-          alt=""
-          className="absolute trick-pose-throw"
-          style={{ left: throwLeft, bottom: 0, width: throwW, height, animationDuration: ms, maxWidth: 'none' }}
-        />
-        <img
-          src={ART_SRC(trick.prop.src)}
-          alt=""
-          className={`absolute ${trick.prop.className}`}
-          style={{ left: propLeft, bottom: propBottom, width: propW, height: propH, animationDuration: ms, maxWidth: 'none' }}
-        />
+        {trick.layers.map((layer, i) => (
+          <img
+            key={`${layer.src}-${i}`}
+            src={ART_SRC(layer.src)}
+            alt=""
+            className={`absolute ${layer.className}`}
+            style={{ ...layerStyle(layer), animationDuration: ms, maxWidth: 'none' }}
+          />
+        ))}
       </div>
     </div>
   )
