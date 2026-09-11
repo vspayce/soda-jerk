@@ -12,6 +12,7 @@ import StagePassedScreen from './components/StagePassedScreen.jsx'
 import BonusLevel from './components/BonusLevel.jsx'
 import PlatesLevel from './components/PlatesLevel.jsx'
 import ShakerLevel from './components/ShakerLevel.jsx'
+import SlideLevel from './components/SlideLevel.jsx'
 import LeaderboardScreen from './components/LeaderboardScreen.jsx'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
@@ -56,6 +57,8 @@ export default function App() {
     skipToBonusWheel,
     skipToBonusPlates,
     skipToBonusShaker,
+    skipToBonusSlide,
+    slideFlick,
     skipToNewVenue,
   } = useGameEngine()
   const music = useMusic(MUSIC_SRC, { volume: 0.22 })
@@ -277,6 +280,13 @@ export default function App() {
         <PlatesLevel platesLevel={state.platesLevel} onPlateClick={withAudio(plateClick)} />
       )}
 
+      {state.mode === 'bonusSlide' && state.slideLevel && (
+
+        <SlideLevel slideLevel={state.slideLevel} onFlick={withAudio(slideFlick)} />
+
+      )}
+
+
       {state.mode === 'bonusShaker' && state.shakerLevel && (
         <ShakerLevel
           shakerLevel={state.shakerLevel}
@@ -380,6 +390,14 @@ export default function App() {
               ? withAudio(() => {
                   closeSettings()
                   skipToBonusShaker()
+                })
+              : null
+          }
+          onSkipToBonusSlide={
+            state.started && !state.gameOver && state.mode === 'bar'
+              ? withAudio(() => {
+                  closeSettings()
+                  skipToBonusSlide()
                 })
               : null
           }

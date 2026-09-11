@@ -136,6 +136,28 @@ function createShakerLevelState() {
   }
 }
 
+// Fresh state for a glass-slide bonus-round attempt. One customer waits at
+// the far end of each bar; a flick sends a glass up it and where the glass
+// stops is the whole game — see stepSlide.
+function createSlideLevelState() {
+  return {
+    slidesLeft: C.SLIDE_ROUND_SLIDES,
+    // The customer waiting at the end of each bar. Re-rolled as each one
+    // is served, so the bars don't all end up looking identical.
+    customers: C.SLIDE_BARS.map((bar) => ({
+      lane: bar.lane,
+      patronType: pickWeightedIndex(C.PATRON_TYPE_WEIGHTS),
+      drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
+    })),
+    glass: null, // { lane, t, v, drinkType } while one is actually sliding
+    resultText: null,
+    resultKind: null, // 'served' | 'perfect' | 'short' | 'smash'
+    resultHoldMs: 0,
+    resolvedCount: 0,
+    ended: false,
+  }
+}
+
 function pickPlateKind() {
   const r = Math.random()
   if (r < C.PLATES_KIND_WEIGHTS.dirty) return 'dirty'
@@ -155,6 +177,7 @@ function createInitialSim() {
     bonusLevel: null, // set to createBonusLevelState() while mode is 'bonusWheel'
     platesLevel: null, // set to createPlatesLevelState() while mode is 'bonusPlates'
     shakerLevel: null, // set to createShakerLevelState() while mode is 'bonusShaker'
+    slideLevel: null, // set to createSlideLevelState() while mode is 'bonusSlide'
     playerLane: 0,
     playerX: C.PLAYER_X,
     moveDir: 0, // -1 left, 0 still, 1 right — set by holding a run button
@@ -241,6 +264,7 @@ function returnToBar(sim) {
   sim.bonusLevel = null
   sim.platesLevel = null
   sim.shakerLevel = null
+  sim.slideLevel = null
   sim.glasses = []
   sim.mugs = []
   // The hot dog freezes mid-countdown too — a bonus round can outlast its
@@ -542,6 +566,70 @@ function stepShaker(sim, dt) {
   }
 }
 
+// The glass-slide bonus round. A flick launches a glass up one bar; friction
+// does the rest. It resolves the moment it either runs out of speed or runs
+// off the far end — landing inside the customer's reach is a serve, short of
+// it is a stall, past the end is a smashed glass. A smash costs the points
+// and nothing else.
+function stepSlide(sim, dt) {
+  const s = sim.slideLevel
+  if (!s) return
+
+  if (s.ended) {
+    s.resultHoldMs -= dt * 1000
+    if (s.resultHoldMs <= 0) returnToBar(sim)
+    return
+  }
+
+  if (s.resultHoldMs > 0) {
+    s.resultHoldMs -= dt * 1000
+    if (s.resultHoldMs <= 0) {
+      s.resultText = null
+      s.resultKind = null
+      if (s.slidesLeft <= 0) {
+        s.ended = true
+        s.resultHoldMs = C.SLIDE_ROUND_END_HOLD_MS
+      }
+    }
+    return
+  }
+
+  const g = s.glass
+  if (!g) return
+
+  g.t += g.v * dt
+  g.v -= C.SLIDE_FRICTION * dt
+
+  const offEnd = g.t > 1
+  if (!offEnd && g.v > 0) return
+
+  // Came to rest (or left the bar) — score where it ended up.
+  if (offEnd) {
+    s.resultText = 'SMASHED!'
+    s.resultKind = 'smash'
+  } else if (g.t >= C.SLIDE_TARGET_MIN_T && g.t <= C.SLIDE_TARGET_MAX_T) {
+    const perfect = g.t >= C.SLIDE_PERFECT_MIN_T
+    const points = perfect ? C.SLIDE_PERFECT_POINTS : C.SLIDE_POINTS
+    sim.score += points
+    s.resultText = `${perfect ? 'RIGHT ON THE NOSE' : 'SERVED'}  +${points}`
+    s.resultKind = perfect ? 'perfect' : 'served'
+    // That customer's been served — a new one steps up to the bar.
+    const c = s.customers.find((x) => x.lane === g.lane)
+    if (c) {
+      c.patronType = pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
+      c.drinkType = Math.floor(Math.random() * C.DRINK_TYPES.length)
+    }
+  } else {
+    s.resultText = 'TOO SHORT'
+    s.resultKind = 'short'
+  }
+
+  s.glass = null
+  s.slidesLeft -= 1
+  s.resolvedCount++
+  s.resultHoldMs = C.SLIDE_RESULT_HOLD_MS
+}
+
 function step(sim, dt) {
   if (!sim.started) return
   // Covers every mode, bonus rounds included — the settings menu opens
@@ -558,6 +646,10 @@ function step(sim, dt) {
   }
   if (sim.mode === 'bonusShaker') {
     stepShaker(sim, dt)
+    return
+  }
+  if (sim.mode === 'bonusSlide') {
+    stepSlide(sim, dt)
     return
   }
   if (sim.awaitingContinue) return
@@ -856,11 +948,12 @@ function step(sim, dt) {
         // Already at the top lane-capacity stage — a clean full clear
         // here sends the player to a random one of the three bonus rounds
         // instead.
-        const bonusMode = pick(['bonusWheel', 'bonusPlates', 'bonusShaker'])
+        const bonusMode = pick(['bonusWheel', 'bonusPlates', 'bonusShaker', 'bonusSlide'])
         sim.mode = bonusMode
         if (bonusMode === 'bonusWheel') sim.bonusLevel = createBonusLevelState()
         else if (bonusMode === 'bonusPlates') sim.platesLevel = createPlatesLevelState()
-        else sim.shakerLevel = createShakerLevelState()
+        else if (bonusMode === 'bonusShaker') sim.shakerLevel = createShakerLevelState()
+        else sim.slideLevel = createSlideLevelState()
       }
     }
   }
@@ -1150,6 +1243,35 @@ export function useGameEngine() {
     s.scoopState = 'flying'
   }, [])
 
+  // A flick up one of the bars sends a glass sliding. `flick` is the swipe's
+  // length along that bar's own direction, as a fraction of the frame's
+  // height, so the same gesture behaves the same on every bar.
+  const slideFlick = useCallback((lane, flick) => {
+    const sim = simRef.current
+    const s = sim.slideLevel
+    if (!s || s.ended || s.glass || s.resultHoldMs > 0 || s.slidesLeft <= 0) return
+    if (flick < C.SLIDE_MIN_FLICK) return // a tap, not a throw
+
+    const n = Math.min(1, (flick - C.SLIDE_MIN_FLICK) / (C.SLIDE_MAX_FLICK - C.SLIDE_MIN_FLICK))
+    const dist = C.SLIDE_MIN_DIST + (C.SLIDE_MAX_DIST - C.SLIDE_MIN_DIST) * n
+    const customer = s.customers.find((c) => c.lane === lane)
+    s.glass = {
+      lane,
+      t: 0,
+      // Derived from the distance so the control stays linear — see the
+      // SLIDE_* notes in constants.js.
+      v: Math.sqrt(2 * C.SLIDE_FRICTION * dist),
+      drinkType: customer ? customer.drinkType : 0,
+    }
+  }, [])
+
+  const skipToBonusSlide = useCallback(() => {
+    const sim = simRef.current
+    if (sim.gameOver || !sim.started) return
+    sim.mode = 'bonusSlide'
+    sim.slideLevel = createSlideLevelState()
+  }, [])
+
   // Dev/test shortcuts — jump straight into any bonus round from
   // anywhere mid-game, no need to actually clear two full stages first.
   const skipToBonusWheel = useCallback(() => {
@@ -1219,6 +1341,8 @@ export function useGameEngine() {
     skipToBonusWheel,
     skipToBonusPlates,
     skipToBonusShaker,
+    skipToBonusSlide,
+    slideFlick,
     skipToNewVenue,
   }
 }

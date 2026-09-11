@@ -337,3 +337,59 @@ export const SHAKER_GRAVITY = 131 // arena-%/s^2 pulling the scoop back down
 // genuinely smaller target.
 export const SHAKER_RIM_OFFSET_FACTOR = 0.36 // x cup width, above cup centre
 export const SHAKER_RIM_HALF_WIDTH_FACTOR = 0.46 // x cup width, the mouth's half-span
+
+
+// The fourth bonus round — three bars running away from the player at an
+// angle, a customer waiting at the far end of each. Swipe up a bar to
+// send a glass sliding along it: the flick's length sets how hard it goes,
+// friction slows it, and where it comes to rest is the whole game. Stop it
+// in the customer's reach and it's served; too soft and it stalls short;
+// too hard and it goes off the end and smashes. Smashing costs the points,
+// never a life — the bonus rounds stay a reward.
+//
+// Every bar is parameterised 0 (near end, in front of the player) to 1
+// (the far end where the customer stands), so one set of numbers describes
+// all three regardless of their on-screen angle. See SlideLevel.jsx for
+// how a t maps back to a screen position.
+export const SLIDE_ROUND_SLIDES = 6
+export const SLIDE_RESULT_HOLD_MS = 850
+export const SLIDE_ROUND_END_HOLD_MS = 1800
+
+// Where each bar sits on screen, near end to far end, in frame percentages.
+// They fan out from the player so they read as receding into the room.
+export const SLIDE_BARS = [
+  { lane: 'left',   near: { x: 16, y: 96 }, far: { x: 30, y: 30 } },
+  { lane: 'middle', near: { x: 50, y: 99 }, far: { x: 55, y: 26 } },
+  { lane: 'right',  near: { x: 84, y: 96 }, far: { x: 80, y: 30 } },
+]
+
+// The customer's reach at the far end. Land inside this band and the slide
+// is served; past 1 the glass leaves the bar entirely.
+export const SLIDE_TARGET_MIN_T = 0.78
+export const SLIDE_TARGET_MAX_T = 0.98
+export const SLIDE_PERFECT_MIN_T = 0.88 // tighter band inside it, worth more
+
+export const SLIDE_POINTS = 120
+export const SLIDE_PERFECT_POINTS = 250
+
+// Flick -> how far it slides. The swipe is measured along the bar's own
+// direction, as a fraction of the frame's height, so a flick feels the
+// same whichever bar it's on.
+//
+// The flick maps to a DISTANCE and the launch speed is derived from it
+// (v = sqrt(2 * friction * distance)), rather than mapping the flick
+// straight to a speed. Under friction, distance goes as the square of
+// speed, so a flick-to-speed mapping crams the whole useful range into
+// the last few percent of the swipe and everything below it stalls
+// short — measured, a full-length flick still only reached t=0.36.
+// Going via distance keeps the control linear, which is what makes it
+// aimable.
+export const SLIDE_MIN_FLICK = 0.05 // shorter than this and it's a stray tap, not a throw
+export const SLIDE_MAX_FLICK = 0.34
+export const SLIDE_MIN_DIST = 0.15 // where the gentlest real flick stops
+export const SLIDE_MAX_DIST = 1.15 // hardest flick overshoots the end, on purpose
+export const SLIDE_FRICTION = 1.55 // t-per-second-squared slowing it down
+
+// Glasses shrink as they travel away, matching the bars converging.
+export const SLIDE_GLASS_NEAR_PCT = 13
+export const SLIDE_GLASS_FAR_PCT = 6
