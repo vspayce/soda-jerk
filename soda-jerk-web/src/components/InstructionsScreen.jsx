@@ -25,7 +25,7 @@ const ROWS = [
   },
 ]
 
-export default function InstructionsScreen({ onContinue }) {
+export default function InstructionsScreen({ onContinue, onShowLingo }) {
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-ink/95 px-8 text-center overflow-y-auto py-8">
       <div className="font-display text-brass text-2xl mb-2 tracking-wide">HOW TO SCORE</div>
@@ -87,6 +87,18 @@ export default function InstructionsScreen({ onContinue }) {
       </div>
 
       <SignButton onPress={onContinue}>Let's Go</SignButton>
+
+      {/* The game talks in trade slang — "Glass Slide", "In the Hay",
+          "Glob" — so the glossary is reachable from the first screen that
+          uses any of it, not only from the settings menu mid-game. */}
+      {onShowLingo && (
+        <button
+          onClick={onShowLingo}
+          className="mt-5 text-cream/50 text-xs tracking-[0.25em] underline underline-offset-4"
+        >
+          SODA JERK LINGO
+        </button>
+      )}
     </div>
   )
 }

@@ -401,3 +401,59 @@ body {
   animation: jerk-throw-snap 480ms ease-out;
   transform-origin: 50% 85%;
 }
+
+/* ---- Between-level trick flourishes (see game/tricks.js) ------------
+   Two existing poses cross-faded on a timeline, with the prop arcing over
+   the top. Percentages below are one shared clock: he winds up to 15%,
+   the throw pose (and the cup leaving his hand) runs 16-69%, and he's
+   back on the stand pose from 70% to catch and settle. */
+@keyframes trick-pose-stand {
+  0%        { opacity: 1; transform: translateY(0) scaleY(1); }
+  10%       { opacity: 1; transform: translateY(2%) scaleY(0.965); }  /* dip */
+  15%       { opacity: 1; transform: translateY(0) scaleY(1); }
+  16%, 69%  { opacity: 0; transform: translateY(0) scaleY(1); }
+  70%       { opacity: 1; transform: translateY(0) scaleY(1); }
+  76%       { opacity: 1; transform: translateY(1.5%) scaleY(0.98); }  /* absorb the catch */
+  100%      { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+@keyframes trick-pose-throw {
+  0%, 15%   { opacity: 0; }
+  16%, 69%  { opacity: 1; }
+  70%, 100% { opacity: 0; }
+}
+.trick-pose-stand,
+.trick-pose-throw {
+  transform-origin: 50% 100%;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+  animation-timing-function: linear;
+}
+.trick-pose-stand { animation-name: trick-pose-stand; }
+.trick-pose-throw { animation-name: trick-pose-throw; }
+
+/* The cup leaves his hand as the throw pose lands, spins two full turns on
+   the way up and back, and drops into his hand again at 66%. Stops are
+   spaced to fake gravity — quick off the hand, hanging at the apex, quick
+   back down — so the timing function stays linear and the keyframes do the
+   shaping. Translations are percentages of the cup's own box. */
+@keyframes trick-prop-shaker-flip {
+  0%, 15%   { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  17%       { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  26%       { opacity: 1; transform: translate(7%, -98%) rotate(200deg); }
+  42%       { opacity: 1; transform: translate(16%, -158%) rotate(380deg); }
+  58%       { opacity: 1; transform: translate(8%, -96%) rotate(560deg); }
+  /* Back in the raised hand, and gone the instant he lowers it. The cup's
+     whole path is anchored to the THROW pose's raised hand, so it has to
+     clear the screen on the same frame that pose does — left visible any
+     longer it hangs in mid-air above the stand pose's head, since that
+     pose's hand is down at his side. */
+  66%, 69% { opacity: 1; transform: translate(0, 0) rotate(720deg); }
+  70%, 100% { opacity: 0; transform: translate(0, 0) rotate(720deg); }
+}
+.trick-prop-shaker-flip {
+  animation-name: trick-prop-shaker-flip;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
+}

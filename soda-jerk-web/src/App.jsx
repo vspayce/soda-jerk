@@ -340,6 +340,7 @@ export default function App() {
             setShowInstructions(false)
             startGame()
           }}
+          onShowLingo={() => setShowLingo(true)}
         />
       )}
 
