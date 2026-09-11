@@ -27,6 +27,9 @@ export const TRICKS = {
     id: 'shakerFlip',
     name: 'THE SHAKER FLIP',
     durationMs: 1900,
+    // How high the toss goes at the weakest and strongest wind-up.
+    minReach: 0.62,
+    maxReach: 1.32,
     layers: [
       { ...STAND, className: 'trick-pose-stand' },
       { ...THROW, className: 'trick-pose-throw' },
@@ -47,6 +50,10 @@ export const TRICKS = {
     id: 'strawToss',
     name: 'THE STRAW TOSS',
     durationMs: 2000,
+    // Only the arc's height varies — the straw still has to finish in the
+    // cup, and that landing is fixed by the layout.
+    minReach: 0.7,
+    maxReach: 1.28,
     layers: [
       // A flick of the wrist, not a heave — he stays on the standing pose
       // the whole way through and the straw does the performing.

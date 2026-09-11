@@ -93,6 +93,13 @@ export const GLASS_FALL_HOLD_MS = 700 // how long a missed glass's tumble-off-
 // auto-grab it just by being there, same as tapping it directly.
 export const GLASS_REACH_X = 10
 
+// Between-level trick flourish (see game/tricks.js). Hold to wind up,
+// let go to throw: the longer the hold the further it goes and the bigger
+// the bonus, capping at full rather than busting — the trick is a victory
+// lap, so a badly-timed release just earns less, it never costs anything.
+export const TRICK_CHARGE_MS = 1150
+export const TRICK_MAX_BONUS = 300
+
 export const POINTS_PER_SERVE = 100
 export const POINTS_PER_CAUGHT_GLASS = 50
 

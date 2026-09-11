@@ -147,6 +147,7 @@ function createInitialSim() {
   return {
     started: false,
     paused: false, // true while the settings menu is open — see setPaused
+    trickBonus: 0, // points earned from the last between-level trick
     mode: 'bar', // 'bar' | 'bonusWheel' | 'bonusPlates' | 'bonusShaker' — swaps
     // the whole gameplay loop over to one of the three bonus mini-games; see
     // stepBonus()/BonusLevel.jsx, stepPlates()/PlatesLevel.jsx, and
@@ -975,6 +976,16 @@ export function useGameEngine() {
     simRef.current.moveDir = 0
   }, [])
 
+  // Points from the between-level trick (see tricks.js) — the flourish is
+  // a victory lap, so this only ever adds. Muffing the timing just earns
+  // less, it never costs anything.
+  const addTrickBonus = useCallback((points) => {
+    const sim = simRef.current
+    if (sim.gameOver || points <= 0) return
+    sim.score += Math.round(points)
+    sim.trickBonus = Math.round(points) // App/StagePassedScreen shows what was earned
+  }, [])
+
   // Freezes the whole sim while the settings menu is up. The rAF loop
   // keeps running (so dt never accumulates into one huge catch-up step
   // on resume), step() just returns early.
@@ -1191,6 +1202,7 @@ export function useGameEngine() {
     startRun,
     stopRun,
     setPaused,
+    addTrickBonus,
     grabBonus,
     grabGlass,
     startGame,

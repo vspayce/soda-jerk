@@ -439,9 +439,11 @@ body {
 @keyframes trick-prop-shaker-flip {
   0%, 15%   { opacity: 0; transform: translate(0, 0) rotate(0deg); }
   17%       { opacity: 1; transform: translate(0, 0) rotate(0deg); }
-  26%       { opacity: 1; transform: translate(7%, -98%) rotate(200deg); }
-  42%       { opacity: 1; transform: translate(16%, -158%) rotate(380deg); }
-  58%       { opacity: 1; transform: translate(8%, -96%) rotate(560deg); }
+  /* Only the arc scales with the wind-up (--trick-reach); the hand it
+     leaves from and the hand it returns to are fixed. */
+  26%       { opacity: 1; transform: translate(calc(7% * var(--trick-reach, 1)), calc(-98% * var(--trick-reach, 1))) rotate(200deg); }
+  42%       { opacity: 1; transform: translate(calc(16% * var(--trick-reach, 1)), calc(-158% * var(--trick-reach, 1))) rotate(380deg); }
+  58%       { opacity: 1; transform: translate(calc(8% * var(--trick-reach, 1)), calc(-96% * var(--trick-reach, 1))) rotate(560deg); }
   /* Back in the raised hand, and gone the instant he lowers it. The cup's
      whole path is anchored to the THROW pose's raised hand, so it has to
      clear the screen on the same frame that pose does — left visible any
@@ -505,10 +507,12 @@ body {
 @keyframes trick-prop-straw {
   0%, 16%   { opacity: 0; transform: translate(-409%, -26%) rotate(-20deg); }
   18%       { opacity: 1; transform: translate(-409%, -26%) rotate(-20deg); }
-  34%       { opacity: 1; transform: translate(-300%, -190%) rotate(120deg); }
-  50%       { opacity: 1; transform: translate(-180%, -250%) rotate(250deg); }
-  64%       { opacity: 1; transform: translate(-60%, -170%) rotate(330deg); }
-  72%       { opacity: 1; transform: translate(0%, -40%) rotate(360deg); }
+  /* Height of the arc scales with the wind-up; the hand it leaves and the
+     cup it lands in are both fixed, so only the middle lifts. */
+  34%       { opacity: 1; transform: translate(-300%, calc(-190% * var(--trick-reach, 1))) rotate(120deg); }
+  50%       { opacity: 1; transform: translate(-180%, calc(-250% * var(--trick-reach, 1))) rotate(250deg); }
+  64%       { opacity: 1; transform: translate(-60%, calc(-170% * var(--trick-reach, 1))) rotate(330deg); }
+  72%       { opacity: 1; transform: translate(0%, calc(-40% * var(--trick-reach, 1))) rotate(360deg); }
   /* drops in and settles */
   80%       { opacity: 1; transform: translate(0%, 4%) rotate(360deg); }
   88%       { opacity: 1; transform: translate(0%, -3%) rotate(360deg); }

@@ -4,9 +4,14 @@ const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 // Every layer is laid out against one anchor point on his feet and driven
 // by one shared clock, so poses and props can't drift apart from each
 // other however the animation is sized.
-export default function TrickAnimation({ trick, height = 165 }) {
+export default function TrickAnimation({ trick, height = 165, power = 1, paused = false }) {
   if (!trick) return null
   const ms = `${trick.durationMs}ms`
+  // How far the throw goes, dialled in by how long the player wound up.
+  // Fed to the keyframes as a custom property so one set of keyframes
+  // covers every power level — CSS can interpolate to a var, it just
+  // can't take one as a steps() count.
+  const reach = trick.minReach + (trick.maxReach - trick.minReach) * Math.max(0, Math.min(1, power))
 
   const layerStyle = (layer) => {
     if (layer.kind === 'pose') {
@@ -40,14 +45,24 @@ export default function TrickAnimation({ trick, height = 165 }) {
           children therefore need max-width:none — Tailwind's preflight caps
           images at max-width:100%, which against a zero-width containing
           block collapses them to nothing at all. */}
-      <div className="absolute" style={{ left: '50%', bottom: 3, width: 0, height }}>
+      <div
+        className="absolute"
+        style={{ left: '50%', bottom: 3, width: 0, height, '--trick-reach': reach }}
+      >
         {trick.layers.map((layer, i) => (
           <img
             key={`${layer.src}-${i}`}
             src={ART_SRC(layer.src)}
             alt=""
             className={`absolute ${layer.className}`}
-            style={{ ...layerStyle(layer), animationDuration: ms, maxWidth: 'none' }}
+            style={{
+              ...layerStyle(layer),
+              animationDuration: ms,
+              maxWidth: 'none',
+              // Held on the first frame until the player lets go, so the
+              // trick doesn't play itself out behind the wind-up.
+              animationPlayState: paused ? 'paused' : 'running',
+            }}
           />
         ))}
       </div>

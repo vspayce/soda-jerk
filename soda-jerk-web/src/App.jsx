@@ -39,6 +39,7 @@ export default function App() {
     startRun,
     stopRun,
     setPaused,
+    addTrickBonus,
     grabBonus,
     grabGlass,
     startGame,
@@ -302,7 +303,11 @@ export default function App() {
       )}
 
       {state.mode === 'bar' && state.started && !state.gameOver && !state.awaitingContinue && state.awaitingStageAdvance && (
-        <StagePassedScreen stage={state.stage} onContinue={withAudio(advanceStage)} />
+        <StagePassedScreen
+          stage={state.stage}
+          onContinue={withAudio(advanceStage)}
+          onTrickBonus={addTrickBonus}
+        />
       )}
 
       {state.started && state.gameOver && (
