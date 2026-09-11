@@ -246,6 +246,7 @@ export const JERK_LINGO = [
   { term: 'Cowcumber', def: 'pickle' },
   { term: 'Draw Some Mud', def: 'coffee' },
   { term: 'Give', def: 'large glass of fresh milk' },
+  { term: 'Glass Slide', def: 'a drink sent skidding down the counter' },
   { term: 'Glob', def: 'plain sundae' },
   { term: 'In the Hay', def: 'strawberry milkshake' },
   { term: "Maiden's Delight", def: 'cherries' },
