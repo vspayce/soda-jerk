@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import {
   TEMPEST_SPOKES,
   TEMPEST_CENTER,
@@ -30,26 +31,70 @@ const pointAt = (spoke, t) => {
 
 export default function TempestLevel({ tempestLevel, onMoveTo }) {
   const s = tempestLevel
+  const arenaRef = useRef(null)
+  const draggingRef = useRef(false)
+
+  // Drag anywhere and he follows your finger around the rim. Tapping a spot
+  // sends him there too, since a tap is just a drag that didn't move.
+  //
+  // The web is an ellipse in percentage space, so the pointer offset has to
+  // be normalised by each radius before taking the angle — measuring the
+  // raw angle would bias every position toward the vertical and he'd never
+  // line up with the spoke under your finger.
+  const spokeUnderPointer = (e) => {
+    const r = arenaRef.current.getBoundingClientRect()
+    const x = ((e.clientX - r.left) / r.width) * 100
+    const y = ((e.clientY - r.top) / r.height) * 100
+    const nx = (x - TEMPEST_CENTER.x) / TEMPEST_RADIUS_X
+    const ny = (y - TEMPEST_CENTER.y) / TEMPEST_RADIUS_Y
+    if (Math.hypot(nx, ny) < 0.12) return null // dead zone at the hub
+    const a = Math.atan2(ny, nx) + Math.PI / 2 // spoke 0 points straight up
+    const spoke = (a / (Math.PI * 2)) * TEMPEST_SPOKES
+    return ((Math.round(spoke) % TEMPEST_SPOKES) + TEMPEST_SPOKES) % TEMPEST_SPOKES
+  }
+
+  const onDown = (e) => {
+    if (s.ended) return
+    e.preventDefault()
+    draggingRef.current = true
+    arenaRef.current.setPointerCapture(e.pointerId)
+    const spoke = spokeUnderPointer(e)
+    if (spoke !== null) onMoveTo(spoke)
+  }
+  const onMove = (e) => {
+    if (!draggingRef.current || s.ended) return
+    const spoke = spokeUnderPointer(e)
+    if (spoke !== null) onMoveTo(spoke)
+  }
+  const onUp = () => { draggingRef.current = false }
   const spokes = Array.from({ length: TEMPEST_SPOKES }, (_, i) => i)
   const jerk = pointAt(s.spoke, 1.12)
   const timeLeft = Math.max(0, Math.ceil(s.remainingMs / 1000))
 
   return (
-    <div className="absolute inset-0 z-20 overflow-hidden bg-ink select-none" style={{ touchAction: 'none' }}>
+    <div
+      ref={arenaRef}
+      className="absolute inset-0 z-20 overflow-hidden bg-ink select-none"
+      style={{ touchAction: 'none' }}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+    >
       <div
-        className="absolute inset-x-0 flex flex-col items-center"
+        className="absolute inset-x-0 flex flex-col items-center pointer-events-none"
         style={{ top: 'calc(env(safe-area-inset-top, 0px) + 74px)', zIndex: 40 }}
       >
         <div className="font-display text-brass text-lg tracking-[0.2em]">THE ROUNDS</div>
         <div className="text-cream/60 text-[11px] tracking-[0.2em] mt-1">
-          TAP A SPOKE TO RUN THERE — HE POURS ON HIS OWN
+          DRAG AROUND THE RIM — HE POURS ON HIS OWN
         </div>
         <div className="font-display text-cream/80 text-sm tracking-widest mt-1">
           {s.served} SERVED · {timeLeft}s
         </div>
       </div>
 
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
         {/* the rim he runs around */}
         <ellipse
           cx={TEMPEST_CENTER.x}
@@ -100,6 +145,7 @@ export default function TempestLevel({ tempestLevel, onMoveTo }) {
               maxWidth: 'none',
               transform: 'translate(-50%, -70%)',
               filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))',
+              pointerEvents: 'none',
             }}
           />
         )
@@ -121,6 +167,7 @@ export default function TempestLevel({ tempestLevel, onMoveTo }) {
               height: 'auto',
               maxWidth: 'none',
               transform: 'translate(-50%, -60%)',
+              pointerEvents: 'none',
             }}
           />
         )
@@ -140,25 +187,9 @@ export default function TempestLevel({ tempestLevel, onMoveTo }) {
           transform: 'translate(-50%, -70%)',
           filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.6))',
           zIndex: 30,
+          pointerEvents: 'none',
         }}
       />
-
-      {/* Tap targets: a generous pad out past the rim on each spoke, so
-          you're aiming at "that side of the circle" rather than a line. */}
-      {spokes.map((i) => {
-        const pt = pointAt(i, 1.12)
-        return (
-          <div
-            key={i}
-            className="absolute -translate-x-1/2 -translate-y-1/2"
-            style={{ left: `${pt.x}%`, top: `${pt.y}%`, width: '22%', height: '13%', touchAction: 'none' }}
-            onPointerDown={(e) => {
-              e.preventDefault()
-              onMoveTo(i)
-            }}
-          />
-        )
-      })}
 
       {s.ended && s.resultText && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 60 }}>
