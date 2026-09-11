@@ -385,3 +385,19 @@ body {
 .patron-toast {
   animation: patron-toast-lift 620ms ease-out both;
 }
+
+/* The jerk's throw in the shaker round. The art is a single pose, so this
+   supplies the motion: a quick wind-up and snap-forward, keyed off a React
+   remount each time a scoop is released (see ShakerLevel.jsx) so rapid
+   throws each restart it cleanly instead of silently no-opping mid-play. */
+@keyframes jerk-throw-snap {
+  0%   { transform: rotate(0deg) translateX(0); }
+  18%  { transform: rotate(7deg) translateX(2px); }
+  46%  { transform: rotate(-11deg) translateX(-5px); }
+  72%  { transform: rotate(3deg) translateX(1px); }
+  100% { transform: rotate(0deg) translateX(0); }
+}
+.jerk-throwing {
+  animation: jerk-throw-snap 480ms ease-out;
+  transform-origin: 50% 85%;
+}

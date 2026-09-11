@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   SHAKER_ROWS,
   SHAKER_LAUNCH_ANCHOR,
@@ -95,6 +95,19 @@ function ShakerShelves() {
 export default function ShakerLevel({ shakerLevel, onAimStart, onAimMove, onAimEnd }) {
   const arenaRef = useRef(null)
   const draggingRef = useRef(false)
+
+  // Replay the throw motion every time a scoop actually leaves the hand.
+  // Bumping a key to remount the sprite restarts the animation cleanly —
+  // toggling a class alone silently no-ops when a new throw begins while
+  // the previous one is still playing.
+  const prevScoopState = useRef(shakerLevel.scoopState)
+  const [throwCount, setThrowCount] = useState(0)
+  useEffect(() => {
+    if (prevScoopState.current !== 'flying' && shakerLevel.scoopState === 'flying') {
+      setThrowCount((n) => n + 1)
+    }
+    prevScoopState.current = shakerLevel.scoopState
+  }, [shakerLevel.scoopState])
 
   const toArenaPct = (clientX, clientY) => {
     const rect = arenaRef.current.getBoundingClientRect()
@@ -214,7 +227,16 @@ export default function ShakerLevel({ shakerLevel, onAimStart, onAimMove, onAimE
             zIndex: 900,
           }}
         >
-          <img src={JERK_THROW_SRC} alt="" style={{ display: 'block', width: '100%', height: 'auto' }} />
+          {/* Animation goes on the img, not the wrapper — the wrapper's
+              transform is what plants his hand on the launch anchor, and
+              an animated transform would replace it outright. */}
+          <img
+            key={throwCount}
+            src={JERK_THROW_SRC}
+            alt=""
+            className={throwCount > 0 ? 'jerk-throwing' : undefined}
+            style={{ display: 'block', width: '100%', height: 'auto' }}
+          />
         </div>
 
         {/* the ice cream scoop — dragged back to aim, then flies once
@@ -238,22 +260,35 @@ export default function ShakerLevel({ shakerLevel, onAimStart, onAimMove, onAimE
 
         {shakerLevel.resultText && shakerLevel.resultHoldMs > 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ zIndex: 1000 }}>
+            {/* The slang is the whole joke, so it has to be readable at a
+                glance over a busy belt of cups. Playfair (font-display) is
+                a thin high-contrast serif — fine for the SODA JERK sign,
+                bad for a short shouted word flashing past — so this sets
+                the term in the body face, heavy and tight, on a solid
+                plate rather than relying on a drop shadow to carry it. */}
             <div
-              className="font-display text-3xl tracking-wide px-6 text-center"
+              className="px-5 py-2 rounded-lg text-center"
               style={{
-                color: shakerLevel.resultKind === 'hit' ? '#E8C878' : '#E0596B',
-                textShadow: '0 3px 10px rgba(0,0,0,0.8)',
+                background: 'rgba(12,10,13,0.82)',
+                border: `1px solid ${shakerLevel.resultKind === 'hit' ? 'rgba(232,200,120,0.55)' : 'rgba(224,89,107,0.45)'}`,
+                boxShadow: '0 6px 20px rgba(0,0,0,0.55)',
+                maxWidth: '86%',
               }}
             >
-              {shakerLevel.resultText}
-            </div>
-            {/* real 1950s soda-jerk counter slang, so a player who's never
-                heard "GLOB!" shouted at them knows it meant they won */}
-            {shakerLevel.resultSubtext && (
-              <div className="text-cream/70 text-xs tracking-[0.15em] mt-1 px-6 text-center" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.8)' }}>
-                ({shakerLevel.resultSubtext})
+              <div
+                className="text-2xl font-extrabold tracking-[0.06em]"
+                style={{ color: shakerLevel.resultKind === 'hit' ? '#F2D58C' : '#F07A8A' }}
+              >
+                {shakerLevel.resultText}
               </div>
-            )}
+              {/* real 1950s soda-jerk counter slang, so a player who's never
+                  heard "GLOB!" shouted at them knows it meant they won */}
+              {shakerLevel.resultSubtext && (
+                <div className="text-cream/90 text-[13px] leading-snug tracking-[0.06em] mt-1">
+                  {shakerLevel.resultSubtext}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

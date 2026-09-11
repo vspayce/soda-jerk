@@ -300,7 +300,12 @@ export const SHAKER_CUP_SPEED_MAX_X = 22
 // worked fine in testing via synthetic pointer coordinates that don't
 // respect the viewport edge. Retuned so the top row needs well under
 // that ceiling.
-export const SHAKER_LAUNCH_ANCHOR = { x: 50, y: 76 }
+// The jerk is drawn so his throwing hand lands on this anchor, and his
+// hand sits at 20.8% across his sprite — so anchoring at x:50 pushed his
+// body ~9% right of centre. Offsetting the anchor by that same amount
+// puts his body on the centre line with the hand (and the scoop leaving
+// it) just left of it. See JERK_HAND_FRACTION in ShakerLevel.jsx.
+export const SHAKER_LAUNCH_ANCHOR = { x: 41, y: 76 }
 export const SHAKER_MAX_PULL = 20 // furthest the scoop can be dragged back
 export const SHAKER_MIN_PULL = 4 // shorter than this and releasing cancels the aim
 export const SHAKER_LAUNCH_POWER = 7 // arena-%/s of launch velocity per arena-% pulled
@@ -313,5 +318,14 @@ export const SHAKER_GRAVITY = 131 // arena-%/s^2 pulling the scoop back down
 // and the wider cup spacing (SHAKER_CUP_SPACING_PCT) already made just
 // landing harder. Without more forgiveness here a genuine HIT (and its
 // jargon) got rare enough to barely show up.
-export const SHAKER_CUP_HIT_RADIUS_X = 9 // how close to a cup's center (in x) counts as landing in it
-export const SHAKER_CUP_HIT_RADIUS_Y = 9 // how close to a row's y counts as reaching that row
+// A scoop has to drop into the cup's MOUTH, not merely land somewhere
+// near the cup — hitting halfway down the side used to count, which read
+// as the ice cream passing through the metal. The cup art is centred on
+// the row line and is 734/509 as tall as it is wide, so its rim sits
+// about 0.36 x its width above that centre (the factor folds in the
+// frame's own ~1:2 aspect, since a cup's width is a share of the frame's
+// width but its rim offset has to be a share of the frame's height).
+// Everything scales with the cup, so the small far-row cups stay a
+// genuinely smaller target.
+export const SHAKER_RIM_OFFSET_FACTOR = 0.36 // x cup width, above cup centre
+export const SHAKER_RIM_HALF_WIDTH_FACTOR = 0.46 // x cup width, the mouth's half-span

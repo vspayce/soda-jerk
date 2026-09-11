@@ -146,6 +146,7 @@ function pickPlateKind() {
 function createInitialSim() {
   return {
     started: false,
+    paused: false, // true while the settings menu is open — see setPaused
     mode: 'bar', // 'bar' | 'bonusWheel' | 'bonusPlates' | 'bonusShaker' — swaps
     // the whole gameplay loop over to one of the three bonus mini-games; see
     // stepBonus()/BonusLevel.jsx, stepPlates()/PlatesLevel.jsx, and
@@ -459,38 +460,37 @@ function stepShaker(sim, dt) {
   }
 
   if (s.scoopState === 'flying') {
-    const prevVy = s.vy
+    const prevY = s.scoopY
     s.scoopX += s.vx * dt
     s.scoopY += s.vy * dt
     s.vy += C.SHAKER_GRAVITY * dt
 
     const offArena = s.scoopX < -15 || s.scoopX > 115 || s.scoopY > 115 || s.scoopY < -25
-    // Rows are stacked directly in the flight path here (unlike the
-    // wheel round's open radial arena), so a throw bound for the top row
-    // necessarily flies straight through the lower rows' height on its
-    // way up — checking every frame caught it on that pass-through
-    // rather than where it was actually aimed. Resolving only once, at
-    // the throw's own apex (the moment it stops rising), makes "how hard
-    // you pulled" the thing that picks the row, same as the pull was
-    // meant to.
-    const reachedApex = prevVy < 0 && s.vy >= 0
+    // A scoop goes IN through the mouth, from above. So the test is
+    // whether this frame's movement carried it down across a cup's rim
+    // line while it was inside the mouth's width — not how close it got
+    // to the cup overall.
+    //
+    // Requiring the descent is what keeps a throw bound for the far row
+    // from being caught by the near rows it necessarily flies through on
+    // the way up: passing a rim while still rising is the scoop sailing
+    // past the outside of the cup, not dropping into it. And testing for
+    // the crossing rather than proximity means a fast scoop can't skip
+    // over a rim between two frames.
+    const descending = s.scoopY > prevY
+    const landedCup =
+      !offArena &&
+      descending &&
+      s.cups.find((c) => {
+        const rimY = c.y - c.size * C.SHAKER_RIM_OFFSET_FACTOR
+        return (
+          prevY <= rimY &&
+          s.scoopY >= rimY &&
+          Math.abs(s.scoopX - c.x) <= c.size * C.SHAKER_RIM_HALF_WIDTH_FACTOR
+        )
+      })
 
-    if (reachedApex || offArena) {
-      // Same shape as the wheel round's per-cup distance check, just with
-      // separate x/y radii since these cups sit in flat horizontal rows
-      // instead of around a circle. Scaled per cup by its own size so the
-      // smaller "distant" cups aren't secretly as easy to hit as the big
-      // "near" ones — the hitbox should match what's actually on screen.
-      const landedCup =
-        !offArena &&
-        s.cups.find((c) => {
-          const cupScale = c.size / C.SHAKER_CUP_SIZE_PCT
-          return (
-            Math.abs(s.scoopY - c.y) <= C.SHAKER_CUP_HIT_RADIUS_Y * cupScale &&
-            Math.abs(s.scoopX - c.x) <= C.SHAKER_CUP_HIT_RADIUS_X * cupScale
-          )
-        })
-
+    if (landedCup || offArena) {
       if (landedCup) {
         s.scoopX = landedCup.x
         s.scoopY = landedCup.y
@@ -543,6 +543,10 @@ function stepShaker(sim, dt) {
 
 function step(sim, dt) {
   if (!sim.started) return
+  // Covers every mode, bonus rounds included — the settings menu opens
+  // straight over live play, and the belts/patrons kept right on moving
+  // underneath it.
+  if (sim.paused) return
   if (sim.mode === 'bonusWheel') {
     stepBonus(sim, dt)
     return
@@ -971,6 +975,20 @@ export function useGameEngine() {
     simRef.current.moveDir = 0
   }, [])
 
+  // Freezes the whole sim while the settings menu is up. The rAF loop
+  // keeps running (so dt never accumulates into one huge catch-up step
+  // on resume), step() just returns early.
+  const setPaused = useCallback((paused) => {
+    const sim = simRef.current
+    sim.paused = paused
+    if (paused) {
+      // Don't leave him jogging on the spot behind the menu, or still
+      // running the instant it closes.
+      sim.moveDir = 0
+      sim.runTargetX = null
+    }
+  }, [])
+
   // "YOU DIED" continue button — clears the board for the next life,
   // keeping score, lives, and difficulty progress as they were.
   const continueAfterDeath = useCallback(() => {
@@ -1172,6 +1190,7 @@ export function useGameEngine() {
     pourDrink,
     startRun,
     stopRun,
+    setPaused,
     grabBonus,
     grabGlass,
     startGame,

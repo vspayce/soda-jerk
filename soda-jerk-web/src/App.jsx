@@ -38,6 +38,7 @@ export default function App() {
     pourDrink,
     startRun,
     stopRun,
+    setPaused,
     grabBonus,
     grabGlass,
     startGame,
@@ -60,6 +61,11 @@ export default function App() {
   const [spraying, setSpraying] = useState(false)
   const [celebrate, setCelebrate] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
+  // The settings menu opens straight over live play, so the sim has to
+  // freeze with it — otherwise patrons keep walking (and reaching the end
+  // of the bar) while the player is reading the menu.
+  const openSettings = () => { setPaused(true); setShowSettings(true) }
+  const closeSettings = () => { setShowSettings(false); setPaused(false) }
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showInstructions, setShowInstructions] = useState(false)
   const [showLingo, setShowLingo] = useState(false)
@@ -224,7 +230,7 @@ export default function App() {
         lives={state.lives}
         isMuted={music.isMuted}
         onToggleMute={music.toggleMute}
-        onOpenSettings={() => setShowSettings(true)}
+        onOpenSettings={openSettings}
       />
 
       {state.mode === 'bar' && (
@@ -345,12 +351,12 @@ export default function App() {
         <SettingsScreen
           volume={music.volume}
           onVolumeChange={music.setVolume}
-          onClose={() => setShowSettings(false)}
+          onClose={closeSettings}
           onShowLingo={() => setShowLingo(true)}
           onSkipToBonusWheel={
             state.started && !state.gameOver && state.mode === 'bar'
               ? withAudio(() => {
-                  setShowSettings(false)
+                  closeSettings()
                   skipToBonusWheel()
                 })
               : null
@@ -358,7 +364,7 @@ export default function App() {
           onSkipToBonusPlates={
             state.started && !state.gameOver && state.mode === 'bar'
               ? withAudio(() => {
-                  setShowSettings(false)
+                  closeSettings()
                   skipToBonusPlates()
                 })
               : null
@@ -366,7 +372,7 @@ export default function App() {
           onSkipToBonusShaker={
             state.started && !state.gameOver && state.mode === 'bar'
               ? withAudio(() => {
-                  setShowSettings(false)
+                  closeSettings()
                   skipToBonusShaker()
                 })
               : null
@@ -374,7 +380,7 @@ export default function App() {
           onSkipToNewVenue={
             state.started && !state.gameOver && state.mode === 'bar' && state.stage < 2
               ? withAudio(() => {
-                  setShowSettings(false)
+                  closeSettings()
                   skipToNewVenue()
                 })
               : null
