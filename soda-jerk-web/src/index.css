@@ -16,6 +16,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Has to track the visible height as well as .phone-frame does. This is
+     the element that centres the frame, so if it stays the full layout
+     height while the frame shrinks, the frame is simply centred in a taller
+     box and still hangs below the browser's toolbar — which is the bug this
+     was meant to fix. Measured: frame correctly 744 tall, taps still landing
+     at 752 because the root was 844. */
+  height: var(--app-h, 100dvh);
+  max-height: var(--app-h, 100dvh);
+  overflow: hidden;
 }
 
 /* Keeps the game feeling like a phone screen even in a wide desktop
@@ -23,7 +32,18 @@ body {
 .phone-frame {
   width: 100%;
   max-width: 430px;
+  /* On iOS Safari 100vh is the LARGE viewport — the height the page would
+     have if the browser's toolbars were hidden — so the bottom of the game
+     ends up underneath the address/tab bar, which is exactly where the
+     drink taps live. env(safe-area-inset-bottom) doesn't rescue it either:
+     that covers the home indicator, not browser chrome.
+
+     --app-h is the real visible height, measured from visualViewport and
+     kept current as the toolbars slide in and out (see useViewportHeight).
+     100dvh is the CSS-only equivalent for when that isn't available, and
+     100vh is the last-resort fallback for anything older. */
   height: 100vh;
+  height: var(--app-h, 100dvh);
   max-height: 932px;
   position: relative;
   overflow: hidden;
@@ -379,6 +399,8 @@ body {
 
 @media (min-width: 460px) {
   .phone-frame {
+    /* Desktop draws a fixed phone-shaped box, so it deliberately ignores
+       --app-h — there's no browser chrome eating into it here. */
     height: 900px;
     margin: 16px 0;
     border-radius: 32px;

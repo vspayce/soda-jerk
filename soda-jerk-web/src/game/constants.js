@@ -429,8 +429,8 @@ export const TEMPEST_RADIUS_Y = 20.5
 export const TEMPEST_JERK_SPEED = 2.6
 
 // Patrons climb from the hub (t=0) to the rim (t=1).
-export const TEMPEST_PATRON_SPEED_MIN = 0.055 // t per second
-export const TEMPEST_PATRON_SPEED_MAX = 0.095
+export const TEMPEST_PATRON_SPEED_MIN = 0.15 // t per second
+export const TEMPEST_PATRON_SPEED_MAX = 0.24
 export const TEMPEST_SPAWN_MIN_MS = 900
 export const TEMPEST_SPAWN_MAX_MS = 1900
 // Ramps up over the round so it keeps tightening.

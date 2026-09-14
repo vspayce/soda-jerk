@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameEngine } from './game/useGameEngine.js'
 import { useMusic } from './audio/useMusic.js'
+import { useViewportHeight } from './useViewportHeight.js'
 import { playSeltzerSpray, playCelebration, playGlassShatter, playCrash } from './audio/sfx.js'
 import { LANE_COUNT, POINTS_PER_BONUS } from './game/constants.js'
 import Lane from './components/Lane.jsx'
@@ -64,6 +65,9 @@ export default function App() {
     tempestMoveTo,
     skipToNewVenue,
   } = useGameEngine()
+  // Keeps the frame inside whatever the browser actually leaves visible —
+  // on iOS Safari the toolbars otherwise sit on top of the drink taps.
+  useViewportHeight()
   const music = useMusic(MUSIC_SRC, { volume: 0.22 })
   const [spraying, setSpraying] = useState(false)
   const [celebrate, setCelebrate] = useState(null)
