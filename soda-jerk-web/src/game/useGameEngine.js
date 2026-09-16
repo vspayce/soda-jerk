@@ -601,9 +601,11 @@ function stepSlide(sim, dt) {
 
   s.elapsedMs += dt * 1000
 
-  // Spawning tightens as the round goes on, so it always ends eventually.
-  const progress = Math.min(1, s.elapsedMs / C.SLIDE_SPAWN_RAMP_MS)
+  // Both the spawn rate AND the walking speed tighten as the round goes on,
+  // so it escalates rather than just getting more crowded, and always ends.
+  const progress = Math.min(1, s.elapsedMs / C.SLIDE_RAMP_MS)
   const ramp = 1 - (1 - C.SLIDE_SPAWN_RAMP) * progress
+  const speedRamp = 1 + (C.SLIDE_SPEED_RAMP - 1) * progress
   s.nextSpawnInMs -= dt * 1000
   if (s.nextSpawnInMs <= 0) {
     const bar = pick(C.SLIDE_BARS)
@@ -611,7 +613,7 @@ function stepSlide(sim, dt) {
       id: s.nextId++,
       lane: bar.lane,
       t: 1,
-      speed: randomBetween(C.SLIDE_PATRON_SPEED_MIN, C.SLIDE_PATRON_SPEED_MAX),
+      speed: randomBetween(C.SLIDE_PATRON_SPEED_MIN, C.SLIDE_PATRON_SPEED_MAX) * speedRamp,
       patronType: pickWeightedIndex(C.PATRON_TYPE_WEIGHTS),
       drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
     })

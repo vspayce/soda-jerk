@@ -370,12 +370,16 @@ export const SLIDE_POINTS = 90
 export const SLIDE_HIT_T = 0.07 // how close along the bar counts as meeting a patron
 
 // Patrons come down from the far end toward you, and keep coming faster.
-export const SLIDE_PATRON_SPEED_MIN = 0.11 // t per second
-export const SLIDE_PATRON_SPEED_MAX = 0.17
-export const SLIDE_SPAWN_MIN_MS = 850
-export const SLIDE_SPAWN_MAX_MS = 1700
-export const SLIDE_SPAWN_RAMP_MS = 45000 // how long until spawning is at its fastest
-export const SLIDE_SPAWN_RAMP = 0.4 // final interval as a fraction of the starting one
+export const SLIDE_PATRON_SPEED_MIN = 0.2 // t per second
+export const SLIDE_PATRON_SPEED_MAX = 0.31
+export const SLIDE_SPAWN_MIN_MS = 620
+export const SLIDE_SPAWN_MAX_MS = 1250
+export const SLIDE_RAMP_MS = 45000 // how long until the round is at full tilt
+export const SLIDE_SPAWN_RAMP = 0.35 // final spawn interval as a fraction of the starting one
+// Speed ramps as well as spawn rate. Without this the round only ever got
+// busier, never quicker — the same easy reaction window however long you
+// survived, which is what made it a waiting game rather than a test.
+export const SLIDE_SPEED_RAMP = 1.5 // final patron speed as a multiple of the starting one
 
 // Flick -> how far it slides. The swipe is measured along the bar's own
 // direction, as a fraction of the frame's height, so a flick feels the
