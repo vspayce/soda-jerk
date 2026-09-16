@@ -4,6 +4,12 @@ const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 // Every layer is laid out against one anchor point on his feet and driven
 // by one shared clock, so poses and props can't drift apart from each
 // other however the animation is sized.
+// How much clear space to leave above the jerk, as a share of his height.
+// The cup launches from his raised hand, which is already near the top of
+// him, so without headroom a hard throw just flies out of the box — which
+// is why charging up looked like it barely changed anything.
+const HEADROOM = 0.75
+
 export default function TrickAnimation({ trick, height = 165, power = 1, paused = false }) {
   if (!trick) return null
   const ms = `${trick.durationMs}ms`
@@ -29,7 +35,7 @@ export default function TrickAnimation({ trick, height = 165, power = 1, paused 
   }
 
   return (
-    <div className="relative w-full" style={{ height }}>
+    <div className="relative w-full" style={{ height: height * (1 + HEADROOM) }}>
       {/* the counter he's working over, so the trick has a stage */}
       <div
         className="absolute left-0 right-0"

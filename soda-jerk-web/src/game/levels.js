@@ -13,6 +13,11 @@
 //                      reaching the end (lower = less time to react)
 // customerTravelMs values are a further 20% slower on top of the prior
 // pacing pass — patrons were still crossing the bar too briskly.
+// The curve used to stop at level 6 / 2,500 points, which made everything
+// past that play identically forever — and with an extra life every 10,000
+// the game actually got EASIER the longer you lasted. It now keeps
+// tightening out to 20,000, with the gaps between levels widening as they
+// go, since a player scoring faster clears each threshold quicker.
 export const LEVELS = [
   { level: 1, score: 0, spawnIntervalMs: 2200, customerTravelMs: 14702 },
   { level: 2, score: 500, spawnIntervalMs: 1900, customerTravelMs: 12294 },
@@ -20,6 +25,18 @@ export const LEVELS = [
   { level: 4, score: 1500, spawnIntervalMs: 1350, customerTravelMs: 8531 },
   { level: 5, score: 2000, spawnIntervalMs: 1150, customerTravelMs: 7277 },
   { level: 6, score: 2500, spawnIntervalMs: 1000, customerTravelMs: 6371 },
+  { level: 7, score: 3200, spawnIntervalMs: 920, customerTravelMs: 5750 },
+  { level: 8, score: 4000, spawnIntervalMs: 850, customerTravelMs: 5250 },
+  { level: 9, score: 5000, spawnIntervalMs: 790, customerTravelMs: 4800 },
+  { level: 10, score: 6200, spawnIntervalMs: 740, customerTravelMs: 4420 },
+  { level: 11, score: 7600, spawnIntervalMs: 700, customerTravelMs: 4100 },
+  { level: 12, score: 9200, spawnIntervalMs: 665, customerTravelMs: 3830 },
+  { level: 13, score: 11000, spawnIntervalMs: 635, customerTravelMs: 3610 },
+  { level: 14, score: 13000, spawnIntervalMs: 610, customerTravelMs: 3430 },
+  { level: 15, score: 15500, spawnIntervalMs: 590, customerTravelMs: 3290 },
+  // The floor. Patrons still need long enough to be seen and served, and
+  // stage 3 stretches this a further 45% anyway (STAGE_TRAVEL_MULTIPLIER).
+  { level: 16, score: 20000, spawnIntervalMs: 575, customerTravelMs: 3200 },
 ]
 
 // The last level in the list is the difficulty ceiling — any score past

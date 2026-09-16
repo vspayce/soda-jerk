@@ -27,9 +27,13 @@ export const TRICKS = {
     id: 'shakerFlip',
     name: 'THE SHAKER FLIP',
     durationMs: 1900,
-    // How high the toss goes at the weakest and strongest wind-up.
-    minReach: 0.62,
-    maxReach: 1.32,
+    // How high the toss goes at the weakest and strongest wind-up. Spread
+    // wide on purpose — at 0.62-1.32 the difference between a tap and a
+    // full wind-up was about 55px, which didn't read as "charged" at all.
+    // This is roughly double that, and the animation now has headroom for
+    // the big one to actually go somewhere.
+    minReach: 0.45,
+    maxReach: 1.85,
     layers: [
       { ...STAND, className: 'trick-pose-stand' },
       { ...THROW, className: 'trick-pose-throw' },
@@ -52,8 +56,8 @@ export const TRICKS = {
     durationMs: 2000,
     // Only the arc's height varies — the straw still has to finish in the
     // cup, and that landing is fixed by the layout.
-    minReach: 0.7,
-    maxReach: 1.28,
+    minReach: 0.55,
+    maxReach: 1.7,
     layers: [
       // A flick of the wrist, not a heave — he stays on the standing pose
       // the whole way through and the straw does the performing.

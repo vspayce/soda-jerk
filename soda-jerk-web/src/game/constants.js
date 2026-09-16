@@ -72,13 +72,17 @@ export const WALK_PAUSE_MAX_MS = 800
 // 1). Stage 1 is one at a time; filling every lane and then clearing the
 // whole bar at once bumps the player to stage 2, where a second patron
 // can be waiting behind the first in every lane.
-export const STAGE_LANE_CAPACITY = [1, 2]
+// A third stage exists mainly so clearing stage 2 shows a LEVEL PASSED
+// screen at all: the clear at the TOP stage goes to a bonus round instead,
+// so with only two stages the stage-2 trick (the straw toss) could never be
+// reached. It doubles as real progression — three deep in every lane.
+export const STAGE_LANE_CAPACITY = [1, 2, 3]
 
 // Extra slowdown applied to customerTravelMs by stage (index 0 = stage 1)
 // on top of the score-gated pacing in levels.js — stage 2 has twice as
 // many patrons walking at once, so this eases their pace back down to
 // compensate, applied as a multiplier (1 = unchanged, higher = slower).
-export const STAGE_TRAVEL_MULTIPLIER = [1, 1.2]
+export const STAGE_TRAVEL_MULTIPLIER = [1, 1.2, 1.45]
 
 export const GLASS_RETURN_CHANCE = 0.35
 
