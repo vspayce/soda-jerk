@@ -55,24 +55,40 @@ export default function TrickAnimation({ trick, height = 165, power = 1, paused 
         className="absolute"
         style={{ left: '50%', bottom: 3, width: 0, height, '--trick-reach': reach }}
       >
-        {trick.layers.map((layer, i) => (
-          <img
-            key={`${layer.src}-${i}`}
-            src={ART_SRC(layer.src)}
-            alt=""
-            className={`absolute ${layer.className}`}
-            style={{
-              ...layerStyle(layer),
-              animationDuration: ms,
-              maxWidth: 'none',
-              // Held on the first frame until the player lets go, so the
-              // trick doesn't play itself out behind the wind-up.
-              animationPlayState: paused ? 'paused' : 'running',
-              WebkitTouchCallout: 'none',
-              pointerEvents: 'none', // the wrapper owns the press, not the sprites
-            }}
-          />
-        ))}
+        {trick.layers.flatMap((layer, i) => {
+          // A `repeat` layer is drawn several times, stacked, with the count
+          // set by how hard the player wound up — that's how the carry
+          // trick turns the meter into "how many glasses he balances"
+          // rather than "how high something flies".
+          const count = layer.repeat
+            ? Math.round(layer.repeat.min + (layer.repeat.max - layer.repeat.min) * Math.max(0, Math.min(1, power)))
+            : 1
+          const base = layerStyle(layer)
+          return Array.from({ length: count }, (_, n) => (
+            <img
+              key={`${layer.src}-${i}-${n}`}
+              src={ART_SRC(layer.src)}
+              alt=""
+              className={`absolute ${layer.className}`}
+              style={{
+                ...base,
+                // Each one sits on the one below it.
+                bottom: base.bottom + n * base.height * (layer.repeat?.overlap ?? 1),
+                animationDuration: ms,
+                // Stagger the wobble down the stack so it sways as one
+                // piece rather than every glass moving in lockstep.
+                animationDelay: layer.repeat ? `${n * 70}ms` : undefined,
+                maxWidth: 'none',
+                // Held on the first frame until the player lets go, so the
+                // trick doesn't play itself out behind the wind-up.
+                animationPlayState: paused ? 'paused' : 'running',
+                WebkitTouchCallout: 'none',
+                pointerEvents: 'none', // the wrapper owns the press, not the sprites
+                zIndex: 10 + n,
+              }}
+            />
+          ))
+        })}
       </div>
     </div>
   )

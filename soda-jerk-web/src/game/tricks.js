@@ -62,17 +62,17 @@ export const TRICKS = {
       // A flick of the wrist, not a heave — he stays on the standing pose
       // the whole way through and the straw does the performing.
       { ...STAND, className: 'trick-pose-flick' },
-      // The vessel waits on the counter off to his side for the straw to
-      // land in. Deliberately the solid shaker cup rather than
-      // glass-empty.png — that art is a faint outline meant to be read
-      // against its own glow on the counter, and it all but disappears here.
+      // A proper glass of soda for the straw to land in, slid into place
+      // during the wind-up so the target arrives rather than just sitting
+      // there. Its own art, with no straw drawn in it — the whole point of
+      // the trick is putting one there.
       {
         kind: 'prop',
-        src: 'bonus-cup.png',
-        aspect: 509 / 734,
-        heightRatio: 0.34,
+        src: 'trick-soda.png',
+        aspect: 100 / 240,
+        heightRatio: 0.42,
         x: 0.34,
-        y: 0.17,
+        y: 0.21,
         className: 'trick-prop-straw-glass',
       },
       // Laid out where it LANDS — upright in the cup's mouth — and
@@ -90,14 +90,42 @@ export const TRICKS = {
       },
     ],
   },
+
+  threeDrinkCarry: {
+    id: 'threeDrinkCarry',
+    name: 'THE THREE-DRINK CARRY',
+    durationMs: 2100,
+    // The meter means something different here: not how high something
+    // flies, but how many glasses he dares stack. Reach is unused.
+    minReach: 1,
+    maxReach: 1,
+    layers: [
+      { ...STAND, className: 'trick-pose-carry' },
+      // Stacked on his outstretched hand, two at the lightest wind-up and
+      // five at a full one. overlap < 1 so each glass sits down inside the
+      // one below rather than floating a full height above it.
+      {
+        kind: 'prop',
+        src: 'trick-soda.png',
+        aspect: 100 / 240,
+        heightRatio: 0.32,
+        x: -0.24,
+        y: 0.56,
+        className: 'trick-prop-carry-glass',
+        repeat: { min: 2, max: 5, overlap: 0.78 },
+      },
+    ],
+  },
 }
 
-// Which trick each cleared level shows. Levels past the end cycle back
-// through, so adding a trick here is all it takes to put it in rotation.
-const STAGE_TRICKS = ['shakerFlip', 'strawToss']
+// Tricks cycle by how many clean clears the run has had, NOT by stage
+// number. Keying off the stage meant the top stage's trick could never be
+// reached, because clearing at the top stage goes to a bonus round — so
+// with three stages only the first two tricks ever showed.
+const TRICK_ORDER = ['shakerFlip', 'strawToss', 'threeDrinkCarry']
 
-export function trickForStage(stage) {
-  if (STAGE_TRICKS.length === 0) return null
-  const key = STAGE_TRICKS[(Math.max(1, stage) - 1) % STAGE_TRICKS.length]
+export function trickForClear(clearCount) {
+  if (TRICK_ORDER.length === 0) return null
+  const key = TRICK_ORDER[(Math.max(1, clearCount) - 1) % TRICK_ORDER.length]
   return TRICKS[key] ?? null
 }

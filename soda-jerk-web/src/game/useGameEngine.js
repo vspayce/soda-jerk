@@ -210,6 +210,11 @@ function createInitialSim() {
     // constants.js. Unrelated to `level` above: this only changes how many
     // customers can queue in one lane, advanced by clearing the bar, not by
     // score.
+    clearCount: 0, // how many clean full clears so far — picks which trick
+    // the LEVEL PASSED screen shows, so they cycle instead of being pinned
+    // to a stage number that the top stage never reaches
+    pendingBonusMode: null, // bonus round queued behind the LEVEL PASSED
+    // screen, entered when the player continues
     stageAttemptActive: false, // true from the moment every lane fills
     // until that exact batch is fully resolved (served-all, or a life
     // lost) — spawning is frozen the whole time (see the spawn block in
@@ -1079,22 +1084,17 @@ function step(sim, dt) {
     }
     if (sim.stageAttemptActive && sim.stageAttemptClean && !sim.awaitingStageAdvance && sim.customers.length === 0) {
       sim.stageAttemptActive = false
-      if (sim.stage < C.STAGE_LANE_CAPACITY.length) {
-        // Still have lane-capacity stages left to unlock — show the
-        // normal "LEVEL PASSED" screen.
-        sim.awaitingStageAdvance = true
-      } else {
-        // Already at the top lane-capacity stage — a clean full clear
-        // here sends the player to a random one of the three bonus rounds
-        // instead.
-        const bonusMode = pick(['bonusWheel', 'bonusPlates', 'bonusShaker', 'bonusSlide', 'bonusTempest'])
-        sim.mode = bonusMode
-        if (bonusMode === 'bonusWheel') sim.bonusLevel = createBonusLevelState()
-        else if (bonusMode === 'bonusPlates') sim.platesLevel = createPlatesLevelState()
-        else if (bonusMode === 'bonusShaker') sim.shakerLevel = createShakerLevelState()
-        else if (bonusMode === 'bonusSlide') sim.slideLevel = createSlideLevelState()
-        else sim.tempestLevel = createTempestLevelState()
-      }
+      // Every clean clear earns the LEVEL PASSED screen and its trick.
+      // At the top stage there's no capacity left to unlock, so a bonus
+      // round is queued behind it instead and entered on continue — that
+      // way the flourish isn't skipped just because the run has topped out,
+      // which is what kept all but the first two tricks from ever showing.
+      sim.clearCount += 1
+      sim.awaitingStageAdvance = true
+      sim.pendingBonusMode =
+        sim.stage < C.STAGE_LANE_CAPACITY.length
+          ? null
+          : pick(['bonusWheel', 'bonusPlates', 'bonusShaker', 'bonusSlide', 'bonusTempest'])
     }
   }
 }
@@ -1271,7 +1271,20 @@ export function useGameEngine() {
     const sim = simRef.current
     if (sim.gameOver || !sim.awaitingStageAdvance) return
     sim.awaitingStageAdvance = false
-    sim.stage += 1
+    const bonusMode = sim.pendingBonusMode
+    sim.pendingBonusMode = null
+    if (bonusMode) {
+      // Topped out on lane capacity — the clear leads into a bonus round
+      // rather than another stage.
+      sim.mode = bonusMode
+      if (bonusMode === 'bonusWheel') sim.bonusLevel = createBonusLevelState()
+      else if (bonusMode === 'bonusPlates') sim.platesLevel = createPlatesLevelState()
+      else if (bonusMode === 'bonusShaker') sim.shakerLevel = createShakerLevelState()
+      else if (bonusMode === 'bonusSlide') sim.slideLevel = createSlideLevelState()
+      else sim.tempestLevel = createTempestLevelState()
+    } else {
+      sim.stage += 1
+    }
     // Passing a level only requires the CUSTOMERS to be gone — a glass or
     // mug can still be mid-return-flight at that instant. Left alone it
     // survives into the new stage, frozen mid-slide over the fresh venue.

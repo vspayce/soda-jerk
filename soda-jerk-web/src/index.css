@@ -514,13 +514,20 @@ body {
   animation-fill-mode: both;
 }
 
-/* The glass just waits on the counter for the straw to arrive. */
+/* The glass slides in from off to the right during the wind-up, settles
+   just before the straw is flicked, and takes a small knock as it lands.
+   Sliding it in is what makes it read as him setting up the shot rather
+   than a prop that was always sitting there. */
 @keyframes trick-prop-straw-glass {
-  0%, 100% { opacity: 1; }
-  /* a tiny knock as the straw drops in */
-  66%      { transform: translateY(0) scaleY(1); }
-  70%      { transform: translateY(1.5%) scaleY(0.98); }
-  76%      { transform: translateY(0) scaleY(1); }
+  0%       { opacity: 0; transform: translateX(260%); }
+  8%       { opacity: 1; transform: translateX(240%); }
+  26%      { opacity: 1; transform: translateX(0); }
+  32%      { opacity: 1; transform: translateX(-6%); }   /* overshoot */
+  38%      { opacity: 1; transform: translateX(0); }
+  /* the straw drops in around 72% */
+  72%      { opacity: 1; transform: translate(0, 0) scaleY(1); }
+  78%      { opacity: 1; transform: translate(0, 2%) scaleY(0.97); }
+  86%,100% { opacity: 1; transform: translate(0, 0) scaleY(1); }
 }
 .trick-prop-straw-glass {
   transform-origin: 50% 100%;
@@ -555,6 +562,57 @@ body {
 .trick-prop-straw {
   animation-name: trick-prop-straw;
   animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+/* The plate-wash spray: 8 frames of real burst art, played once at the
+   point that was sprayed. Same frame-boundary maths as the walk cycles —
+   the `to` value is frames/(frames-1) so the last step lands exactly on
+   the final frame instead of tearing between two. */
+@keyframes spray-burst-frames {
+  from { background-position-x: 0%; }
+  to   { background-position-x: 114.2857%; }
+}
+.spray-burst-sprite {
+  background-repeat: no-repeat;
+  background-size: 800% 100%;
+  animation: spray-burst-frames 480ms steps(8) 1 both;
+}
+
+/* The Three-Drink Carry: he sets himself, then balances the stack. The
+   meter decides how many glasses go up (see the layer's `repeat`), so the
+   motion here is all in the wobble — each glass gets a staggered delay so
+   the stack sways as one piece instead of moving in lockstep. */
+@keyframes trick-pose-carry {
+  0%       { transform: translateY(0) scaleY(1); }
+  14%      { transform: translateY(1.5%) scaleY(0.975); }  /* brace */
+  26%      { transform: translateY(0) scaleY(1); }
+  50%      { transform: translateY(-0.5%) rotate(0.8deg); }
+  74%      { transform: translateY(0) rotate(-0.6deg); }
+  100%     { transform: translateY(0) rotate(0deg); }
+}
+.trick-pose-carry {
+  transform-origin: 50% 100%;
+  animation-name: trick-pose-carry;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+}
+
+@keyframes trick-prop-carry-glass {
+  0%       { opacity: 0; transform: translateY(35%) scale(0.9); }
+  18%      { opacity: 1; transform: translateY(0) scale(1); }
+  40%      { opacity: 1; transform: rotate(-3deg); }
+  58%      { opacity: 1; transform: rotate(2.4deg); }
+  76%      { opacity: 1; transform: rotate(-1.4deg); }
+  100%     { opacity: 1; transform: rotate(0deg); }
+}
+.trick-prop-carry-glass {
+  transform-origin: 50% 100%;
+  animation-name: trick-prop-carry-glass;
+  animation-timing-function: ease-in-out;
   animation-iteration-count: 1;
   animation-fill-mode: both;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));

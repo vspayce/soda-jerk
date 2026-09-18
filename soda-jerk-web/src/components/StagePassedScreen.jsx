@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import DecoButton from './DecoButton.jsx'
 import TrickAnimation from './TrickAnimation.jsx'
-import { trickForStage } from '../game/tricks.js'
+import { trickForClear } from '../game/tricks.js'
 import { TRICK_CHARGE_MS, TRICK_MAX_BONUS } from '../game/constants.js'
 
 // Long enough to watch the trick land, and to decide how long to hold.
@@ -10,9 +10,9 @@ const AUTO_CONTINUE_SECONDS = 6
 // itself out rather than sitting frozen waiting for input.
 const IDLE_POWER = 0.55
 
-export default function StagePassedScreen({ stage, onContinue, onTrickBonus }) {
+export default function StagePassedScreen({ stage, clearCount, onContinue, onTrickBonus }) {
   const [secondsLeft, setSecondsLeft] = useState(AUTO_CONTINUE_SECONDS)
-  const trick = trickForStage(stage)
+  const trick = trickForClear(clearCount)
 
   // 'ready' -> 'charging' -> 'thrown'. Only one throw per level.
   const [phase, setPhase] = useState('ready')

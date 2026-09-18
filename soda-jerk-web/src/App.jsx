@@ -341,6 +341,7 @@ export default function App() {
       {state.mode === 'bar' && state.started && !state.gameOver && !state.awaitingContinue && state.awaitingStageAdvance && (
         <StagePassedScreen
           stage={state.stage}
+          clearCount={state.clearCount}
           onContinue={withAudio(advanceStage)}
           onTrickBonus={addTrickBonus}
         />

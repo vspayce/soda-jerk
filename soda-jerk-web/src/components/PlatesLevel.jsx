@@ -8,28 +8,26 @@ import {
   PLATES_DOLLAR_POINTS,
 } from '../game/constants.js'
 
-const SPRAY_DROPLET_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315]
-
-// A quick burst of droplets + an expanding ring at the click point —
-// stands in for a real spray-sprite animation (see PlatesLevel.jsx's
-// top comment for why one isn't used).
+// The spray that cleans a plate. Real 8-frame burst art rather than the
+// CSS droplets-and-ring this used to fake — the fake read as a pulsing
+// circle rather than water hitting something.
 function SprayBurst({ x, y }) {
   return (
-    <div className="absolute pointer-events-none" style={{ left: `${x}%`, top: `${y}%`, zIndex: 1000 }}>
-      <div
-        className="spray-ring absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{ width: 60, height: 60, border: '4px solid rgba(220,240,255,0.95)', boxShadow: '0 0 12px rgba(220,240,255,0.8)' }}
-      />
-      {SPRAY_DROPLET_ANGLES.map((angle) => (
-        <div
-          key={angle}
-          className="spray-droplet absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{ '--angle': `${angle}deg`, width: 12, height: 12, background: 'rgba(220,240,255,1)', boxShadow: '0 0 6px rgba(220,240,255,0.9)' }}
-        />
-      ))}
-    </div>
+    <div
+      className="absolute pointer-events-none spray-burst-sprite"
+      style={{
+        left: `${x}%`,
+        top: `${y}%`,
+        width: 108,
+        height: 108,
+        transform: 'translate(-50%, -50%)',
+        backgroundImage: `url(${ART_SRC('spray-burst.png')})`,
+        zIndex: 1000,
+      }}
+    />
   )
 }
+
 
 // Three conveyor belts, one per lane, each running from its own direction
 // (see PLATES_LANE_PATHS) into the player. Drawn as an SVG overlay stretched
