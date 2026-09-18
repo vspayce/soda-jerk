@@ -284,11 +284,7 @@ function loseLife(sim, n = 1) {
 // immediately). Clear the board on the way back instead.
 function returnToBar(sim) {
   sim.mode = 'bar'
-  sim.bonusLevel = null
-  sim.platesLevel = null
-  sim.shakerLevel = null
-  sim.slideLevel = null
-  sim.tempestLevel = null
+  for (const round of BONUS_ROUNDS) sim[round.key] = null
   sim.glasses = []
   sim.mugs = []
   // The hot dog freezes mid-countdown too — a bonus round can outlast its
@@ -759,6 +755,36 @@ function stepTempest(sim, dt) {
   }
 }
 
+// Every bonus round in one table. Each entry owns its mode name, the sim
+// field its state lives in, how to build that state, and how to tick it.
+//
+// This used to be spelled out separately in seven places — the step
+// dispatch, returnToBar's teardown, the initial sim fields, the clean-clear
+// trigger, advanceStage, the skip callbacks and the mode comment — so
+// adding or removing a round meant finding all seven, and missing one
+// failed quietly. The rounds are experiments (the slide and the web
+// especially), so they need to be cheap to add and cheap to delete.
+const BONUS_ROUNDS = [
+  { mode: 'bonusWheel', key: 'bonusLevel', label: 'ICE CREAM', create: createBonusLevelState, step: stepBonus },
+  { mode: 'bonusPlates', key: 'platesLevel', label: 'PLATE', create: createPlatesLevelState, step: stepPlates },
+  { mode: 'bonusShaker', key: 'shakerLevel', label: 'SHAKER', create: createShakerLevelState, step: stepShaker },
+  { mode: 'bonusSlide', key: 'slideLevel', label: 'SLIDE', create: createSlideLevelState, step: stepSlide },
+  { mode: 'bonusTempest', key: 'tempestLevel', label: 'ROUNDS', create: createTempestLevelState, step: stepTempest },
+]
+const BONUS_BY_MODE = Object.fromEntries(BONUS_ROUNDS.map((r) => [r.mode, r]))
+export const BONUS_MODES = BONUS_ROUNDS.map((r) => r.mode)
+// What the settings menu builds its dev skip buttons from, so a new round
+// gets one for free.
+export const BONUS_ROUND_MENU = BONUS_ROUNDS.map(({ mode, label }) => ({ mode, label }))
+
+// Puts a round's freshly-built state on the sim and switches into it.
+function enterBonusRound(sim, mode) {
+  const round = BONUS_BY_MODE[mode]
+  if (!round) return
+  sim.mode = mode
+  sim[round.key] = round.create()
+}
+
 function step(sim, dt) {
   if (!sim.started) return
   // Covers every mode, bonus rounds included — the settings menu opens
@@ -776,24 +802,9 @@ function step(sim, dt) {
     sim.nextExtraLifeAt += C.EXTRA_LIFE_EVERY
   }
 
-  if (sim.mode === 'bonusWheel') {
-    stepBonus(sim, dt)
-    return
-  }
-  if (sim.mode === 'bonusPlates') {
-    stepPlates(sim, dt)
-    return
-  }
-  if (sim.mode === 'bonusShaker') {
-    stepShaker(sim, dt)
-    return
-  }
-  if (sim.mode === 'bonusSlide') {
-    stepSlide(sim, dt)
-    return
-  }
-  if (sim.mode === 'bonusTempest') {
-    stepTempest(sim, dt)
+  const bonusRound = BONUS_BY_MODE[sim.mode]
+  if (bonusRound) {
+    bonusRound.step(sim, dt)
     return
   }
   if (sim.awaitingContinue) return
@@ -1094,7 +1105,7 @@ function step(sim, dt) {
       sim.pendingBonusMode =
         sim.stage < C.STAGE_LANE_CAPACITY.length
           ? null
-          : pick(['bonusWheel', 'bonusPlates', 'bonusShaker', 'bonusSlide', 'bonusTempest'])
+          : pick(BONUS_MODES)
     }
   }
 }
@@ -1276,12 +1287,7 @@ export function useGameEngine() {
     if (bonusMode) {
       // Topped out on lane capacity — the clear leads into a bonus round
       // rather than another stage.
-      sim.mode = bonusMode
-      if (bonusMode === 'bonusWheel') sim.bonusLevel = createBonusLevelState()
-      else if (bonusMode === 'bonusPlates') sim.platesLevel = createPlatesLevelState()
-      else if (bonusMode === 'bonusShaker') sim.shakerLevel = createShakerLevelState()
-      else if (bonusMode === 'bonusSlide') sim.slideLevel = createSlideLevelState()
-      else sim.tempestLevel = createTempestLevelState()
+      enterBonusRound(sim, bonusMode)
     } else {
       sim.stage += 1
     }
@@ -1429,41 +1435,15 @@ export function useGameEngine() {
     s.targetSpoke = ((spoke % C.TEMPEST_SPOKES) + C.TEMPEST_SPOKES) % C.TEMPEST_SPOKES
   }, [])
 
-  const skipToBonusTempest = useCallback(() => {
-    const sim = simRef.current
-    if (sim.gameOver || !sim.started) return
-    sim.mode = 'bonusTempest'
-    sim.tempestLevel = createTempestLevelState()
-  }, [])
 
-  const skipToBonusSlide = useCallback(() => {
-    const sim = simRef.current
-    if (sim.gameOver || !sim.started) return
-    sim.mode = 'bonusSlide'
-    sim.slideLevel = createSlideLevelState()
-  }, [])
 
-  // Dev/test shortcuts — jump straight into any bonus round from
-  // anywhere mid-game, no need to actually clear two full stages first.
-  const skipToBonusWheel = useCallback(() => {
+  // Dev/test shortcut — jump straight into any bonus round from anywhere
+  // mid-game, no need to actually clear a full stage first. One function
+  // for all of them; the settings menu passes the mode it wants.
+  const skipToBonusRound = useCallback((mode) => {
     const sim = simRef.current
     if (sim.gameOver || !sim.started) return
-    sim.mode = 'bonusWheel'
-    sim.bonusLevel = createBonusLevelState()
-  }, [])
-
-  const skipToBonusPlates = useCallback(() => {
-    const sim = simRef.current
-    if (sim.gameOver || !sim.started) return
-    sim.mode = 'bonusPlates'
-    sim.platesLevel = createPlatesLevelState()
-  }, [])
-
-  const skipToBonusShaker = useCallback(() => {
-    const sim = simRef.current
-    if (sim.gameOver || !sim.started) return
-    sim.mode = 'bonusShaker'
-    sim.shakerLevel = createShakerLevelState()
+    enterBonusRound(sim, mode)
   }, [])
 
   // Dev shortcut — jumps straight to the stage-2+ soda-fountain venue
@@ -1509,11 +1489,7 @@ export function useGameEngine() {
     shakerAimStart,
     shakerAimMove,
     shakerAimEnd,
-    skipToBonusWheel,
-    skipToBonusPlates,
-    skipToBonusShaker,
-    skipToBonusSlide,
-    skipToBonusTempest,
+    skipToBonusRound,
     tempestMoveTo,
     slideFlick,
     skipToNewVenue,

@@ -8,13 +8,13 @@ import {
   BONUS_CUP_COLORS,
   BONUS_LAUNCH_ANCHOR,
 } from '../game/constants.js'
+import { ART_SRC } from '../game/art.js'
 
 // The wheel-throw bonus round. Everything here is positioned in
 // percentages of this component's own square arena div — not the phone
 // frame — so the throw physics (circular wheel, straight gravity arc)
 // stay visually correct no matter the device's actual aspect ratio.
 
-const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 const WHEEL_SRC = ART_SRC('bonus-wheel.png')
 const CUP_SRC = ART_SRC('bonus-cup.png')
 const SCOOP_SRC = ART_SRC('bonus-scoop.png')

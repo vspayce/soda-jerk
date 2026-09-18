@@ -1,7 +1,7 @@
 import { POINTS_PER_SERVE, POINTS_PER_CAUGHT_GLASS, POINTS_PER_BONUS } from '../game/constants.js'
 import SignButton from './SignButton.jsx'
+import { ART_SRC } from '../game/art.js'
 
-const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 
 const ROWS = [
   {

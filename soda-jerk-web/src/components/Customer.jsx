@@ -1,4 +1,5 @@
 import { PLAYER_X, COUNTER_HEIGHT_PX } from '../game/constants.js'
+import { patronPortrait, patronHeld, patronWalkSheet } from '../game/art.js'
 
 // Glows red once a still-walking customer gets close to the end of
 // the bar, as a warning — replaces the old patience-timer bar since
@@ -13,16 +14,6 @@ const DANGER_X = PLAYER_X + 22
 // To add another patron type: drop in `patronN-orange.png` /
 // `patronN-pink.png`, add a row here (and a height below), plus a walk
 // sheet, and add a weight to PATRON_TYPE_WEIGHTS in constants.js.
-const PATRON_SRC = [
-  [`${import.meta.env.BASE_URL}art/patron-orange.png`, `${import.meta.env.BASE_URL}art/patron-pink.png`],
-  [`${import.meta.env.BASE_URL}art/patron2-orange.png`, `${import.meta.env.BASE_URL}art/patron2-pink.png`],
-  [`${import.meta.env.BASE_URL}art/patron3-orange.png`, `${import.meta.env.BASE_URL}art/patron3-pink.png`],
-  [`${import.meta.env.BASE_URL}art/patron4-orange.png`, `${import.meta.env.BASE_URL}art/patron4-pink.png`],
-  [`${import.meta.env.BASE_URL}art/patron5-orange.png`, `${import.meta.env.BASE_URL}art/patron5-pink.png`],
-  [`${import.meta.env.BASE_URL}art/patron6-orange.png`, `${import.meta.env.BASE_URL}art/patron6-pink.png`],
-  [`${import.meta.env.BASE_URL}art/patron7-orange.png`, `${import.meta.env.BASE_URL}art/patron7-pink.png`],
-  [`${import.meta.env.BASE_URL}art/patron8-orange.png`, `${import.meta.env.BASE_URL}art/patron8-pink.png`],
-]
 // Some illustrations (e.g. the mom-and-son pair) are wider than others,
 // so each patronType gets its own height to read at a consistent scale.
 // 25% bigger across the board, then another 10% on top of that — small
@@ -35,16 +26,6 @@ const PATRON_HEIGHT = [89, 91, 89, 89, 89, 89, 89, 89]
 // on the tap handle, composited in — not a redrawn one — so the colour
 // reads identically to the drink they chose. Padded symmetrically around
 // the body, so swapping this in doesn't jog the patron sideways.
-const PATRON_HELD_SRC = [
-  [`${import.meta.env.BASE_URL}art/patron-orange-held.png`, `${import.meta.env.BASE_URL}art/patron-pink-held.png`],
-  [`${import.meta.env.BASE_URL}art/patron2-orange-held.png`, `${import.meta.env.BASE_URL}art/patron2-pink-held.png`],
-  [`${import.meta.env.BASE_URL}art/patron3-orange-held.png`, `${import.meta.env.BASE_URL}art/patron3-pink-held.png`],
-  [`${import.meta.env.BASE_URL}art/patron4-orange-held.png`, `${import.meta.env.BASE_URL}art/patron4-pink-held.png`],
-  [`${import.meta.env.BASE_URL}art/patron5-orange-held.png`, `${import.meta.env.BASE_URL}art/patron5-pink-held.png`],
-  [`${import.meta.env.BASE_URL}art/patron6-orange-held.png`, `${import.meta.env.BASE_URL}art/patron6-pink-held.png`],
-  [`${import.meta.env.BASE_URL}art/patron7-orange-held.png`, `${import.meta.env.BASE_URL}art/patron7-pink-held.png`],
-  [`${import.meta.env.BASE_URL}art/patron8-orange-held.png`, `${import.meta.env.BASE_URL}art/patron8-pink-held.png`],
-]
 
 // Real 8-frame walk-cycle sprite sheets (PixelLab-generated from each static
 // illustration), used while a patron is actively walking in. Each entry's
@@ -59,36 +40,36 @@ const PATRON_HELD_SRC = [
 // foot still on the ground — see walkCycleMs().
 const PATRON_WALK_SHEETS = {
   0: [
-    { src: `${import.meta.env.BASE_URL}art/patron-orange-walk.png`, aspectRatio: 137 / 256, stride: 0.372 },
-    { src: `${import.meta.env.BASE_URL}art/patron-pink-walk.png`, aspectRatio: 131 / 256, stride: 0.393 },
+    { src: patronWalkSheet(0, 0), aspectRatio: 137 / 256, stride: 0.372 },
+    { src: patronWalkSheet(0, 1), aspectRatio: 131 / 256, stride: 0.393 },
   ],
   1: [
-    { src: `${import.meta.env.BASE_URL}art/patron2-orange-walk.png`, aspectRatio: 235 / 256, stride: 0.270 },
-    { src: `${import.meta.env.BASE_URL}art/patron2-pink-walk.png`, aspectRatio: 238 / 256, stride: 0.201 },
+    { src: patronWalkSheet(1, 0), aspectRatio: 235 / 256, stride: 0.270 },
+    { src: patronWalkSheet(1, 1), aspectRatio: 238 / 256, stride: 0.201 },
   ],
   2: [
-    { src: `${import.meta.env.BASE_URL}art/patron3-orange-walk.png`, aspectRatio: 147 / 256, stride: 0.379 },
-    { src: `${import.meta.env.BASE_URL}art/patron3-pink-walk.png`, aspectRatio: 144 / 256, stride: 0.379 },
+    { src: patronWalkSheet(2, 0), aspectRatio: 147 / 256, stride: 0.379 },
+    { src: patronWalkSheet(2, 1), aspectRatio: 144 / 256, stride: 0.379 },
   ],
   3: [
-    { src: `${import.meta.env.BASE_URL}art/patron4-orange-walk.png`, aspectRatio: 137 / 256, stride: 0.278 },
-    { src: `${import.meta.env.BASE_URL}art/patron4-pink-walk.png`, aspectRatio: 137 / 256, stride: 0.339 },
+    { src: patronWalkSheet(3, 0), aspectRatio: 137 / 256, stride: 0.278 },
+    { src: patronWalkSheet(3, 1), aspectRatio: 137 / 256, stride: 0.339 },
   ],
   4: [
-    { src: `${import.meta.env.BASE_URL}art/patron5-orange-walk.png`, aspectRatio: 136 / 256, stride: 0.167 },
-    { src: `${import.meta.env.BASE_URL}art/patron5-pink-walk.png`, aspectRatio: 136 / 256, stride: 0.499 },
+    { src: patronWalkSheet(4, 0), aspectRatio: 136 / 256, stride: 0.167 },
+    { src: patronWalkSheet(4, 1), aspectRatio: 136 / 256, stride: 0.499 },
   ],
   5: [
-    { src: `${import.meta.env.BASE_URL}art/patron6-orange-walk.png`, aspectRatio: 138 / 256, stride: 0.354 },
-    { src: `${import.meta.env.BASE_URL}art/patron6-pink-walk.png`, aspectRatio: 138 / 256, stride: 0.339 },
+    { src: patronWalkSheet(5, 0), aspectRatio: 138 / 256, stride: 0.354 },
+    { src: patronWalkSheet(5, 1), aspectRatio: 138 / 256, stride: 0.339 },
   ],
   6: [
-    { src: `${import.meta.env.BASE_URL}art/patron7-orange-walk.png`, aspectRatio: 138 / 256, stride: 0.345 },
-    { src: `${import.meta.env.BASE_URL}art/patron7-pink-walk.png`, aspectRatio: 138 / 256, stride: 0.227 },
+    { src: patronWalkSheet(6, 0), aspectRatio: 138 / 256, stride: 0.345 },
+    { src: patronWalkSheet(6, 1), aspectRatio: 138 / 256, stride: 0.227 },
   ],
   7: [
-    { src: `${import.meta.env.BASE_URL}art/patron8-orange-walk.png`, aspectRatio: 138 / 256, stride: 0.269 },
-    { src: `${import.meta.env.BASE_URL}art/patron8-pink-walk.png`, aspectRatio: 138 / 256, stride: 0.371 },
+    { src: patronWalkSheet(7, 0), aspectRatio: 138 / 256, stride: 0.269 },
+    { src: patronWalkSheet(7, 1), aspectRatio: 138 / 256, stride: 0.371 },
   ],
 }
 
@@ -133,7 +114,7 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
   // brightness, since this is the reward beat, not the "already served,
   // don't throw at me" state that follows it.
   const isToasting = status === 'toasting'
-  const heldSrc = isToasting ? PATRON_HELD_SRC[patronType]?.[drinkType] : null
+  const heldSrc = isToasting ? patronHeld(patronType, drinkType) : null
   const walkSheet =
     status === 'walking' || isLeaving ? PATRON_WALK_SHEETS[patronType]?.[drinkType] : null
 
@@ -187,7 +168,7 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
       ) : (
         <div className="patron-walk">
           <img
-            src={PATRON_SRC[patronType][drinkType]}
+            src={patronPortrait(patronType, drinkType)}
             alt=""
             style={{
               height: PATRON_HEIGHT[patronType],

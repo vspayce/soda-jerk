@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Customer from './Customer.jsx'
 import Player from './Player.jsx'
 import { PLAYER_X, COUNTER_HEIGHT_PX, DRINK_TYPES } from '../game/constants.js'
+import { ART_SRC } from '../game/art.js'
 
 // Mugs, glasses, and the hot dog ride along the counter's top surface,
 // not its vertical center — otherwise they read as embedded in the middle
@@ -10,7 +11,6 @@ import { PLAYER_X, COUNTER_HEIGHT_PX, DRINK_TYPES } from '../game/constants.js'
 // this nudges up past that edge rather than sitting exactly on it.
 const COUNTER_SURFACE_Y = `calc(50% - ${COUNTER_HEIGHT_PX / 2 + 10}px)`
 
-const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 const DRINK_ICON_SRC = (icon) => ART_SRC(icon)
 const BAR_COUNTER_SRC = ART_SRC('bar-counter.png')
 const SALOON_DOOR_LEFT_SRC = ART_SRC('saloon-door-left.png')

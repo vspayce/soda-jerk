@@ -7,6 +7,7 @@ import {
   PLATES_DIRTY_POINTS,
   PLATES_DOLLAR_POINTS,
 } from '../game/constants.js'
+import { ART_SRC } from '../game/art.js'
 
 // The spray that cleans a plate. Real 8-frame burst art rather than the
 // CSS droplets-and-ring this used to fake — the fake read as a pulsing
@@ -117,7 +118,6 @@ function ConveyorMouths() {
 // just linear interpolations of its 0-1 progress, so there's no physics
 // tick needed here beyond what useGameEngine already advances.
 
-const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 const JERK_BACK_SRC = ART_SRC('jerk-back.png')
 const PLATE_SRC = {
   dirty: ART_SRC('dirty-plate.png'),

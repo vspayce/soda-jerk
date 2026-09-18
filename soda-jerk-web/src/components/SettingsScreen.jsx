@@ -1,3 +1,4 @@
+import { BONUS_ROUND_MENU } from '../game/useGameEngine.js'
 import { refreshApp } from '../refreshApp.js'
 
 export default function SettingsScreen({
@@ -5,11 +6,7 @@ export default function SettingsScreen({
   onVolumeChange,
   onClose,
   onShowLingo,
-  onSkipToBonusWheel,
-  onSkipToBonusPlates,
-  onSkipToBonusShaker,
-  onSkipToBonusSlide,
-  onSkipToBonusTempest,
+  onSkipToBonus,
   onSkipToNewVenue,
 }) {
   return (
@@ -56,54 +53,19 @@ export default function SettingsScreen({
         SODA JERK LINGO
       </button>
 
-      {onSkipToBonusWheel && (
-        <button
-          onClick={onSkipToBonusWheel}
-          className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
-        >
-          SKIP TO ICE CREAM BONUS
-        </button>
-      )}
+      {/* One button per bonus round, built from the engine's own registry —
+          a new round shows up here without touching this file. */}
+      {onSkipToBonus &&
+        BONUS_ROUND_MENU.map(({ mode, label }) => (
+          <button
+            key={mode}
+            onClick={() => onSkipToBonus(mode)}
+            className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
+          >
+            {`SKIP TO ${label} BONUS`}
+          </button>
+        ))}
 
-      {onSkipToBonusPlates && (
-        <button
-          onClick={onSkipToBonusPlates}
-          className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
-        >
-          SKIP TO PLATE BONUS
-        </button>
-      )}
-
-      {onSkipToBonusShaker && (
-        <button
-          onClick={onSkipToBonusShaker}
-          className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
-        >
-          SKIP TO SHAKER BONUS
-        </button>
-      )}
-
-      {onSkipToBonusSlide && (
-        <button
-          onClick={onSkipToBonusSlide}
-          className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
-        >
-          SKIP TO SLIDE BONUS
-        </button>
-      )}
-
-      {onSkipToBonusTempest && (
-        <button
-          onClick={onSkipToBonusTempest}
-          className="px-6 py-3 rounded-sm border border-brass text-brass tracking-widest text-sm hover:bg-brass hover:text-ink transition-colors mb-4"
-        >
-          SKIP TO ROUNDS BONUS
-        </button>
-      )}
-
-      {/* Temporary dev shortcut for trying the stage-2+ soda-fountain
-          venue reskin without clearing a bonus round first — remove once
-          it's no longer needed for testing. */}
       {onSkipToNewVenue && (
         <button
           onClick={onSkipToNewVenue}

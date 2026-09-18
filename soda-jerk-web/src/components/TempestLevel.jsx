@@ -7,14 +7,9 @@ import {
   TEMPEST_ROUND_MS,
   DRINK_TYPES,
 } from '../game/constants.js'
+import { ART_SRC, patronPortrait } from '../game/art.js'
 
-const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 const JERK_SRC = ART_SRC('player-stand.png')
-
-const PATRON_SRC = (patronType, drinkType) => {
-  const n = patronType === 0 ? 'patron' : `patron${patronType + 1}`
-  return ART_SRC(`${n}-${drinkType === 0 ? 'orange' : 'pink'}.png`)
-}
 
 // The frame is nowhere near square, so the web is an ellipse in percentage
 // space with its own x and y radius — a single radius would come out as an
@@ -132,7 +127,7 @@ export default function TempestLevel({ tempestLevel, onMoveTo }) {
         return (
           <img
             key={p.id}
-            src={PATRON_SRC(p.patronType, p.drinkType)}
+            src={patronPortrait(p.patronType, p.drinkType)}
             alt=""
             className="absolute"
             style={{

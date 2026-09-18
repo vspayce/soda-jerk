@@ -7,13 +7,8 @@ import {
   SLIDE_GLASS_FAR_PCT,
   DRINK_TYPES,
 } from '../game/constants.js'
+import { ART_SRC, patronPortrait } from '../game/art.js'
 
-const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
-
-const PATRON_SRC = (patronType, drinkType) => {
-  const n = patronType === 0 ? 'patron' : `patron${patronType + 1}`
-  return ART_SRC(`${n}-${drinkType === 0 ? 'orange' : 'pink'}.png`)
-}
 
 const BAR_BY_LANE = Object.fromEntries(SLIDE_BARS.map((b) => [b.lane, b]))
 
@@ -123,7 +118,7 @@ export default function SlideLevel({ slideLevel, onFlick }) {
         return (
           <img
             key={p.id}
-            src={PATRON_SRC(p.patronType, p.drinkType)}
+            src={patronPortrait(p.patronType, p.drinkType)}
             alt=""
             className="absolute"
             style={{

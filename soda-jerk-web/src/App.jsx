@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameEngine } from './game/useGameEngine.js'
 import { useMusic } from './audio/useMusic.js'
+import { useOnCounter } from './useOnCounter.js'
 import { useViewportHeight } from './useViewportHeight.js'
 import { playSeltzerSpray, playCelebration, playGlassShatter, playCrash } from './audio/sfx.js'
 import { LANE_COUNT, POINTS_PER_BONUS } from './game/constants.js'
@@ -56,12 +57,8 @@ export default function App() {
     shakerAimStart,
     shakerAimMove,
     shakerAimEnd,
-    skipToBonusWheel,
-    skipToBonusPlates,
-    skipToBonusShaker,
-    skipToBonusSlide,
+    skipToBonusRound,
     slideFlick,
-    skipToBonusTempest,
     tempestMoveTo,
     skipToNewVenue,
   } = useGameEngine()
@@ -80,15 +77,8 @@ export default function App() {
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showInstructions, setShowInstructions] = useState(false)
   const [showLingo, setShowLingo] = useState(false)
-  const prevSpillRef = useRef(state.spillCount)
-  const prevCelebrateRef = useRef(state.celebrateCount)
-  const prevMissedGlassRef = useRef(state.missedGlassCount)
-  const prevMugCrashRef = useRef(state.mugCrashCount)
   const prevBonusResultRef = useRef(null)
-  const prevPlatePopRef = useRef(0)
   const prevPlatesResultRef = useRef(null)
-  const prevShakerResolvedRef = useRef(0)
-  const prevExtraLifeRef = useRef(0)
   const [extraLife, setExtraLife] = useState(false)
   const gestureRef = useRef({ dragging: false, startX: 0, startY: 0, laneLatched: false, runDir: 0 })
 
@@ -108,45 +98,51 @@ export default function App() {
   }, [state.gameOver])
 
   // A glass shatters whenever one slides off the counter uncaught.
-  useEffect(() => {
-    if (state.missedGlassCount !== prevMissedGlassRef.current) {
-      prevMissedGlassRef.current = state.missedGlassCount
-      playGlassShatter()
-    }
-  }, [state.missedGlassCount])
+  useOnCounter(state.missedGlassCount, playGlassShatter)
 
   // A thrown mug crashes whenever it sails past with no one to catch it.
-  useEffect(() => {
-    if (state.mugCrashCount !== prevMugCrashRef.current) {
-      prevMugCrashRef.current = state.mugCrashCount
-      playGlassShatter()
-    }
-  }, [state.mugCrashCount])
+  useOnCounter(state.mugCrashCount, playGlassShatter)
 
   // Seltzer in the face whenever an unserved customer reaches the end of
   // the bar in the player's own lane.
-  useEffect(() => {
-    if (state.spillCount !== prevSpillRef.current) {
-      prevSpillRef.current = state.spillCount
-      playSeltzerSpray()
-      setSpraying(true)
-      const t = setTimeout(() => setSpraying(false), 1100)
-      return () => clearTimeout(t)
-    }
-  }, [state.spillCount])
+  useOnCounter(state.spillCount, () => {
+    playSeltzerSpray()
+    setSpraying(true)
+    const t = setTimeout(() => setSpraying(false), 1100)
+    return () => clearTimeout(t)
+  })
 
   // Confetti + points celebration whenever a hot dog is grabbed.
-  useEffect(() => {
-    if (state.celebrateCount !== prevCelebrateRef.current) {
-      prevCelebrateRef.current = state.celebrateCount
-      playCelebration()
-      setCelebrate(state.lastCelebrate)
-      const t = setTimeout(() => setCelebrate(null), 10000)
-      return () => clearTimeout(t)
-    }
-  }, [state.celebrateCount])
+  useOnCounter(state.celebrateCount, () => {
+    playCelebration()
+    setCelebrate(state.lastCelebrate)
+    const t = setTimeout(() => setCelebrate(null), 10000)
+    return () => clearTimeout(t)
+  })
 
-  // A cheerful sting when a throw lands in a cup during the bonus round.
+  // A little chime each time a dirty/dollar plate gets sprayed.
+  useOnCounter(state.platesLevel?.popCount ?? 0, playCelebration)
+
+  // A cheerful sting when a shaker throw lands — silent on a miss, same
+  // as the wheel round.
+  useOnCounter(state.shakerLevel?.resolvedCount ?? 0, () => {
+    if (state.shakerLevel?.resultKind === 'hit') playCelebration()
+  })
+
+  // An extra life every 10,000 points — worth announcing, since the lives
+  // badge ticking up on its own is easy to miss mid-round.
+  useOnCounter(state.extraLifeCount, () => {
+    playCelebration()
+    setExtraLife(true)
+    const t = setTimeout(() => setExtraLife(false), 2200)
+    return () => clearTimeout(t)
+  })
+
+  // The two result-text stings below can't use useOnCounter: they watch a
+  // STRING that goes null between rounds, and each only fires for some of
+  // its values, so the previous value itself is the thing being tested.
+  //
+  // A cheerful sting when a throw lands in a cup during the wheel round.
   useEffect(() => {
     const resultText = state.bonusLevel?.resultText ?? null
     if (resultText && resultText !== prevBonusResultRef.current && resultText.startsWith('HIT')) {
@@ -154,15 +150,6 @@ export default function App() {
     }
     prevBonusResultRef.current = resultText
   }, [state.bonusLevel?.resultText])
-
-  // A little chime each time a dirty/dollar plate gets sprayed.
-  useEffect(() => {
-    const popCount = state.platesLevel?.popCount ?? 0
-    if (popCount !== prevPlatePopRef.current) {
-      prevPlatePopRef.current = popCount
-      playCelebration()
-    }
-  }, [state.platesLevel?.popCount])
 
   // A crash the instant a clean plate gets sprayed by mistake, ending
   // the round — no sound for the normal "time's up" ending.
@@ -173,30 +160,6 @@ export default function App() {
     }
     prevPlatesResultRef.current = resultText
   }, [state.platesLevel?.resultText])
-
-  // A cheerful sting when a shaker throw lands — silent on a miss, same
-  // as the wheel round.
-  useEffect(() => {
-    const resolvedCount = state.shakerLevel?.resolvedCount ?? 0
-    if (resolvedCount !== prevShakerResolvedRef.current) {
-      prevShakerResolvedRef.current = resolvedCount
-      if (state.shakerLevel?.resultKind === 'hit') playCelebration()
-    }
-  }, [state.shakerLevel?.resolvedCount])
-
-  // An extra life every 10,000 points — worth announcing, since the lives
-  // badge ticking up on its own is easy to miss mid-round.
-  useEffect(() => {
-    if (state.extraLifeCount !== prevExtraLifeRef.current) {
-      prevExtraLifeRef.current = state.extraLifeCount
-      if (state.extraLifeCount > 0) {
-        playCelebration()
-        setExtraLife(true)
-        const t = setTimeout(() => setExtraLife(false), 2200)
-        return () => clearTimeout(t)
-      }
-    }
-  }, [state.extraLifeCount])
 
   const handleGestureStart = (e) => {
     if (!state.started || state.gameOver) return
@@ -396,43 +359,11 @@ export default function App() {
           onVolumeChange={music.setVolume}
           onClose={closeSettings}
           onShowLingo={() => setShowLingo(true)}
-          onSkipToBonusWheel={
+          onSkipToBonus={
             state.started && !state.gameOver && state.mode === 'bar'
-              ? withAudio(() => {
+              ? withAudio((mode) => {
                   closeSettings()
-                  skipToBonusWheel()
-                })
-              : null
-          }
-          onSkipToBonusPlates={
-            state.started && !state.gameOver && state.mode === 'bar'
-              ? withAudio(() => {
-                  closeSettings()
-                  skipToBonusPlates()
-                })
-              : null
-          }
-          onSkipToBonusShaker={
-            state.started && !state.gameOver && state.mode === 'bar'
-              ? withAudio(() => {
-                  closeSettings()
-                  skipToBonusShaker()
-                })
-              : null
-          }
-          onSkipToBonusSlide={
-            state.started && !state.gameOver && state.mode === 'bar'
-              ? withAudio(() => {
-                  closeSettings()
-                  skipToBonusSlide()
-                })
-              : null
-          }
-          onSkipToBonusTempest={
-            state.started && !state.gameOver && state.mode === 'bar'
-              ? withAudio(() => {
-                  closeSettings()
-                  skipToBonusTempest()
+                  skipToBonusRound(mode)
                 })
               : null
           }

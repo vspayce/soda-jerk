@@ -4,6 +4,7 @@ import {
   SHAKER_LAUNCH_ANCHOR,
   BONUS_CUP_COLORS,
 } from '../game/constants.js'
+import { ART_SRC } from '../game/art.js'
 
 // The third bonus round — the jerk again seen from behind (same viewpoint
 // as the plate wash), facing three rows of shaker cups scrolling past
@@ -16,7 +17,6 @@ import {
 // idea as the wheel round — see stepShaker()/shakerAimStart/Move/End in
 // useGameEngine.js for the actual timing/hit logic this mirrors visually.
 
-const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 const JERK_THROW_SRC = ART_SRC('jerk-throw.png')
 const CUP_SRC = ART_SRC('bonus-cup.png')
 const SCOOP_SRC = ART_SRC('bonus-scoop.png')

@@ -1,4 +1,4 @@
-const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
+import { ART_SRC } from '../game/art.js'
 
 // Plays one of the jerk's between-level flourishes (see game/tricks.js).
 // Every layer is laid out against one anchor point on his feet and driven

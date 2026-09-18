@@ -325,26 +325,6 @@ body {
   animation: patron-walk-cycle 900ms steps(8) infinite;
 }
 
-/* Plate-wash bonus round: a burst of spray droplets + an expanding ring,
-   fired at the click point when a dirty/dollar plate gets sprayed clean.
-   Pure CSS — no clean spray-effect art to work with (the source JPG's
-   background couldn't be separated from its own soft white edges). Each
-   droplet travels outward along its own rotated axis, set via --angle. */
-@keyframes spray-droplet {
-  0% { transform: rotate(var(--angle)) translateX(0) scale(1); opacity: 1; }
-  100% { transform: rotate(var(--angle)) translateX(48px) scale(0.3); opacity: 0; }
-}
-.spray-droplet {
-  animation: spray-droplet 550ms ease-out forwards;
-}
-
-@keyframes spray-ring {
-  0% { transform: scale(0.3); opacity: 0.9; }
-  100% { transform: scale(3); opacity: 0; }
-}
-.spray-ring {
-  animation: spray-ring 550ms ease-out forwards;
-}
 
 /* Faint steam rising off the dishwasher in the plate-wash round. */
 @keyframes dishwasher-steam {

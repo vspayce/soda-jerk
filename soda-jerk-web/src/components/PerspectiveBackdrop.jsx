@@ -1,3 +1,4 @@
+import { ART_SRC } from '../game/art.js'
 // The converging-hallway look from the original arcade cabinet, done
 // entirely in CSS (clip-path trapezoids) — no art assets needed. Walls
 // recede to a lit vanishing point behind an art-deco stepped arch, with
@@ -19,7 +20,6 @@ function wallCenterX(side, yPct) {
 
 const SCONCE_YS = [32, 66]
 
-const ART_SRC = (name) => `${import.meta.env.BASE_URL}art/${name}`
 
 // A repeating ogee/swirl damask, echoing the wallpaper behind the counter
 // in the splash art — replaces the old straight brass fluting lines. The
