@@ -157,7 +157,7 @@ function createSlideLevelState() {
 // fires down whichever spoke he's on; patrons climb outward from the hub.
 function createTempestLevelState() {
   return {
-    remainingMs: C.TEMPEST_ROUND_MS,
+    elapsedMs: 0,
     spoke: 0, // where he is, as a (fractional) spoke index around the rim
     targetSpoke: 0,
     fireCooldownMs: 0,
@@ -678,7 +678,7 @@ function stepTempest(sim, dt) {
     return
   }
 
-  s.remainingMs -= dt * 1000
+  s.elapsedMs += dt * 1000
 
   // Run him around the rim the short way.
   const d = ringDelta(s.spoke, s.targetSpoke, N)
@@ -688,15 +688,16 @@ function stepTempest(sim, dt) {
   }
 
   // Spawning tightens as the round goes on.
-  const progress = 1 - Math.max(0, s.remainingMs) / C.TEMPEST_ROUND_MS
+  const progress = Math.min(1, s.elapsedMs / C.TEMPEST_RAMP_MS)
   const ramp = 1 - (1 - C.TEMPEST_SPAWN_RAMP) * progress
+  const speedRamp = 1 + (C.TEMPEST_SPEED_RAMP - 1) * progress
   s.nextSpawnInMs -= dt * 1000
   if (s.nextSpawnInMs <= 0) {
     s.patrons.push({
       id: s.nextId++,
       spoke: Math.floor(Math.random() * N),
       t: 0,
-      speed: randomBetween(C.TEMPEST_PATRON_SPEED_MIN, C.TEMPEST_PATRON_SPEED_MAX),
+      speed: randomBetween(C.TEMPEST_PATRON_SPEED_MIN, C.TEMPEST_PATRON_SPEED_MAX) * speedRamp,
       patronType: pickWeightedIndex(C.PATRON_TYPE_WEIGHTS),
       drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
     })
@@ -746,12 +747,6 @@ function stepTempest(sim, dt) {
     s.resultText = `THEY GOT THROUGH — ${s.served} SERVED`
     s.resultHoldMs = C.TEMPEST_END_HOLD_MS
     return
-  }
-  if (s.remainingMs <= 0) {
-    s.ended = true
-    s.resultKind = 'time'
-    s.resultText = `CLOSING TIME — ${s.served} SERVED`
-    s.resultHoldMs = C.TEMPEST_END_HOLD_MS
   }
 }
 

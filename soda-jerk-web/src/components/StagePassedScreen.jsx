@@ -10,7 +10,7 @@ const AUTO_CONTINUE_SECONDS = 6
 // itself out rather than sitting frozen waiting for input.
 const IDLE_POWER = 0.55
 
-export default function StagePassedScreen({ stage, clearCount, onContinue, onTrickBonus }) {
+export default function StagePassedScreen({ clearCount, onContinue, onTrickBonus }) {
   const [secondsLeft, setSecondsLeft] = useState(AUTO_CONTINUE_SECONDS)
   const trick = trickForClear(clearCount)
 
@@ -115,7 +115,13 @@ export default function StagePassedScreen({ stage, clearCount, onContinue, onTri
         </div>
       )}
       <DecoButton onPress={onContinue} subtext={`TAP TO CONTINUE · ${secondsLeft}`}>
-        {`LEVEL ${stage} PASSED`}
+        {/* The level you just passed is how many clean clears you've made,
+            NOT sim.stage. Stage is the lane-capacity tier and deliberately
+            caps at STAGE_LANE_CAPACITY.length (3) — past that every clear
+            leads into a bonus round instead of another tier, so showing
+            stage here froze the screen on "LEVEL 3 PASSED" no matter how
+            many more levels you cleared. */}
+        {`LEVEL ${clearCount} PASSED`}
       </DecoButton>
     </div>
   )

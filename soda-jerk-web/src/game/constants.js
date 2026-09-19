@@ -419,7 +419,10 @@ export const SLIDE_GLASS_FAR_PCT = 5
 // timer is the thing to drop — "until one gets all the way up" is the real
 // premise, and the timer only exists to make it terminate like the other
 // rounds do.
-export const TEMPEST_ROUND_MS = 30000
+// No round timer: it runs until somebody climbs all the way out to the
+// rim, the way Tempest does. It still always ends, because both the spawn
+// rate and the climbing speed keep ramping up over TEMPEST_RAMP_MS.
+export const TEMPEST_RAMP_MS = 45000
 export const TEMPEST_END_HOLD_MS = 1800
 export const TEMPEST_SPOKES = 8
 
@@ -434,11 +437,19 @@ export const TEMPEST_RADIUS_Y = 20.5
 
 // How fast the jerk travels around the rim, in spokes per second. Low
 // enough that crossing the circle costs real time.
-export const TEMPEST_JERK_SPEED = 2.6
+export const TEMPEST_JERK_SPEED = 5.2 // spokes per second
 
 // Patrons climb from the hub (t=0) to the rim (t=1).
-export const TEMPEST_PATRON_SPEED_MIN = 0.15 // t per second
-export const TEMPEST_PATRON_SPEED_MAX = 0.24
+// Measured: at 0.2-0.32 the first climber reached the rim about four
+// seconds in, so a round was over before you could cross the circle even
+// once. The ramp below is what makes the round end, so the opening speed
+// only has to be playable — this is a touch quicker than it was, and gets
+// genuinely fast on its own.
+export const TEMPEST_PATRON_SPEED_MIN = 0.17 // t per second
+export const TEMPEST_PATRON_SPEED_MAX = 0.26
+// Climbing speed ramps as well as spawn rate, so the round tightens
+// instead of just getting more crowded — and so it ends without a timer.
+export const TEMPEST_SPEED_RAMP = 1.6
 export const TEMPEST_SPAWN_MIN_MS = 900
 export const TEMPEST_SPAWN_MAX_MS = 1900
 // Ramps up over the round so it keeps tightening.

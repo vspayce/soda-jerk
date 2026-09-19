@@ -4,7 +4,6 @@ import {
   TEMPEST_CENTER,
   TEMPEST_RADIUS_X,
   TEMPEST_RADIUS_Y,
-  TEMPEST_ROUND_MS,
   DRINK_TYPES,
 } from '../game/constants.js'
 import { ART_SRC, patronPortrait } from '../game/art.js'
@@ -64,7 +63,6 @@ export default function TempestLevel({ tempestLevel, onMoveTo }) {
   const onUp = () => { draggingRef.current = false }
   const spokes = Array.from({ length: TEMPEST_SPOKES }, (_, i) => i)
   const jerk = pointAt(s.spoke, 1.12)
-  const timeLeft = Math.max(0, Math.ceil(s.remainingMs / 1000))
 
   return (
     <div
@@ -82,10 +80,10 @@ export default function TempestLevel({ tempestLevel, onMoveTo }) {
       >
         <div className="font-display text-brass text-lg tracking-[0.2em]">THE ROUNDS</div>
         <div className="text-cream/60 text-[11px] tracking-[0.2em] mt-1">
-          DRAG AROUND THE RIM — HE POURS ON HIS OWN
+          DRAG AROUND THE RIM — KEEP THEM OFF IT
         </div>
         <div className="font-display text-cream/80 text-sm tracking-widest mt-1">
-          {s.served} SERVED · {timeLeft}s
+          {s.served} SERVED
         </div>
       </div>
 
@@ -104,19 +102,23 @@ export default function TempestLevel({ tempestLevel, onMoveTo }) {
         {spokes.map((i) => {
           const hub = pointAt(i, 0)
           const rim = pointAt(i, 1)
-          const live = Math.abs(Math.round(s.spoke) % TEMPEST_SPOKES) === i
+          const live = Math.round(s.spoke) % TEMPEST_SPOKES === i
+          // Drawn as a tapered quad, not a stroked line: these are the
+          // counters patrons climb, so they want the width and the wood of
+          // a bar. Narrow at the hub and wide at the rim, which also reads
+          // as them coming toward you.
+          const nx = -(rim.y - hub.y), ny = rim.x - hub.x
+          const len = Math.hypot(nx, ny) || 1
+          const ux = nx / len, uy = ny / len
+          const wHub = 0.9, wRim = 3.4
+          const quad = (a, b) =>
+            `${hub.x - ux * a},${hub.y - uy * a} ${hub.x + ux * a},${hub.y + uy * a} ` +
+            `${rim.x + ux * b},${rim.y + uy * b} ${rim.x - ux * b},${rim.y - uy * b}`
           return (
-            <line
-              key={i}
-              x1={hub.x}
-              y1={hub.y}
-              x2={rim.x}
-              y2={rim.y}
-              stroke={live ? '#C6A15B' : '#5A472F'}
-              strokeWidth={live ? 4 : 2.5}
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
+            <g key={i}>
+              <polygon points={quad(wHub, wRim)} fill={live ? '#8A6E44' : '#5A472F'} />
+              <polygon points={quad(wHub * 0.4, wRim * 0.4)} fill={live ? '#C6A15B' : '#6B5334'} opacity={0.9} />
+            </g>
           )
         })}
       </svg>
