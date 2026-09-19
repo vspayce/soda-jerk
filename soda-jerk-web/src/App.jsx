@@ -313,18 +313,9 @@ export default function App() {
       {state.started && state.gameOver && (
         <GameOverScreen
           score={state.score}
-          onRestart={withAudio(() => {
-            // restart() hands back a brand-new sim with these counters
-            // reset to 0 — without this, the refs below would still hold
-            // the old game's last values, and the very next render would
-            // see a mismatch and immediately replay whichever effect
-            // fired last (usually the spray).
-            prevSpillRef.current = 0
-            prevCelebrateRef.current = 0
-            prevMissedGlassRef.current = 0
-            prevMugCrashRef.current = 0
-            restart()
-          })}
+          // useOnCounter only fires on an increase, so the counters going
+          // back to 0 here needs no special handling.
+          onRestart={withAudio(restart)}
           onShowLingo={() => setShowLingo(true)}
         />
       )}
