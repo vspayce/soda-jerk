@@ -63,6 +63,19 @@ export default function InstructionsScreen({ onContinue, onShowLingo }) {
                     style={{ height: 30, width: 'auto', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.6))' }}
                   />
                 ))}
+                {/* The same twinkle the returning glass has in the lane —
+                    two out-of-sync glints (see Lane.jsx), so the thing
+                    you're told to look for here looks like the thing you
+                    then have to spot mid-game. */}
+                {glow && (
+                  <>
+                    <div className="glass-glint absolute" style={{ top: '22%', left: '36%' }} />
+                    <div
+                      className="glass-glint absolute"
+                      style={{ top: '58%', left: '58%', width: 6, height: 6, animationDelay: '0.4s' }}
+                    />
+                  </>
+                )}
               </div>
               <span className="text-cream/80 text-sm text-left">{label}</span>
             </div>

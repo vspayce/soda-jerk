@@ -36,22 +36,21 @@ export const GLASS_RETURN_TRAVEL_MS = 4200
 // before falling back to stand/run — see Player.jsx.
 export const THROW_ANIM_MS = 500
 
-// Time (ms) for a served (happy) customer to walk off after being served.
-// One full walk cycle (see the 900ms patron-walk-cycle animation), so a
-// served customer takes exactly one stride's worth of animation to clear
-// the lane and actually reads as walking out.
+// How fast a served (happy) customer walks back out, in lane-% per second.
 //
-// This used to be 280ms to stop a served customer lingering long enough
-// to tempt another (wasted) drink thrown their way. That backfired: at
-// that speed they crossed most of the screen in about two frames of an
-// eight-frame cycle, so their legs were nearly frozen — it read as
-// moonwalking backwards, not walking out. And it never actually solved
-// the wasted-drink problem, because speed was the only thing
-// distinguishing them. Telling them apart is now the job of a clear
-// visual cue instead (see Customer.jsx's leaving-happy styling).
-export const CUSTOMER_WALK_OUT_MS = 900
-// How long a served patron stands still holding the drink they just
-// caught, before turning to leave — see the 'toasting' status.
+// This was a fixed 900ms to cover whatever distance remained, which meant
+// the speed depended entirely on where they happened to be served —
+// 8.9%/s if served at the door, 102%/s if served down at the end of the
+// bar, an eleven-fold spread. The walk cycle is timed off the patron's
+// speed (see walkCycleMs), and those upper speeds need a 55-150ms cycle,
+// far below the floor that keeps a gait believable. So the legs clamped
+// while the body kept accelerating and the feet slipped up to 4.7x: the
+// backwards walk that kept coming back, and "sometimes" because it only
+// looked wrong in proportion to how far from the door they were served.
+//
+// A constant speed is matchable by construction. 20 leaves even the
+// shortest-stride sheet within 1.12x of true, which doesn't read.
+export const CUSTOMER_WALK_OUT_SPEED = 20
 export const CUSTOMER_TOAST_MS = 620
 
 // A walking-in customer occasionally pauses for a beat instead of

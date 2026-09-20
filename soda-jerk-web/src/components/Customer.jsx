@@ -97,9 +97,11 @@ function walkCycleMs(sheet, widthPx, speed) {
   if (!speed) return REF_CYCLE_MS
   const groundPerCycle = (sheet.stride * widthPx) / (REF_STRIDE * REF_WIDTH)
   const ms = REF_CYCLE_MS * groundPerCycle * (REF_SPEED / Math.abs(speed))
-  // Keep it inside a believable gait even if a level or exit speed goes
-  // to an extreme.
-  return Math.max(260, Math.min(1500, ms))
+  // Keep it inside a believable gait even if a level speed goes to an
+  // extreme. The floor is roughly eight frames at 60fps — below that the
+  // browser drops frames anyway, so a lower number buys nothing and only
+  // lets the feet slip.
+  return Math.max(140, Math.min(1500, ms))
 }
 
 export default function Customer({ x, drinkType, patronType, status, drinkName, speed }) {

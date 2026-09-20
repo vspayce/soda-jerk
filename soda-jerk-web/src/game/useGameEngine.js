@@ -933,7 +933,7 @@ function step(sim, dt) {
       c.toastMs -= dt * 1000
       if (c.toastMs <= 0) {
         c.status = 'leaving-happy'
-        c.speed = (C.OFFSCREEN_X - c.x) / (C.CUSTOMER_WALK_OUT_MS / 1000)
+        c.speed = C.CUSTOMER_WALK_OUT_SPEED
       }
     } else if (c.status === 'leaving-happy') {
       c.x += c.speed * dt
