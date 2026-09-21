@@ -93,9 +93,9 @@ export default function InstructionsScreen({ onContinue, onShowLingo }) {
           <img src={ART_SRC('patron2-orange.png')} alt="" style={{ height: 38, width: 'auto' }} />
         </div>
         <div className="text-cream/80 text-xs leading-snug">
-          Solo customers need <span className="text-brass font-display">1 drink</span>. A parent with their kid needs{' '}
-          <span className="text-brass font-display">2 drinks</span> — same flavor, twice — before they'll leave, and
-          they keep walking the whole time, so don't dawdle.
+          A drink <span className="text-brass font-display">knocks them back</span> down the bar. If it doesn't shove
+          them clear off the far end, they come straight back for another — so someone who got close takes a few. A
+          parent with their kid is heavier and moves less per drink. They never stop coming.
         </div>
       </div>
 
