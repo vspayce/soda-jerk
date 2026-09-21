@@ -36,22 +36,27 @@ export const GLASS_RETURN_TRAVEL_MS = 4200
 // before falling back to stand/run — see Player.jsx.
 export const THROW_ANIM_MS = 500
 
-// How fast a served (happy) customer walks back out, in lane-% per second.
-//
-// This was a fixed 900ms to cover whatever distance remained, which meant
-// the speed depended entirely on where they happened to be served —
-// 8.9%/s if served at the door, 102%/s if served down at the end of the
-// bar, an eleven-fold spread. The walk cycle is timed off the patron's
-// speed (see walkCycleMs), and those upper speeds need a 55-150ms cycle,
-// far below the floor that keeps a gait believable. So the legs clamped
-// while the body kept accelerating and the feet slipped up to 4.7x: the
-// backwards walk that kept coming back, and "sometimes" because it only
-// looked wrong in proportion to how far from the door they were served.
-//
-// A constant speed is matchable by construction. 20 leaves even the
-// shortest-stride sheet within 1.12x of true, which doesn't read.
-export const CUSTOMER_WALK_OUT_SPEED = 20
-export const CUSTOMER_TOAST_MS = 620
+// A served customer doesn't turn around and walk out — the drink shoves
+// them back down the bar, Tapper-style, still facing the bartender. They
+// slide rather than walk, which is why this can be brisk: the old walk-out
+// had to stay slow enough for a leg cycle to keep up with it, and every
+// version of the backwards-walking bug came out of that constraint. A
+// shove has no gait to match.
+// A drink shoves them a fixed DISTANCE back down the bar, as in Tapper —
+// it doesn't send them away. If the shove doesn't carry them off the far
+// end they walk straight back for another, so a patron who got close
+// takes several drinks to clear. That's the whole tension of the original:
+// one drink buys you room, not a solved customer.
+export const CUSTOMER_PUSH_SPEED = 62 // lane-% per second at the moment of impact
+export const CUSTOMER_PUSH_DISTANCE = 34 // how far one drink moves them
+export const CUSTOMER_PUSH_MIN_SPEED = 9 // so the slide always finishes
+// The mom-and-son pair is two people to shift, so one drink moves them
+// less — which is what their old "needs 2 drinks" special case really
+// meant, expressed in the same currency as everyone else.
+export const CUSTOMER_PUSH_RESISTANCE = { 1: 0.55 }
+// The beat of impact before the slide takes hold — long enough to register
+// the catch, not a pose.
+export const CUSTOMER_TOAST_MS = 220
 
 // A walking-in customer occasionally pauses for a beat instead of
 // marching in a dead straight line — feels more like browsing, less

@@ -326,15 +326,13 @@ function trySpawnCustomer(sim, travelMs) {
     id: sim.nextId++,
     lane,
     x: C.OFFSCREEN_X,
-    status: 'walking', // walking -> leaving-happy (served) | removed (reached end of bar)
+    status: 'walking', // walking -> toasting -> leaving-happy (shoved back)
+    // -> walking again if the shove didn't clear them, or removed once it does
     speed,
+    walkSpeed: speed, // restored after a shove runs out
+    pushTargetX: 0,
     drinkType,
     patronType, // which illustration to use
-    // The mom-and-son pair (patronType 1) is two people — testing what it
-    // feels like to need a drink for each of them before they'll leave,
-    // same drink type both times. They keep walking (and can still reach
-    // the end and cost a life) until this hits 0.
-    drinksNeeded: patronType === 1 ? 2 : 1,
     pauseMs: 0, // counts down while paused mid-walk — see below, keeps
     // them from marching in a dead straight line the whole way
     drinkName: C.DRINK_TYPES[drinkType].name,
@@ -933,10 +931,26 @@ function step(sim, dt) {
       c.toastMs -= dt * 1000
       if (c.toastMs <= 0) {
         c.status = 'leaving-happy'
-        c.speed = C.CUSTOMER_WALK_OUT_SPEED
+        c.speed = C.CUSTOMER_PUSH_SPEED
       }
     } else if (c.status === 'leaving-happy') {
-      c.x += c.speed * dt
+      // Sliding back from the shove, easing off as they approach where it
+      // runs out. Eased on remaining distance rather than on a timer, so
+      // the stop lands exactly on pushTargetX however far the shove was.
+      const remaining = c.pushTargetX - c.x
+      if (remaining <= 0.2) {
+        // The shove is spent. Off the end means served for good; anything
+        // short of that and they turn round and come back for another.
+        if (c.x >= C.OFFSCREEN_X) {
+          c._remove = true
+        } else {
+          c.status = 'walking'
+          c.speed = c.walkSpeed
+        }
+      } else {
+        c.speed = Math.max(C.CUSTOMER_PUSH_MIN_SPEED, Math.min(C.CUSTOMER_PUSH_SPEED, remaining * 3.2))
+        c.x += c.speed * dt
+      }
     }
   }
 
@@ -954,13 +968,12 @@ function step(sim, dt) {
     )
     if (target && m.x >= target.x) {
       sim.score += C.POINTS_PER_SERVE
-      target.drinksNeeded -= 1
-      if (target.drinksNeeded <= 0) {
-        // Pause to show the drink off before heading out — the walk-out
-        // speed gets set when that beat ends (see the 'toasting' branch).
-        target.status = 'toasting'
-        target.toastMs = C.CUSTOMER_TOAST_MS
-      }
+      // Every drink shoves, Tapper-style. Whether that's the last one
+      // depends on where it leaves them, not on a per-customer counter.
+      target.status = 'toasting'
+      target.toastMs = C.CUSTOMER_TOAST_MS
+      const resistance = C.CUSTOMER_PUSH_RESISTANCE[target.patronType] ?? 1
+      target.pushTargetX = target.x + C.CUSTOMER_PUSH_DISTANCE * resistance
 
       // One returning glass per lane at a time — otherwise catching the
       // only one you can see still leaves a second one uncaught to be
@@ -1030,8 +1043,6 @@ function step(sim, dt) {
         sim.continuePauseInMs = C.SPRAY_OTHER_LANE_HOLD_MS
         sim.pendingMissReason = 'spray'
       }
-    } else if (c.status === 'leaving-happy' && c.x >= C.OFFSCREEN_X) {
-      c._remove = true
     }
   }
   sim.customers = sim.customers.filter((c) => !c._remove)

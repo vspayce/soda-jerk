@@ -8,8 +8,9 @@ const DANGER_X = PLAYER_X + 22
 
 // Patron illustrations, one row per patronType (picked at spawn — see
 // PATRON_TYPE_WEIGHTS in constants.js) and one column per drink type.
-// They face left (the direction they walk in), so served customers get
-// flipped to face right as they head back out.
+// They face left, the direction they walk in, and keep facing that way
+// throughout — a served customer is shoved backwards by the drink rather
+// than turning round, so nothing is ever mirrored.
 //
 // To add another patron type: drop in `patronN-orange.png` /
 // `patronN-pink.png`, add a row here (and a height below), plus a walk
@@ -106,19 +107,15 @@ function walkCycleMs(sheet, widthPx, speed) {
 
 export default function Customer({ x, drinkType, patronType, status, drinkName, speed }) {
   const isUrgent = status === 'walking' && x <= DANGER_X
-  // A served customer walks back out too, so they keep the walk cycle —
-  // just mirrored, since they're now heading the other way. Leaving them
-  // on the static portrait (as this used to) slid a frozen, mid-stride
-  // sprite across the counter with motionless legs, which reads as
-  // moonwalking backwards rather than walking out.
+  // Caught the drink and now sliding back from it, Tapper-style. They keep
+  // facing the bartender the whole way — they're being shoved, not walking
+  // out — so there's no mirroring and no walk cycle, which is what every
+  // version of the backwards-walking bug came from. A shove has no gait.
   const isLeaving = status === 'leaving-happy'
-  // Standing still showing off the drink they just caught — held at full
-  // brightness, since this is the reward beat, not the "already served,
-  // don't throw at me" state that follows it.
   const isToasting = status === 'toasting'
-  const heldSrc = isToasting ? patronHeld(patronType, drinkType) : null
-  const walkSheet =
-    status === 'walking' || isLeaving ? PATRON_WALK_SHEETS[patronType]?.[drinkType] : null
+  // Both the impact beat and the slide show them holding what they caught.
+  const heldSrc = isToasting || isLeaving ? patronHeld(patronType, drinkType) : null
+  const walkSheet = status === 'walking' ? PATRON_WALK_SHEETS[patronType]?.[drinkType] : null
 
   return (
     <div
@@ -127,21 +124,12 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
         left: `${x}%`,
         top: `calc(50% + ${COUNTER_HEIGHT_PX / 2}px)`,
         transform: 'translate(-50%, -100%)',
-        // A served customer walks out the same way an unserved one walks
-        // in — from the same side, toward the same door — so without a
-        // clear "already served" cue the player can't tell them apart and
-        // throws a drink at someone who can't take it (a mug only ever
-        // targets a customer whose status is still 'walking', so it sails
-        // straight through and is wasted). Ghosting them well back, plus
-        // desaturating, makes it unmistakable at a glance. 0.75 opacity
-        // alone was far too subtle against this dark bar.
-        filter: isUrgent
-          ? 'drop-shadow(0 0 5px #7A1F2B)'
-          : isLeaving
-            ? 'grayscale(0.55)'
-            : 'none',
-        opacity: isLeaving ? 0.4 : 1,
-        transition: 'opacity 200ms, filter 200ms',
+        // No ghosting any more. That cue meant "already served, don't throw
+        // at me", which stopped being true once a shove that falls short
+        // sends them back for another drink — they're a live customer
+        // again. Sliding backwards with a drink in hand says it by itself.
+        filter: isUrgent ? 'drop-shadow(0 0 5px #7A1F2B)' : 'none',
+        transition: 'filter 200ms',
       }}
       title={drinkName}
     >
@@ -149,8 +137,15 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
         <img
           src={heldSrc}
           alt=""
-          className="patron-toast"
-          style={{ height: PATRON_HEIGHT[patronType], width: 'auto', display: 'block' }}
+          className={isToasting ? 'patron-toast' : undefined}
+          style={{
+            height: PATRON_HEIGHT[patronType],
+            width: 'auto',
+            display: 'block',
+            // Rocked back on their heels while the shove carries them.
+            transform: isLeaving ? 'rotate(4deg)' : undefined,
+            transformOrigin: '50% 100%',
+          }}
         />
       ) : walkSheet ? (
         <div
@@ -159,9 +154,8 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
             height: PATRON_HEIGHT[patronType],
             width: PATRON_HEIGHT[patronType] * walkSheet.aspectRatio,
             backgroundImage: `url(${walkSheet.src})`,
-            // Both safe to set alongside the sprite animation — it only
-            // animates background-position-x, so it owns neither of these.
-            transform: isLeaving ? 'scaleX(-1)' : 'none',
+            // Safe alongside the sprite animation — that only animates
+            // background-position-x, so it doesn't own this.
             animationDuration: `${Math.round(
               walkCycleMs(walkSheet, PATRON_HEIGHT[patronType] * walkSheet.aspectRatio, speed)
             )}ms`,
@@ -176,7 +170,6 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
               height: PATRON_HEIGHT[patronType],
               width: 'auto',
               display: 'block',
-              transform: status === 'leaving-happy' ? 'scaleX(-1)' : 'none',
             }}
           />
         </div>
