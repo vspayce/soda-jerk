@@ -218,6 +218,12 @@ export default function App() {
       <HUD
         score={state.score}
         lives={state.lives}
+        level={state.level}
+        toGo={
+          state.mode === 'bar' && state.started
+            ? state.roster.reduce((a, n) => a + n, 0) + state.customers.length
+            : null
+        }
         isMuted={music.isMuted}
         onToggleMute={music.toggleMute}
         onOpenSettings={openSettings}

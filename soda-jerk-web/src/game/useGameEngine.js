@@ -213,11 +213,6 @@ function createInitialSim() {
     // screen, entered when the player continues
     roster: [...getLevel(1).crowd], // per lane, patrons still to walk in
     // for the first time this level
-    reentries: [], // patrons shoved out the door, waiting to come back:
-    // { lane, inMs, patronType, drinkType }
-    closingTime: false, // everyone's in and the bar's empty — nobody comes
-    // back in; the level's passed as soon as the last glass or drink
-    // still sliding has been dealt with
     awaitingStageAdvance: false, // true once the level's passed — freezes
     // the sim (like awaitingContinue) until the "LEVEL PASSED" screen is
     // dismissed via advanceStage()
@@ -297,8 +292,6 @@ const FIRST_ENTRY_MS = 700
 // restart one after a life is lost.
 function startLevel(sim) {
   sim.roster = [...getLevel(sim.level).crowd]
-  sim.reentries = []
-  sim.closingTime = false
   sim.customers = []
   sim.mugs = []
   sim.glasses = []
@@ -314,17 +307,16 @@ function doorClear(sim, lane) {
   return !sim.customers.some((c) => c.lane === lane && c.x > C.OFFSCREEN_X - C.DOOR_GAP_X)
 }
 
-// `who` carries a returning patron's identity back in with them.
-function spawnPatron(sim, lane, walkSpeed, who = null) {
-  const drinkType = who ? who.drinkType : Math.floor(Math.random() * C.DRINK_TYPES.length)
+function spawnPatron(sim, lane, walkSpeed) {
+  const drinkType = Math.floor(Math.random() * C.DRINK_TYPES.length)
   // Patron types aren't picked evenly — see PATRON_TYPE_WEIGHTS.
-  const patronType = who ? who.patronType : pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
+  const patronType = pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
   sim.customers.push({
     id: sim.nextId++,
     lane,
     x: C.OFFSCREEN_X,
     // walking -> toasting -> leaving-happy (shoved back) -> either out the
-    // door (removed, and back in later) or drinking -> walking again.
+    // door (removed, for good) or drinking -> walking again.
     // watching: turned round for the dachshund's show.
     status: 'walking',
     speed: walkSpeed,
@@ -811,20 +803,12 @@ function step(sim, dt) {
   const lvl = getLevel(sim.level)
   const walkSpeed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (lvl.travelMs / 1000)
 
-  // Patrons shoved out the door come back in after a while — unless it's
-  // closing time, in which case the level's as good as passed.
-  for (const r of sim.reentries) {
-    r.inMs -= dt * 1000
-    if (!sim.closingTime && r.inMs <= 0 && doorClear(sim, r.lane)) {
-      spawnPatron(sim, r.lane, walkSpeed, r)
-      r._done = true
-    }
-  }
-  sim.reentries = sim.reentries.filter((r) => !r._done)
-
   // The level's crowd walks in one at a time, into any lane that still has
-  // someone waiting to come in.
+  // someone waiting to come in. Nobody's kept waiting on an empty bar,
+  // though — if you've cleared everyone who's in, the next one comes
+  // straight through.
   sim.nextSpawnInMs -= dt * 1000
+  if (sim.customers.length === 0) sim.nextSpawnInMs = Math.min(sim.nextSpawnInMs, 300)
   if (sim.nextSpawnInMs <= 0 && sim.roster.some((n) => n > 0)) {
     const lanes = []
     for (let i = 0; i < C.LANE_COUNT; i++) if (sim.roster[i] > 0 && doorClear(sim, i)) lanes.push(i)
@@ -965,11 +949,10 @@ function step(sim, dt) {
       // the stop lands exactly on pushTargetX however far the shove was.
       const remaining = c.pushTargetX - c.x
       if (remaining <= 0.2) {
-        // The shove is spent. Off the end means out the door (back in a
-        // while later); short of that, they stop and drink up.
+        // The shove is spent. Off the end means out the door, and done;
+        // short of that, they stop and drink up.
         if (c.x >= C.OFFSCREEN_X) {
           c._remove = true
-          sim.reentries.push({ lane: c.lane, inMs: lvl.reenterMs, patronType: c.patronType, drinkType: c.drinkType })
         } else {
           c.status = 'drinking'
           c.drinkMs = lvl.drinkMs
@@ -1118,17 +1101,14 @@ function step(sim, dt) {
   if (autoCaughtCount > 0) sim.score += autoCaughtCount * C.POINTS_PER_CAUGHT_GLASS
   sim.glasses = sim.glasses.filter((g) => !g._caught && !(g._missed && g.fallMs <= 0))
 
-  // Passing the level: everyone in the crowd has come in, and right now
-  // every one of them is out the door. Anyone waiting to come back in stays
-  // out — it's closing time — and once the last glass or drink still
-  // sliding is dealt with, the level's passed. Held off while a miss is
-  // still playing out, so the two screens can't collide.
+  // Passing the level: the whole crowd has come in and been shoved out the
+  // door — the bar's clear — and the last glass or drink still sliding has
+  // been dealt with. Held off while a miss is still playing out, so the two
+  // screens can't collide.
   const missPending = sim.continuePauseInMs !== null || sim.pendingSprayDrinkType !== null
   if (!sim.gameOver && !sim.awaitingContinue && !missPending && !sim.awaitingStageAdvance) {
-    if (!sim.closingTime && sim.roster.every((n) => n === 0) && sim.customers.length === 0) {
-      sim.closingTime = true
-    }
-    if (sim.closingTime && sim.mugs.length === 0 && sim.glasses.length === 0) {
+    const barClear = sim.roster.every((n) => n === 0) && sim.customers.length === 0
+    if (barClear && sim.mugs.length === 0 && sim.glasses.length === 0) {
       sim.clearCount += 1
       sim.awaitingStageAdvance = true
       sim.pendingBonusMode = sim.clearCount % C.BONUS_EVERY_LEVELS === 0 ? pick(BONUS_MODES) : null

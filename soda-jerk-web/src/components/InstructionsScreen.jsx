@@ -94,9 +94,9 @@ export default function InstructionsScreen({ onContinue, onShowLingo }) {
         </div>
         <div className="text-cream/80 text-xs leading-snug">
           A drink <span className="text-brass font-display">knocks them back</span> down the bar. Knock them out the
-          door and they'll be back later; otherwise they stop to drink, slide the empty back to you, and come on
-          again. A parent with their kid is heavier and moves less per drink. Get everyone out the door at once to
-          pass the level. Grab a hot dog and the dachshund puts on a show — anyone watching it won't take a drink.
+          door and they're done; otherwise they stop to drink, slide the empty back to you, and come on again. A
+          parent with their kid is heavier and moves less per drink. Clear the whole crowd out to pass the
+          level. Grab a hot dog and the dachshund puts on a show — anyone watching it won't take a drink.
         </div>
       </div>
 

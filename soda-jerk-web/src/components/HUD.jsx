@@ -1,16 +1,20 @@
 const PLAYER_HEAD_SRC = `${import.meta.env.BASE_URL}art/player-head.png`
 
-export default function HUD({ score, lives, isMuted, onToggleMute, onOpenSettings }) {
+// `toGo` is how many of this level's crowd are still to come in or still
+// on the bar — null outside the bar (bonus rounds have no crowd).
+export default function HUD({ score, lives, level, toGo, isMuted, onToggleMute, onOpenSettings }) {
   return (
     <div
       className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 pb-2"
       style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 44px)' }}
     >
-      <div
-        className="font-display text-cream text-lg tracking-wide pointer-events-none"
-        style={{ textShadow: '0 2px 6px rgba(0,0,0,0.6)' }}
-      >
-        {score.toString().padStart(4, '0')}
+      <div className="pointer-events-none" style={{ textShadow: '0 2px 6px rgba(0,0,0,0.6)' }}>
+        <div className="font-display text-cream text-lg tracking-wide">{score.toString().padStart(4, '0')}</div>
+        {toGo != null && (
+          <div className="text-brass/80 text-[10px] tracking-[0.18em] -mt-0.5 tabular-nums">
+            LEVEL {level} · {toGo} TO GO
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
