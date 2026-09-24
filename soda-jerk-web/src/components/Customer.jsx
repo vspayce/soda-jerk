@@ -56,11 +56,12 @@ const PATRON_WALK_SHEETS = {
     { src: patronWalkSheet(3, 0), aspectRatio: 137 / 256, stride: 0.278 },
     { src: patronWalkSheet(3, 1), aspectRatio: 137 / 256, stride: 0.339 },
   ],
-  // Hand-drawn from a posable skeleton rather than generated, so the two
-  // colours are the same drawing and share one measured stride.
+  // One PixelLab portrait, animated by a cut-out leg rig rather than
+  // generated frame by frame (tools/einstein_rig). Pink is a recolour of
+  // the same pixels, so both share one measured stride.
   4: [
-    { src: patronWalkSheet(4, 0), aspectRatio: 136 / 256, stride: 0.188 },
-    { src: patronWalkSheet(4, 1), aspectRatio: 136 / 256, stride: 0.188 },
+    { src: patronWalkSheet(4, 0), aspectRatio: 196 / 279, stride: 0.320 },
+    { src: patronWalkSheet(4, 1), aspectRatio: 196 / 279, stride: 0.320 },
   ],
   5: [
     { src: patronWalkSheet(5, 0), aspectRatio: 138 / 256, stride: 0.354 },
