@@ -56,7 +56,7 @@ if len(sys.argv) > 3 and sys.argv[3] == "split":
 pink = to_pink(cfg, img)
 fo, fp = frames(cfg, img), frames(cfg, pink)
 tiles = fo + [held(cfg, img, "orange"), held(cfg, pink, "pink")]
-tiles2 = fp + [spray(cfg, img), spray(cfg, pink)]
+tiles2 = fp + [spray(cfg, img)[0], spray(cfg, pink)[3]]
 w = sum(t.width for t in tiles2) + 4 * len(tiles2)
 sheet = Image.new("RGBA", (w, img.height * 2 + 8), (200, 190, 170, 255))
 x = 0

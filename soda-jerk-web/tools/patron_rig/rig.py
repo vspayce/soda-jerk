@@ -518,52 +518,109 @@ def held(cfg, fig, colour):
     return out
 
 
-OUTLINE = (34, 24, 30, 255)
+SPRAY_W = 390      # every spray frame is this wide, so the game can size
+                   # them all alike; the figure sits SPRAY_PAD in from the left
+SPRAY_PAD = 92     # room in front of them for the jet
+SPRAY_FRAMES = 8
+SIPHON_H = 50      # the siphon's height on the 279px canvas
+
+JET_WHITE = (246, 252, 255, 255)
+JET_BLUE = (158, 210, 238, 255)
+JET_DEEP = (96, 164, 214, 255)
 
 
-def spray(cfg, fig, pad_left=92):
-    """A seltzer siphon in the forward hand, aimed left, mid-blast."""
+def _siphon():
+    """The PixelLab siphon, scaled to size, with where its spout tip and the
+    neck (where a hand grips it) are."""
+    im = Image.open(os.path.join(HERE, "siphon.png")).convert("RGBA")
+    im = im.crop(im.getbbox())
+    h = SIPHON_H
+    w = round(im.width * h / im.height)
+    im = im.resize((w, h), Image.NEAREST if im.height < h else Image.LANCZOS)
+    a = np.array(im)[:, :, 3] > 40
+    top = a[: h // 3]
+    ys, xs = np.where(top)
+    tip = (int(xs.min()), int(ys[xs.argmin()]))
+    # the neck: the narrowest row just below the head
+    widths = [(a[y].sum(), y) for y in range(h // 5, h // 2) if a[y].any()]
+    neck_y = min(widths)[1]
+    neck_x = int(np.where(a[neck_y])[0].mean())
+    return im, tip, (neck_x, neck_y)
+
+
+def _jet_frame(draw, nozzle, phase, rnd_seed=11):
+    """One frame of the seltzer blast, from `nozzle` off to the left edge:
+    a pressurised core that pulses, breaking up into droplets that fan out
+    and drop a little as they go, and a splash where it lands.
+
+    Drawn chunky on purpose: the spray is shown at about a third of this
+    size, so anything a pixel or two across simply vanishes."""
     import random
-    W, H = fig.size
-    out = Image.new("RGBA", (W + pad_left, H), (0, 0, 0, 0))
-    front = cfg.get("props_front")
-    if front:
-        out.alpha_composite(fig, (pad_left, 0))
-    d = ImageDraw.Draw(out)
-    hx, hy = cfg["hand"]
-    hx += pad_left
-    # bottle hangs below the grip; glass body with a highlight
-    d.rounded_rectangle([hx - 9, hy - 2, hx + 9, hy + 34], radius=6, fill=OUTLINE)
-    d.rounded_rectangle([hx - 7, hy, hx + 7, hy + 32], radius=5, fill=(104, 150, 178, 255))
-    d.rounded_rectangle([hx - 5, hy + 3, hx - 1, hy + 28], radius=2, fill=(170, 210, 230, 255))
-    d.line([(hx + 4, hy + 4), (hx + 4, hy + 28)], fill=(74, 112, 138, 255), width=2)
-    # the chrome siphon head and its lever
-    d.rectangle([hx - 8, hy - 13, hx + 8, hy - 1], fill=OUTLINE)
-    d.rectangle([hx - 6, hy - 11, hx + 6, hy - 3], fill=(206, 210, 218, 255))
-    d.line([(hx - 5, hy - 10), (hx + 4, hy - 10)], fill=(246, 248, 250, 255), width=1)
-    d.line([(hx + 2, hy - 13), (hx + 12, hy - 20)], fill=OUTLINE, width=4)
-    d.line([(hx + 2, hy - 13), (hx + 12, hy - 20)], fill=(190, 194, 204, 255), width=2)
-    # nozzle aimed left
-    nx, ny = hx - 16, hy - 8
-    d.rectangle([nx, ny - 2, hx - 7, ny + 2], fill=OUTLINE)
-    d.rectangle([nx + 1, ny - 1, hx - 8, ny + 1], fill=(190, 194, 204, 255))
-    # the blast: a solid jet that breaks up into a widening fan of droplets
-    rnd = random.Random(11)
-    d.line([(nx, ny), (nx - 30, ny - 2)], fill=(160, 208, 236, 255), width=5)
-    d.line([(nx, ny), (nx - 30, ny - 2)], fill=(238, 248, 255, 255), width=2)
-    for _ in range(900):
-        t = rnd.random() ** 0.75
-        dist = 10 + t * (nx - 3)
-        spread = 2 + t * 26
-        px, py = nx - dist, ny + rnd.uniform(-spread, spread) - t * 4
-        if px < 1:
+    nx, ny = nozzle
+    reach = nx - 4
+    arc = lambda d: ny + 0.0022 * d * d  # it falls a little as it goes
+
+    def blob(x, y, col, s):
+        x, y = round(x), round(y)
+        draw.rectangle([x - s // 2, y - s // 2, x - s // 2 + s - 1, y - s // 2 + s - 1], fill=col)
+
+    # the core: solid out of the spout, its length pulsing with the pressure
+    core = 26 + 10 * (0.5 + 0.5 * math.sin(phase * 2 * math.pi))
+    for d in range(0, int(core)):
+        y = arc(d)
+        half = 2 + min(2, d // 6)       # swells a little as it leaves the spout
+        draw.rectangle([nx - d, round(y) - half - 1, nx - d, round(y) + half + 1], fill=JET_BLUE)
+        draw.rectangle([nx - d, round(y) - half, nx - d, round(y) + half - 1], fill=JET_WHITE)
+    rnd = random.Random(rnd_seed)
+    # droplets: each has a fixed line in the fan and its own point in the
+    # cycle, so from frame to frame they visibly fly outward
+    start = core * 0.7
+    for _ in range(110):
+        off, u, sp = rnd.random(), rnd.uniform(-1, 1), rnd.uniform(0.9, 1.1)
+        t = ((phase * sp) + off) % 1.0
+        d = start + t * (reach - start)
+        if nx - d < 2:
             continue
-        col = (242, 250, 255, 255) if rnd.random() < 0.62 else (156, 206, 236, 255)
-        r = 1.6 if t < 0.45 and rnd.random() < 0.5 else 0.6
-        d.ellipse([px - r, py - r, px + r, py + r], fill=col)
-    if not front:
-        out.alpha_composite(fig, (pad_left, 0))
-    return out
+        spread = 3 + (d - start) * 0.34
+        y = arc(d) + u * spread
+        size = 5 if t < 0.35 else 4 if t < 0.7 else 3
+        if rnd.random() < 0.25:
+            size -= 1
+        col = JET_WHITE if rnd.random() < 0.55 else (JET_BLUE if rnd.random() < 0.8 else JET_DEEP)
+        blob(nx - d, y, col, size)
+    # the splash, where it hits: spray thrown back up and down off the target
+    sx, sy = 6, arc(reach)
+    for _ in range(26):
+        ang = rnd.uniform(-1.3, 1.3)
+        r = ((phase + rnd.random()) % 1.0) * 22
+        x = sx + abs(math.cos(ang)) * r * 0.5
+        y = sy + math.sin(ang) * r
+        blob(x, y, JET_WHITE if rnd.random() < 0.6 else JET_BLUE, 4 if r < 11 else 3)
+
+
+def spray(cfg, fig):
+    """The patron leaning in with a seltzer siphon, mid-blast: SPRAY_FRAMES
+    frames, each SPRAY_W wide, the jet animating across them."""
+    sip, tip, neck = _siphon()
+    W, H = fig.size
+    hx, hy = cfg["hand"]
+    hx += SPRAY_PAD
+    # the hand grips the neck, spout forward
+    sx, sy = hx - neck[0], hy - neck[1]
+    nozzle = (sx + tip[0] - 1, sy + tip[1])
+    front = cfg.get("props_front")
+    frames = []
+    for f in range(SPRAY_FRAMES):
+        out = Image.new("RGBA", (SPRAY_W, H), (0, 0, 0, 0))
+        if front:
+            out.alpha_composite(fig, (SPRAY_PAD, 0))
+            out.alpha_composite(sip, (sx, sy))
+        else:
+            out.alpha_composite(sip, (sx, sy))
+            out.alpha_composite(fig, (SPRAY_PAD, 0))
+        _jet_frame(ImageDraw.Draw(out), nozzle, f / SPRAY_FRAMES)
+        frames.append(out)
+    return frames
 
 
 # ---------------------------------------------------------------- build
@@ -576,6 +633,6 @@ def build(cfg, out_dir=ART):
         fig = base if colour == "orange" else to_pink(cfg, base)
         fig.save(f"{out_dir}/{names['portrait']}-{colour}.png")
         held(cfg, fig, colour).save(f"{out_dir}/{names['portrait']}-{colour}-held.png")
-        spray(cfg, fig).save(f"{out_dir}/{names['spray']}-{colour}.png")
+        sheet(spray(cfg, fig)).save(f"{out_dir}/{names['spray']}-{colour}.png")
         sheet(frames(cfg, fig)).save(f"{out_dir}/{names['portrait']}-{colour}-walk.png")
     return base.size

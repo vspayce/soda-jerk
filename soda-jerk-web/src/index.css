@@ -185,14 +185,20 @@ body {
    bartender's own lane. The spray overlay fades in/out; the sprite
    itself gets a quick recoil jitter, both on a plain child transform so
    they don't fight the parent's positioning transform. */
+/* The patron steps in and lets fly; the jet itself is the sheet's own
+   frames, looping underneath. */
 @keyframes seltzer-spray {
-  0% { opacity: 0; transform: translateX(16px) scale(0.6); }
-  18% { opacity: 1; transform: translateX(0) scale(1); }
-  72% { opacity: 1; }
-  100% { opacity: 0; transform: translateX(-8px) scale(1.05); }
+  0% { opacity: 0; transform: translateX(10px); }
+  12% { opacity: 1; transform: translateX(0); }
+  85% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(4px); }
 }
 .seltzer-spray {
-  animation: seltzer-spray 1100ms ease-out;
+  background-repeat: no-repeat;
+  background-size: 800% 100%;
+  animation:
+    seltzer-spray 1100ms ease-out forwards,
+    patron-walk-cycle 440ms steps(8) infinite;
 }
 
 @keyframes player-flinch {

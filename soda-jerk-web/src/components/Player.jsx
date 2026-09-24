@@ -8,6 +8,10 @@ const THROW_SRC = ART_SRC('player-throw.png')
 const RUN_SHEET = ART_SRC('player-run-cycle.png')
 const RUN_ASPECT = 249 / 358
 const HEIGHT = 94
+// The patron's spray: an 8-frame sheet (tools/patron_rig), every frame the
+// same size whoever it is, with the seltzer jet animating across them.
+const SPRAY_HEIGHT = 97
+const SPRAY_ASPECT = 390 / 279
 
 export default function Player({ x, spraying, sprayDrinkType, sprayPatronType, throwing, moveDir }) {
   const running = moveDir !== 0 && !throwing
@@ -42,11 +46,17 @@ export default function Player({ x, spraying, sprayDrinkType, sprayPatronType, t
           />
         )}
         {spraying && (
-          <img
-            src={patronSpray(sprayPatronType, sprayDrinkType)}
-            alt=""
+          <div
             className="absolute seltzer-spray"
-            style={{ left: '100%', bottom: 0, marginLeft: 4, height: 97, width: 'auto' }}
+            style={{
+              left: '100%',
+              bottom: 0,
+              // pulled in over his own margin so the jet lands on him
+              marginLeft: -10,
+              height: SPRAY_HEIGHT,
+              width: SPRAY_HEIGHT * SPRAY_ASPECT,
+              backgroundImage: `url(${patronSpray(sprayPatronType, sprayDrinkType)})`,
+            }}
           />
         )}
       </div>

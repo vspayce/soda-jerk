@@ -231,7 +231,12 @@ export default function App() {
 
       {state.mode === 'bar' && (
         <div
-          className="absolute inset-0 flex flex-col justify-end gap-1 px-4 pt-28 pb-32"
+          className="absolute inset-0 flex flex-col justify-end gap-1 px-4 pb-32"
+          // Room at the top for the HUD (which sits below the notch, hence
+          // the safe-area inset) plus the jerk standing on the top bar, who
+          // reaches well above it — at 112px flat he covered the score on
+          // a phone.
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 140px)' }}
           onPointerDown={handleGestureStart}
           onPointerMove={handleGestureMove}
           onPointerUp={handleGestureEnd}
