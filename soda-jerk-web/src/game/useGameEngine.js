@@ -1175,6 +1175,17 @@ export function useGameEngine() {
     // otherwise a second mistake in that window can cost a second life
     // before the player has even seen the first one land.
     if (sim.pendingSprayDrinkType !== null || sim.continuePauseInMs !== null) return
+
+    // Nobody gets a second drink while they're still busy with the first —
+    // catching it, being shoved back by it, or drinking it. If that's all
+    // there is in this lane, the throw just doesn't happen. (Someone
+    // thirsty further back is fair game: the drink slides past the
+    // drinker to them.)
+    const inLane = sim.customers.filter((c) => c.lane === sim.playerLane)
+    const busy = inLane.some((c) => c.status === 'toasting' || c.status === 'leaving-happy' || c.status === 'drinking')
+    const thirsty = inLane.some((c) => c.status === 'walking')
+    if (busy && !thirsty) return
+
     sim.selectedDrink = index
     sim.playerX = C.PLAYER_X
     sim.moveDir = 0
