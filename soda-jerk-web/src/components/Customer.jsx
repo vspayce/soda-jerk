@@ -44,11 +44,11 @@ const sheets = (patronType, width, stride) => [
 const PATRON_WALK_SHEETS = {
   0: sheets(0, 191, 0.368),
   1: sheets(1, 294, 0.126),
-  2: sheets(2, 201, 0.25),
+  2: sheets(2, 201, 0.333),
   3: sheets(3, 202, 0.304),
-  4: sheets(4, 196, 0.320),
-  5: sheets(5, 171, 0.34),
-  6: sheets(6, 187, 0.275),
+  4: sheets(4, 196, 0.374),
+  5: sheets(5, 171, 0.466),
+  6: sheets(6, 187, 0.386),
   7: sheets(7, 200, 0.3),
   8: sheets(8, 227, 0.14),
 }
@@ -86,14 +86,19 @@ function walkCycleMs(sheet, widthPx, speed) {
 
 export default function Customer({ x, drinkType, patronType, status, drinkName, speed }) {
   const isUrgent = status === 'walking' && x <= DANGER_X
-  // Caught the drink and now sliding back from it, Tapper-style. They keep
+  // Caught the drink and now sliding back from it. They keep
   // facing the bartender the whole way — they're being shoved, not walking
   // out — so there's no mirroring and no walk cycle, which is what every
   // version of the backwards-walking bug came from. A shove has no gait.
   const isLeaving = status === 'leaving-happy'
   const isToasting = status === 'toasting'
-  // Both the impact beat and the slide show them holding what they caught.
-  const heldSrc = isToasting || isLeaving ? patronHeld(patronType, drinkType) : null
+  const isDrinking = status === 'drinking'
+  // Turned round to watch the dachshund's show. They're standing still,
+  // so the portrait can simply be mirrored — there's no gait to go wrong.
+  const isWatching = status === 'watching'
+  // The impact beat, the slide and the drink itself all show them holding
+  // what they caught.
+  const heldSrc = isToasting || isLeaving || isDrinking ? patronHeld(patronType, drinkType) : null
   const walkSheet = status === 'walking' ? PATRON_WALK_SHEETS[patronType]?.[drinkType] : null
 
   return (
@@ -116,7 +121,7 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
         <img
           src={heldSrc}
           alt=""
-          className={isToasting ? 'patron-toast' : undefined}
+          className={isToasting ? 'patron-toast' : isDrinking ? 'patron-sip' : undefined}
           style={{
             height: PATRON_HEIGHT,
             width: 'auto',
@@ -125,6 +130,13 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
             transform: isLeaving ? 'rotate(4deg)' : undefined,
             transformOrigin: '50% 100%',
           }}
+        />
+      ) : isWatching ? (
+        <img
+          src={patronPortrait(patronType, drinkType)}
+          alt=""
+          className="patron-watch"
+          style={{ height: PATRON_HEIGHT, width: 'auto', display: 'block' }}
         />
       ) : walkSheet ? (
         <div

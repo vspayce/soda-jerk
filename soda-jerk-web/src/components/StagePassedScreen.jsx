@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import DecoButton from './DecoButton.jsx'
-import TrickAnimation from './TrickAnimation.jsx'
 import { trickForClear } from '../game/tricks.js'
-import { TRICK_BONUS } from '../game/constants.js'
+import { TRICK_BONUS, TRICK_THROW_DELAY_MS } from '../game/constants.js'
 
 // Long enough to watch the trick land.
 const AUTO_CONTINUE_SECONDS = 5
-// A beat on the pose before he throws, so the screen has settled and the
-// throw reads as the payoff rather than something already under way.
-const THROW_DELAY_MS = 450
 
+// The LEVEL PASSED banner. The trick itself plays on the bar, where the
+// jerk is standing (LevelPassTrick.jsx), so this leaves the scene visible
+// and sits low over the drink taps, which aren't needed while it's up.
 export default function StagePassedScreen({ clearCount, onContinue, onTrickBonus }) {
   const [secondsLeft, setSecondsLeft] = useState(AUTO_CONTINUE_SECONDS)
   const [thrown, setThrown] = useState(false)
@@ -34,8 +33,8 @@ export default function StagePassedScreen({ clearCount, onContinue, onTrickBonus
     return () => clearTimeout(t)
   }, [secondsLeft])
 
-  // The trick plays itself — passing the level is the achievement, the
-  // flourish is just him celebrating it, so there's nothing to hold.
+  // Paid on the same beat he throws — passing the level is the
+  // achievement, the flourish is just him celebrating it.
   useEffect(() => {
     if (!trick) return
     const t = setTimeout(() => {
@@ -44,29 +43,26 @@ export default function StagePassedScreen({ clearCount, onContinue, onTrickBonus
         paidRef.current = true
         onTrickBonusRef.current?.(TRICK_BONUS)
       }
-    }, THROW_DELAY_MS)
+    }, TRICK_THROW_DELAY_MS)
     return () => clearTimeout(t)
   }, [trick])
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-ink/90 px-8 text-center">
+    <div
+      className="absolute inset-x-0 bottom-0 z-40 flex flex-col items-center px-8 pb-10 pt-16 text-center"
+      style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(20,14,12,0.88) 45%)' }}
+    >
       {trick && (
-        <div className="flex flex-col items-center w-full">
-          {/* Remounting on throw restarts the animation from the top. */}
-          <TrickAnimation key={thrown ? 'thrown' : 'idle'} trick={trick} height={165} power={1} paused={!thrown} />
-          <div className="font-display text-brass/90 text-sm tracking-[0.22em] mt-1">{trick.name}</div>
-          <div className="text-cream/55 text-[11px] tracking-[0.2em] mt-2 mb-3 h-4">
+        <div className="mb-3">
+          <div className="font-display text-brass/90 text-sm tracking-[0.22em]">{trick.name}</div>
+          <div className="text-cream/60 text-[11px] tracking-[0.2em] mt-1 h-4">
             {thrown && `NICE ONE  +${TRICK_BONUS}`}
           </div>
         </div>
       )}
       <DecoButton onPress={onContinue} subtext={`TAP TO CONTINUE · ${secondsLeft}`}>
-        {/* The level you just passed is how many clean clears you've made,
-            NOT sim.stage. Stage is the lane-capacity tier and deliberately
-            caps at STAGE_LANE_CAPACITY.length (3) — past that every clear
-            leads into a bonus round instead of another tier, so showing
-            stage here froze the screen on "LEVEL 3 PASSED" no matter how
-            many more levels you cleared. */}
+        {/* The level you just passed is how many you've passed, NOT
+            sim.stage — stage is the venue and stops at STAGE_COUNT. */}
         {`LEVEL ${clearCount} PASSED`}
       </DecoButton>
     </div>

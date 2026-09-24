@@ -9,7 +9,9 @@ import { ART_SRC } from '../game/art.js'
 // him, so without headroom a big throw just flies out of the box.
 const HEADROOM = 0.75
 
-export default function TrickAnimation({ trick, height = 165, power = 1, paused = false }) {
+// `floor` draws a strip of counter under him; off when he's already
+// standing on the real one.
+export default function TrickAnimation({ trick, height = 165, power = 1, paused = false, floor = true }) {
   if (!trick) return null
   const ms = `${trick.durationMs}ms`
   // How far the throw goes (the level-pass screen always throws at full).
@@ -36,7 +38,7 @@ export default function TrickAnimation({ trick, height = 165, power = 1, paused 
   return (
     <div className="relative w-full" style={{ height: height * (1 + HEADROOM) }}>
       {/* the counter he's working over, so the trick has a stage */}
-      <div
+      {floor && <div
         className="absolute left-0 right-0"
         style={{
           bottom: 0,
@@ -44,7 +46,7 @@ export default function TrickAnimation({ trick, height = 165, power = 1, paused 
           background:
             'linear-gradient(90deg, transparent 0%, rgba(198,161,91,0.5) 20%, rgba(198,161,91,0.5) 80%, transparent 100%)',
         }}
-      />
+      />}
 
       {/* Everything hangs off this single zero-width point on his feet. The
           children therefore need max-width:none — Tailwind's preflight caps
@@ -52,7 +54,7 @@ export default function TrickAnimation({ trick, height = 165, power = 1, paused 
           block collapses them to nothing at all. */}
       <div
         className="absolute"
-        style={{ left: '50%', bottom: 3, width: 0, height, '--trick-reach': reach }}
+        style={{ left: '50%', bottom: floor ? 3 : 0, width: 0, height, '--trick-reach': reach }}
       >
         {trick.layers.flatMap((layer, i) => {
           // A `repeat` layer is drawn several times, stacked, with the count

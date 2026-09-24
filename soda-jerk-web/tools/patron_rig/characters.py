@@ -27,6 +27,7 @@ EINSTEIN = {
         ],
     },
     "hand": (38, 142),
+    "gait": "planted",
 }
 
 
@@ -43,6 +44,7 @@ def patron(names, source, groups, hand, protect=(), hue=(18, 40), seeds=None,
         "hand": hand,
     }
     cfg["clean_alpha"] = True
+    cfg["gait"] = "planted"
     for g in groups:
         g.setdefault("seam", "auto")
         g.setdefault("extend_top", 8)
@@ -95,6 +97,9 @@ CHAPLIN = patron(
     [{"hem": 160, "crotch": 205, "upper_boxes": [(95, 100, BIG, 185), (28, 150, 50, 176)], "knee_max": 30}],
     hand=(64, 170),
     props_front=True,
+    # The one patron who keeps the original rig's gait, which reads as a
+    # shuffle that slips backwards — right for him and nobody else.
+    gait="lowest",
     protect=[(0, 0, BIG, 62), (128, 100, BIG, 135)],
 )
 

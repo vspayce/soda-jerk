@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import * as C from './constants'
-import { LEVELS, getLevelForScore } from './levels.js'
+import { getLevel } from './levels.js'
 
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)]
@@ -205,27 +205,21 @@ function createInitialSim() {
     extraLifeCount: 0, // bumped on each award — App watches it for the fanfare
     score: 0,
     survivalMs: 0,
-    level: 1, // current difficulty level — see levels.js
-    stage: 1, // current lane-capacity stage — see STAGE_LANE_CAPACITY in
-    // constants.js. Unrelated to `level` above: this only changes how many
-    // customers can queue in one lane, advanced by clearing the bar, not by
-    // score.
-    clearCount: 0, // how many clean full clears so far — picks which trick
-    // the LEVEL PASSED screen shows, so they cycle instead of being pinned
-    // to a stage number that the top stage never reaches
+    level: 1, // the level being played — its crowd and pacing are in levels.js
+    stage: 1, // the venue — see STAGE_COUNT in constants.js
+    clearCount: 0, // levels passed so far — also picks which trick the
+    // LEVEL PASSED screen shows, so they cycle
     pendingBonusMode: null, // bonus round queued behind the LEVEL PASSED
     // screen, entered when the player continues
-    stageAttemptActive: false, // true from the moment every lane fills
-    // until that exact batch is fully resolved (served-all, or a life
-    // lost) — spawning is frozen the whole time (see the spawn block in
-    // step()), so the board can only shrink by serving/missing that
-    // batch, never get topped back up by fresh arrivals mid-attempt
-    stageAttemptClean: false, // true only if no life has been lost since
-    // stageAttemptActive was last set — passing the stage requires every
-    // patron on the bar to actually be served, not just gone from a miss
-    awaitingStageAdvance: false, // true once the bar's been fully cleared
-    // (served, not missed) after an armed, clean attempt — freezes the
-    // sim (like awaitingContinue) until the "LEVEL PASSED" screen is
+    roster: [...getLevel(1).crowd], // per lane, patrons still to walk in
+    // for the first time this level
+    reentries: [], // patrons shoved out the door, waiting to come back:
+    // { lane, inMs, patronType, drinkType }
+    closingTime: false, // everyone's in and the bar's empty — nobody comes
+    // back in; the level's passed as soon as the last glass or drink
+    // still sliding has been dealt with
+    awaitingStageAdvance: false, // true once the level's passed — freezes
+    // the sim (like awaitingContinue) until the "LEVEL PASSED" screen is
     // dismissed via advanceStage()
     gameOver: false,
     awaitingContinue: false, // true right after a life is lost (but the
@@ -260,7 +254,7 @@ function createInitialSim() {
     // before awaitingContinue kicks in
     pendingMissReason: null, // which missReason to apply once
     // continuePauseInMs elapses — see the handler for it below
-    nextSpawnInMs: LEVELS[0].spawnIntervalMs,
+    nextSpawnInMs: FIRST_ENTRY_MS,
     nextBonusInMs: randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS),
     nextId: 1,
   }
@@ -292,45 +286,52 @@ function returnToBar(sim) {
   // a second or two left on a timer that stopped ages ago.
   sim.bonus = null
   sim.nextBonusInMs = randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS)
-  // Let a future clean full-clear send the player to a bonus round again.
-  sim.stageAttemptActive = false
-  sim.stageAttemptClean = false
+  startLevel(sim)
 }
 
-function trySpawnCustomer(sim, travelMs) {
-  // Cap how many active (still walking) customers can queue in the same
-  // lane at once — one at stage 1, two at stage 2 (see STAGE_LANE_CAPACITY)
-  // — so arrivals stay readable. A lane with a mug still in flight is
-  // always off-limits regardless of stage — otherwise a mug thrown down an
-  // empty lane can catch a customer the instant they spawn, off-screen past
-  // the visible edge, before the player has ever seen them walk in.
-  const capacity = C.STAGE_LANE_CAPACITY[sim.stage - 1] ?? 1
-  const walkingCountByLane = new Map()
-  for (const c of sim.customers) {
-    if (c.status === 'walking') walkingCountByLane.set(c.lane, (walkingCountByLane.get(c.lane) || 0) + 1)
-  }
-  const mugLanes = new Set(sim.mugs.map((m) => m.lane))
-  const openLanes = []
-  for (let i = 0; i < C.LANE_COUNT; i++) {
-    if ((walkingCountByLane.get(i) || 0) < capacity && !mugLanes.has(i)) openLanes.push(i)
-  }
-  if (openLanes.length === 0) return
+// How soon the first patron of a level walks in.
+const FIRST_ENTRY_MS = 700
 
-  const lane = pick(openLanes)
-  const speed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (travelMs / 1000)
-  const drinkType = Math.floor(Math.random() * C.DRINK_TYPES.length)
+// Sets the bar up for sim.level from scratch: its full crowd waiting at the
+// doors, nobody on the bar. Used at the start of every level, and to
+// restart one after a life is lost.
+function startLevel(sim) {
+  sim.roster = [...getLevel(sim.level).crowd]
+  sim.reentries = []
+  sim.closingTime = false
+  sim.customers = []
+  sim.mugs = []
+  sim.glasses = []
+  sim.nextSpawnInMs = FIRST_ENTRY_MS
+}
+
+// Nobody walks in on top of someone who only just came through the same
+// door, and nobody walks into a lane with a drink already sliding down it
+// — that drink could catch them the instant they appear, off-screen past
+// the visible edge, before the player has ever seen them walk in.
+function doorClear(sim, lane) {
+  if (sim.mugs.some((m) => m.lane === lane)) return false
+  return !sim.customers.some((c) => c.lane === lane && c.x > C.OFFSCREEN_X - C.DOOR_GAP_X)
+}
+
+// `who` carries a returning patron's identity back in with them.
+function spawnPatron(sim, lane, walkSpeed, who = null) {
+  const drinkType = who ? who.drinkType : Math.floor(Math.random() * C.DRINK_TYPES.length)
   // Patron types aren't picked evenly — see PATRON_TYPE_WEIGHTS.
-  const patronType = pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
-
+  const patronType = who ? who.patronType : pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
   sim.customers.push({
     id: sim.nextId++,
     lane,
     x: C.OFFSCREEN_X,
-    status: 'walking', // walking -> toasting -> leaving-happy (shoved back)
-    // -> walking again if the shove didn't clear them, or removed once it does
-    speed,
-    walkSpeed: speed, // restored after a shove runs out
+    // walking -> toasting -> leaving-happy (shoved back) -> either out the
+    // door (removed, and back in later) or drinking -> walking again.
+    // watching: turned round for the dachshund's show.
+    status: 'walking',
+    speed: walkSpeed,
+    walkSpeed, // restored after a shove, a drink or the show
     pushTargetX: 0,
+    drinkMs: 0,
+    watchMs: 0,
     drinkType,
     patronType, // which illustration to use
     pauseMs: 0, // counts down while paused mid-walk — see below, keeps
@@ -807,20 +808,33 @@ function step(sim, dt) {
   if (sim.throwingMs > 0) {
     sim.throwingMs = Math.max(0, sim.throwingMs - dt * 1000)
   }
-  const levelInfo = getLevelForScore(sim.score)
-  sim.level = levelInfo.level
-  const spawnInterval = levelInfo.spawnIntervalMs
-  const travelMs = levelInfo.customerTravelMs * (C.STAGE_TRAVEL_MULTIPLIER[sim.stage - 1] ?? 1)
+  const lvl = getLevel(sim.level)
+  const walkSpeed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (lvl.travelMs / 1000)
 
-  // Spawning — frozen entirely during an active stage-clear attempt
-  // (every lane filled, waiting to see if that exact batch clears
-  // cleanly), so the board can only shrink from here, never get topped
-  // back up by a fresh arrival mid-attempt.
-  if (!sim.stageAttemptActive) {
-    sim.nextSpawnInMs -= dt * 1000
-    if (sim.nextSpawnInMs <= 0) {
-      trySpawnCustomer(sim, travelMs)
-      sim.nextSpawnInMs = spawnInterval
+  // Patrons shoved out the door come back in after a while — unless it's
+  // closing time, in which case the level's as good as passed.
+  for (const r of sim.reentries) {
+    r.inMs -= dt * 1000
+    if (!sim.closingTime && r.inMs <= 0 && doorClear(sim, r.lane)) {
+      spawnPatron(sim, r.lane, walkSpeed, r)
+      r._done = true
+    }
+  }
+  sim.reentries = sim.reentries.filter((r) => !r._done)
+
+  // The level's crowd walks in one at a time, into any lane that still has
+  // someone waiting to come in.
+  sim.nextSpawnInMs -= dt * 1000
+  if (sim.nextSpawnInMs <= 0 && sim.roster.some((n) => n > 0)) {
+    const lanes = []
+    for (let i = 0; i < C.LANE_COUNT; i++) if (sim.roster[i] > 0 && doorClear(sim, i)) lanes.push(i)
+    if (lanes.length) {
+      const lane = pick(lanes)
+      sim.roster[lane] -= 1
+      spawnPatron(sim, lane, walkSpeed)
+      sim.nextSpawnInMs = lvl.entryMs
+    } else {
+      sim.nextSpawnInMs = 200 // every door's busy — try again shortly
     }
   }
 
@@ -898,6 +912,18 @@ function step(sim, dt) {
     sim.score += C.POINTS_PER_BONUS
     sim.lastCelebrate = { lane: sim.bonus.lane, x: sim.bonus.x }
     sim.celebrateCount++
+    // The dachshund's show: some of the patrons walking in turn round to
+    // watch it — always at least one, if anyone's walking at all.
+    // Only patrons already in through the door — one still in the
+    // doorway can't see the show (and couldn't be seen watching it).
+    const walkers = sim.customers.filter((c) => c.status === 'walking' && c.x < C.SHOW_MIN_WATCHER_X)
+    const watchers = walkers.filter(() => Math.random() < C.SHOW_WATCH_CHANCE)
+    if (watchers.length === 0 && walkers.length > 0) watchers.push(pick(walkers))
+    for (const c of watchers) {
+      c.status = 'watching'
+      c.watchMs = C.SHOW_MS * randomBetween(C.SHOW_MIN_WATCH_FRACTION, 1)
+      c.pauseMs = 0
+    }
     sim.bonus = null
     sim.playerX = C.PLAYER_X
     sim.runTargetX = null
@@ -939,17 +965,38 @@ function step(sim, dt) {
       // the stop lands exactly on pushTargetX however far the shove was.
       const remaining = c.pushTargetX - c.x
       if (remaining <= 0.2) {
-        // The shove is spent. Off the end means served for good; anything
-        // short of that and they turn round and come back for another.
+        // The shove is spent. Off the end means out the door (back in a
+        // while later); short of that, they stop and drink up.
         if (c.x >= C.OFFSCREEN_X) {
           c._remove = true
+          sim.reentries.push({ lane: c.lane, inMs: lvl.reenterMs, patronType: c.patronType, drinkType: c.drinkType })
         } else {
-          c.status = 'walking'
-          c.speed = c.walkSpeed
+          c.status = 'drinking'
+          c.drinkMs = lvl.drinkMs
         }
       } else {
         c.speed = Math.max(C.CUSTOMER_PUSH_MIN_SPEED, Math.min(C.CUSTOMER_PUSH_SPEED, remaining * 3.2))
         c.x += c.speed * dt
+      }
+    } else if (c.status === 'drinking') {
+      // Standing still, drinking. When it's gone the empty slides back
+      // down the bar for the jerk to catch, and they come on again.
+      c.drinkMs -= dt * 1000
+      if (c.drinkMs <= 0) {
+        sim.glasses.push({
+          id: sim.nextId++,
+          lane: c.lane,
+          x: c.x,
+          speed: (C.OFFSCREEN_X - C.PLAYER_X) / (lvl.glassMs / 1000),
+        })
+        c.status = 'walking'
+        c.speed = c.walkSpeed
+      }
+    } else if (c.status === 'watching') {
+      c.watchMs -= dt * 1000
+      if (c.watchMs <= 0) {
+        c.status = 'walking'
+        c.speed = c.walkSpeed
       }
     }
   }
@@ -968,25 +1015,14 @@ function step(sim, dt) {
     )
     if (target && m.x >= target.x) {
       sim.score += C.POINTS_PER_SERVE
-      // Every drink shoves, Tapper-style. Whether that's the last one
+      // Every drink shoves. Whether that's the last one
       // depends on where it leaves them, not on a per-customer counter.
       target.status = 'toasting'
       target.toastMs = C.CUSTOMER_TOAST_MS
       const resistance = C.CUSTOMER_PUSH_RESISTANCE[target.patronType] ?? 1
       target.pushTargetX = target.x + C.CUSTOMER_PUSH_DISTANCE * resistance
 
-      // One returning glass per lane at a time — otherwise catching the
-      // only one you can see still leaves a second one uncaught to be
-      // missed later, costing a life despite having "gotten the glass".
-      const laneHasGlass = sim.glasses.some((g) => g.lane === m.lane)
-      if (!laneHasGlass && Math.random() < C.GLASS_RETURN_CHANCE) {
-        sim.glasses.push({
-          id: sim.nextId++,
-          lane: m.lane,
-          x: target.x,
-          speed: (C.OFFSCREEN_X - C.PLAYER_X) / (C.GLASS_RETURN_TRAVEL_MS / 1000),
-        })
-      }
+      // The empty comes back once they've drunk up — see 'drinking' above.
       m._arrived = true
     } else if (m.x >= C.OFFSCREEN_X) {
       m._missed = true
@@ -1000,10 +1036,6 @@ function step(sim, dt) {
   if (missedMugCount > 0) {
     sim.mugCrashCount++
     loseLife(sim, missedMugCount)
-    if (sim.stageAttemptActive) {
-      sim.stageAttemptClean = false
-      sim.stageAttemptActive = false
-    }
     if (!sim.gameOver) {
       sim.missReason = sim.mugs.some((m) => m._missed && !m._hadPatron) ? 'no-patron' : 'mug'
       sim.awaitingContinue = true
@@ -1019,10 +1051,6 @@ function step(sim, dt) {
       c.x = C.END_OF_BAR_X
       c._remove = true
       loseLife(sim)
-      if (sim.stageAttemptActive) {
-        sim.stageAttemptClean = false
-        sim.stageAttemptActive = false
-      }
       // Only the bartender's own lane gets the in-game seltzer-in-the-face
       // recall animation — the player isn't even standing in the others,
       // so there's nothing to visibly run back for. Either way it's a
@@ -1072,10 +1100,6 @@ function step(sim, dt) {
   if (newlyMissed.length > 0) {
     sim.missedGlassCount++
     loseLife(sim, newlyMissed.length)
-    if (sim.stageAttemptActive) {
-      sim.stageAttemptClean = false
-      sim.stageAttemptActive = false
-    }
     if (!sim.gameOver) {
       sim.continuePauseInMs = C.GLASS_FALL_HOLD_MS
       sim.pendingMissReason = 'glass'
@@ -1085,33 +1109,20 @@ function step(sim, dt) {
   if (autoCaughtCount > 0) sim.score += autoCaughtCount * C.POINTS_PER_CAUGHT_GLASS
   sim.glasses = sim.glasses.filter((g) => !g._caught && !(g._missed && g.fallMs <= 0))
 
-  // Stage advance: the moment every lane fills up at once arms a fresh
-  // attempt and freezes spawning (see the spawn block above) — that
-  // exact batch has to reach zero, served clean, with no fresh arrivals
-  // helping it along and no life lost anywhere (see the loseLife call
-  // sites above, which also drop stageAttemptActive the instant a miss
-  // happens). Only checked once the game isn't already showing a
-  // life-lost screen, so a miss landing on the same frame as the last
-  // customer leaving doesn't collide with the stage-passed screen.
-  if (!sim.gameOver && !sim.awaitingContinue) {
-    const walkingLanes = new Set(sim.customers.filter((c) => c.status === 'walking').map((c) => c.lane))
-    if (!sim.stageAttemptActive && walkingLanes.size >= C.LANE_COUNT) {
-      sim.stageAttemptActive = true
-      sim.stageAttemptClean = true
+  // Passing the level: everyone in the crowd has come in, and right now
+  // every one of them is out the door. Anyone waiting to come back in stays
+  // out — it's closing time — and once the last glass or drink still
+  // sliding is dealt with, the level's passed. Held off while a miss is
+  // still playing out, so the two screens can't collide.
+  const missPending = sim.continuePauseInMs !== null || sim.pendingSprayDrinkType !== null
+  if (!sim.gameOver && !sim.awaitingContinue && !missPending && !sim.awaitingStageAdvance) {
+    if (!sim.closingTime && sim.roster.every((n) => n === 0) && sim.customers.length === 0) {
+      sim.closingTime = true
     }
-    if (sim.stageAttemptActive && sim.stageAttemptClean && !sim.awaitingStageAdvance && sim.customers.length === 0) {
-      sim.stageAttemptActive = false
-      // Every clean clear earns the LEVEL PASSED screen and its trick.
-      // At the top stage there's no capacity left to unlock, so a bonus
-      // round is queued behind it instead and entered on continue — that
-      // way the flourish isn't skipped just because the run has topped out,
-      // which is what kept all but the first two tricks from ever showing.
+    if (sim.closingTime && sim.mugs.length === 0 && sim.glasses.length === 0) {
       sim.clearCount += 1
       sim.awaitingStageAdvance = true
-      sim.pendingBonusMode =
-        sim.stage < C.STAGE_LANE_CAPACITY.length
-          ? null
-          : pick(BONUS_MODES)
+      sim.pendingBonusMode = sim.clearCount % C.BONUS_EVERY_LEVELS === 0 ? pick(BONUS_MODES) : null
     }
   }
 }
@@ -1271,36 +1282,26 @@ export function useGameEngine() {
     // zero, well after the player already continued from the first one.
     sim.continuePauseInMs = null
     sim.missReason = null
-    // Already dropped by the loseLife call site that triggered this
-    // screen, but reset defensively — the board's empty again either way.
-    sim.stageAttemptActive = false
-    // Reset to whatever level the current score is already at, not back
-    // to level 1 — losing a life clears the board, not your progress.
-    sim.nextSpawnInMs = getLevelForScore(sim.score).spawnIntervalMs
+    // The level starts over with its whole crowd — your score and the
+    // levels already passed stay as they were.
+    startLevel(sim)
     sim.nextBonusInMs = randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS)
   }, [])
 
-  // "LEVEL PASSED" continue button — unlocks the next stage's lane
-  // capacity and lets the sim keep running, keeping score, lives, and
-  // everything else exactly as they were.
+  // "LEVEL PASSED" continue button — on to the next level (by way of a
+  // bonus round every few), keeping score and lives.
   const advanceStage = useCallback(() => {
     const sim = simRef.current
     if (sim.gameOver || !sim.awaitingStageAdvance) return
     sim.awaitingStageAdvance = false
     const bonusMode = sim.pendingBonusMode
     sim.pendingBonusMode = null
-    if (bonusMode) {
-      // Topped out on lane capacity — the clear leads into a bonus round
-      // rather than another stage.
-      enterBonusRound(sim, bonusMode)
-    } else {
-      sim.stage += 1
-    }
-    // Passing a level only requires the CUSTOMERS to be gone — a glass or
-    // mug can still be mid-return-flight at that instant. Left alone it
-    // survives into the new stage, frozen mid-slide over the fresh venue.
-    sim.glasses = []
-    sim.mugs = []
+    sim.level = sim.clearCount + 1
+    sim.stage = Math.min(C.STAGE_COUNT, sim.stage + 1)
+    // A bonus round sets the next level up itself when it hands back to
+    // the bar (returnToBar).
+    if (bonusMode) enterBonusRound(sim, bonusMode)
+    else startLevel(sim)
   }, [])
 
   // Bonus-round aiming — pull back from the launch anchor, then release

@@ -41,7 +41,9 @@ export default function SettingsScreen({
           <li>Tap a lane to jump to it, or swipe up/down to move one at a time.</li>
           <li>Drag left or right to run along the counter.</li>
           <li>Tap the drink matching a patron's outfit color to send a glass slide their way.</li>
-          <li>A drink knocks a patron back down the bar; if it doesn't shove them off the end, they come back for another.</li>
+          <li>A drink knocks a patron back down the bar. Short of the door, they drink up, slide the empty back, and come on again.</li>
+          <li>Get everyone out the door at once to pass the level.</li>
+          <li>A hot dog sets the dachshund dancing; patrons who turn to watch won't take a drink — one sent at them slides out the door.</li>
           <li>Tap a returning glass or a hot dog to grab it, or just run over one.</li>
           <li>Don't let a patron reach the end of the bar — you'll lose a life and get sprayed.</li>
         </ul>

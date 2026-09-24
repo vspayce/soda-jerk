@@ -4,7 +4,7 @@ import { useMusic } from './audio/useMusic.js'
 import { useOnCounter } from './useOnCounter.js'
 import { useViewportHeight } from './useViewportHeight.js'
 import { playSeltzerSpray, playCelebration, playGlassShatter, playCrash } from './audio/sfx.js'
-import { LANE_COUNT, POINTS_PER_BONUS } from './game/constants.js'
+import { LANE_COUNT, POINTS_PER_BONUS, SHOW_MS } from './game/constants.js'
 import Lane from './components/Lane.jsx'
 import HUD from './components/HUD.jsx'
 import Controls from './components/Controls.jsx'
@@ -116,7 +116,7 @@ export default function App() {
   useOnCounter(state.celebrateCount, () => {
     playCelebration()
     setCelebrate(state.lastCelebrate)
-    const t = setTimeout(() => setCelebrate(null), 10000)
+    const t = setTimeout(() => setCelebrate(null), SHOW_MS)
     return () => clearTimeout(t)
   })
 
@@ -235,6 +235,7 @@ export default function App() {
             <Lane
               key={laneIndex}
               laneIndex={laneIndex}
+              levelPassed={state.awaitingStageAdvance ? state.clearCount : null}
               isPlayerLane={state.playerLane === laneIndex}
               playerX={state.playerX}
               moveDir={state.playerLane === laneIndex ? state.moveDir : 0}

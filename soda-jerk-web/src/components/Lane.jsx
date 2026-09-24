@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Customer from './Customer.jsx'
 import Player from './Player.jsx'
+import LevelPassTrick from './LevelPassTrick.jsx'
 import { PLAYER_X, COUNTER_HEIGHT_PX, DRINK_TYPES } from '../game/constants.js'
 import { ART_SRC } from '../game/art.js'
 
@@ -56,6 +57,7 @@ export default function Lane({
   sprayPatronType,
   throwing,
   laneIndex,
+  levelPassed, // clearCount while the LEVEL PASSED screen is up, else null
   onGrabBonus,
   onGrabGlass,
 }) {
@@ -135,7 +137,8 @@ export default function Lane({
         }}
       />
 
-      {isPlayerLane && (
+      {isPlayerLane && levelPassed != null && <LevelPassTrick clearCount={levelPassed} x={playerX} />}
+      {isPlayerLane && levelPassed == null && (
         <Player
           x={playerX}
           spraying={spraying}

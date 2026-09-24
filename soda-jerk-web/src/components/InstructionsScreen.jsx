@@ -93,9 +93,10 @@ export default function InstructionsScreen({ onContinue, onShowLingo }) {
           <img src={ART_SRC('patron2-orange.png')} alt="" style={{ height: 38, width: 'auto' }} />
         </div>
         <div className="text-cream/80 text-xs leading-snug">
-          A drink <span className="text-brass font-display">knocks them back</span> down the bar. If it doesn't shove
-          them clear off the far end, they come straight back for another — so someone who got close takes a few. A
-          parent with their kid is heavier and moves less per drink. They never stop coming.
+          A drink <span className="text-brass font-display">knocks them back</span> down the bar. Knock them out the
+          door and they'll be back later; otherwise they stop to drink, slide the empty back to you, and come on
+          again. A parent with their kid is heavier and moves less per drink. Get everyone out the door at once to
+          pass the level. Grab a hot dog and the dachshund puts on a show — anyone watching it won't take a drink.
         </div>
       </div>
 

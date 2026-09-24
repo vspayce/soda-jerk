@@ -24,10 +24,15 @@ A character is described by a config dict (see characters.py):
     fill_rows    how far below the hem to rebuild the hidden far thigh
     knee_max     how much a knee bends on the forward swing, in degrees
     knee         "rotate" (rigid shin) or "shear" (see pose_leg)
+    lift         how high the swinging foot clears the floor (with
+                 cfg["gait"] = "planted"), in figure px
     extend_top   run the leg up this far under the body (see _extend_top)
   recolor    what counts as the orange garment, and what to leave alone
              (protect boxes are canvas coords unless fig_coords is set)
   hand       (x, y) canvas coords of the hand that takes the drink
+  gait       "planted" plants the leg that's pushing back and lifts the
+             other through its swing; unset plants whichever foot is
+             lowest (the original rig, still used for Chaplin)
 Figure coords are the cropped figure before padding; canvas coords
 include the padding.
 """
@@ -196,7 +201,14 @@ def split(cfg, img):
         # colours into that hidden strip so a swing never opens a hole in it.
         hide = near & (np.arange(H)[:, None] < py + hem + g.get("fill_rows", 16))
         far_l = _grow_into(far_l, hide)
-        out.append((Image.fromarray(near_l), Image.fromarray(far_l)))
+        nl, fl = Image.fromarray(near_l), Image.fromarray(far_l)
+        if cfg.get("gait") == "planted":
+            # The row-by-row split can hand one leg a few stray pixels of
+            # the other's shoe. Harmless to look at, but they can be the
+            # lowest thing in the layer, and the planted gait stands the
+            # figure on its lowest pixel.
+            nl, fl = drop_specks(nl, 40), drop_specks(fl, 40)
+        out.append((nl, fl))
     upper = op & ~all_legs
     return upper, Image.fromarray(layer(upper)), out
 
@@ -341,6 +353,31 @@ def frames(cfg, img, n=8, feet=None):
             L_far = pose_leg(far, fh, ff, t_far, k_far, mode)
             L_near = pose_leg(near, nh, nf, t_near, k_near, mode)
             legs = Image.new("RGBA", L_far.size, (0, 0, 0, 0))
+            if cfg.get("gait") == "planted":
+                # The leg pushing back (its angle falling) is the one on the
+                # floor; the other is swinging through and has to clear it.
+                # Planting whichever foot happens to be lowest instead
+                # picked the swinging one whenever the knee bend didn't
+                # raise it — a sheared knee never does — and a planted foot
+                # sliding forward reads as walking backwards.
+                near_stance = math.sin(phi) >= 0
+                stance, swing = (L_near, L_far) if near_stance else (L_far, L_near)
+                low = lambda L: np.where((np.array(L)[:, :, 3] > 40).any(axis=1))[0].max()
+                dy = ground - low(stance)
+                lift = int(g.get("lift", 7) * SS * abs(math.sin(phi)))
+                # never let the swinging foot dip through the floor
+                lift = max(lift, low(swing) + dy - ground + SS)
+                legs.alpha_composite(swing if swing is L_far else stance, (0, -lift if swing is L_far else 0))
+                legs.alpha_composite(swing if swing is L_near else stance, (0, -lift if swing is L_near else 0))
+                if feet is not None and len(feet) <= i:
+                    fn, ffar = _foot(L_near), _foot(L_far)
+                    if near_stance:
+                        ffar = (ffar[0], ffar[1] - lift / SS)
+                    else:
+                        fn = (fn[0], fn[1] - lift / SS)
+                    feet.append([fn, ffar])
+                layers.append((legs, U, dy))
+                continue
             legs.alpha_composite(L_far); legs.alpha_composite(L_near)
             lowest = np.where((np.array(legs)[:, :, 3] > 40).any(axis=1))[0].max()
             dy = ground - lowest

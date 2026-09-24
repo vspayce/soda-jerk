@@ -1,51 +1,40 @@
-// Difficulty levels — edit this file to retune pacing. Nothing else
-// needs to change.
+// Levels — edit this file to retune pacing. Nothing else needs to change.
 //
-// Levels are gated by SCORE, not by how long you've survived. The game
-// is at level N once your score reaches that level's `score` threshold,
-// and stays there until you reach the next one. Add, remove, or
-// reorder levels freely — just keep `score` ascending — and the game
-// will pick up any new/changed values immediately.
+// A level is a set crowd. `crowd` is how many patrons each bar (top to
+// bottom) gets; they walk in one at a time, and a patron shoved off the far
+// end comes back in after `reenterMs`. The level is passed the moment every
+// one of them has come in and the bar is empty — everybody out the door at
+// once, with no glass or drink still sliding. Lose a life and the level
+// starts over with its full crowd.
 //
-//   score            — points needed to reach this level
-//   spawnIntervalMs  — time between new customers walking in (lower = busier)
-//   customerTravelMs — time a customer takes to walk the full bar before
-//                      reaching the end (lower = less time to react)
-// customerTravelMs values are a further 20% slower on top of the prior
-// pacing pass — patrons were still crossing the bar too briskly.
-// The curve used to stop at level 6 / 2,500 points, which made everything
-// past that play identically forever — and with an extra life every 10,000
-// the game actually got EASIER the longer you lasted. It now keeps
-// tightening out to 20,000, with the gaps between levels widening as they
-// go, since a player scoring faster clears each threshold quicker.
+//   crowd       — patrons per bar, top to bottom
+//   travelMs    — how long a patron takes to walk the whole bar (lower =
+//                 less time to react)
+//   entryMs     — time between patrons walking in (lower = busier)
+//   drinkMs     — how long a served patron stands drinking before sliding
+//                 the empty back
+//   reenterMs   — how long a patron shoved out the door stays out. The
+//                 level's passed when everyone's out at once, so this is
+//                 the window you have to get the last of them out in.
+//   glassMs     — how long a returned empty takes to slide the whole bar
+//
+// Past the last row the game stays at that row's numbers for good.
 export const LEVELS = [
-  { level: 1, score: 0, spawnIntervalMs: 2200, customerTravelMs: 14702 },
-  { level: 2, score: 500, spawnIntervalMs: 1900, customerTravelMs: 12294 },
-  { level: 3, score: 1000, spawnIntervalMs: 1600, customerTravelMs: 10288 },
-  { level: 4, score: 1500, spawnIntervalMs: 1350, customerTravelMs: 8531 },
-  { level: 5, score: 2000, spawnIntervalMs: 1150, customerTravelMs: 7277 },
-  { level: 6, score: 2500, spawnIntervalMs: 1000, customerTravelMs: 6371 },
-  { level: 7, score: 3200, spawnIntervalMs: 920, customerTravelMs: 5750 },
-  { level: 8, score: 4000, spawnIntervalMs: 850, customerTravelMs: 5250 },
-  { level: 9, score: 5000, spawnIntervalMs: 790, customerTravelMs: 4800 },
-  { level: 10, score: 6200, spawnIntervalMs: 740, customerTravelMs: 4420 },
-  { level: 11, score: 7600, spawnIntervalMs: 700, customerTravelMs: 4100 },
-  { level: 12, score: 9200, spawnIntervalMs: 665, customerTravelMs: 3830 },
-  { level: 13, score: 11000, spawnIntervalMs: 635, customerTravelMs: 3610 },
-  { level: 14, score: 13000, spawnIntervalMs: 610, customerTravelMs: 3430 },
-  { level: 15, score: 15500, spawnIntervalMs: 590, customerTravelMs: 3290 },
-  // The floor. Patrons still need long enough to be seen and served, and
-  // stage 3 stretches this a further 45% anyway (STAGE_TRAVEL_MULTIPLIER).
-  { level: 16, score: 20000, spawnIntervalMs: 575, customerTravelMs: 3200 },
+  { crowd: [1, 1, 1, 1], travelMs: 15000, entryMs: 2400, drinkMs: 1700, reenterMs: 5000, glassMs: 4400 },
+  { crowd: [2, 1, 2, 1], travelMs: 14000, entryMs: 2200, drinkMs: 1600, reenterMs: 4600, glassMs: 4200 },
+  { crowd: [2, 2, 2, 2], travelMs: 13000, entryMs: 2000, drinkMs: 1500, reenterMs: 4200, glassMs: 4000 },
+  { crowd: [2, 3, 2, 3], travelMs: 12000, entryMs: 1850, drinkMs: 1400, reenterMs: 3800, glassMs: 3800 },
+  { crowd: [3, 3, 3, 3], travelMs: 11000, entryMs: 1700, drinkMs: 1300, reenterMs: 3500, glassMs: 3600 },
+  { crowd: [3, 3, 3, 3], travelMs: 10000, entryMs: 1550, drinkMs: 1200, reenterMs: 3200, glassMs: 3400 },
+  { crowd: [3, 3, 3, 3], travelMs: 9200, entryMs: 1400, drinkMs: 1100, reenterMs: 3000, glassMs: 3200 },
+  { crowd: [3, 3, 3, 3], travelMs: 8500, entryMs: 1300, drinkMs: 1000, reenterMs: 2800, glassMs: 3000 },
+  { crowd: [3, 3, 3, 3], travelMs: 7800, entryMs: 1200, drinkMs: 950, reenterMs: 2700, glassMs: 2800 },
+  { crowd: [3, 3, 3, 3], travelMs: 7000, entryMs: 1100, drinkMs: 900, reenterMs: 2600, glassMs: 2600 },
+  { crowd: [3, 3, 3, 3], travelMs: 6400, entryMs: 1000, drinkMs: 850, reenterMs: 2500, glassMs: 2500 },
+  { crowd: [3, 3, 3, 3], travelMs: 5800, entryMs: 950, drinkMs: 800, reenterMs: 2400, glassMs: 2400 },
 ]
 
-// The last level in the list is the difficulty ceiling — any score past
-// its threshold just keeps using its numbers.
-export function getLevelForScore(score) {
-  let current = LEVELS[0]
-  for (const lvl of LEVELS) {
-    if (score >= lvl.score) current = lvl
-    else break
-  }
-  return current
+// Level numbers start at 1.
+export function getLevel(level) {
+  return LEVELS[Math.min(Math.max(1, level), LEVELS.length) - 1]
 }

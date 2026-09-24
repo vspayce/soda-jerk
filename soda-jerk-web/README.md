@@ -1,6 +1,6 @@
 # Soda Jerk (web prototype)
 
-Classic Tapper-style level, prototyped in React + Vite + Tailwind.
+Classic bar-serving level, prototyped in React + Vite + Tailwind.
 1920s-30s speakeasy theme, touch-first controls, portrait layout,
 endless survival mode. See `BACKLOG.md` for the other planned level
 types (upside-down bar, sliding level, carousel, trick mini-games).

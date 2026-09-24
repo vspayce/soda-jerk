@@ -328,6 +328,27 @@ body {
 /* The jerk's run: the same 8-frame sheet mechanics, at a sprint. Fully
    matching his ground speed would mean ~240ms a cycle, which is too fast
    to read, so the feet slip a little in exchange for legible legs. */
+/* Drinking: tipped back on their heels for a swallow, again and again,
+   pivoting at the feet so they stay planted on the counter line. */
+@keyframes patron-sip {
+  0%, 100% { transform: rotate(0deg); }
+  35%, 60% { transform: rotate(5deg); }
+}
+.patron-sip {
+  transform-origin: 50% 100%;
+  animation: patron-sip 700ms ease-in-out infinite;
+}
+
+/* Watching the dachshund: turned round (mirrored) and bobbing along. */
+@keyframes patron-watch {
+  0%, 100% { transform: scaleX(-1) translateY(0); }
+  50% { transform: scaleX(-1) translateY(-2px); }
+}
+.patron-watch {
+  transform-origin: 50% 100%;
+  animation: patron-watch 600ms ease-in-out infinite;
+}
+
 .jerk-run-cycle-sprite {
   background-repeat: no-repeat;
   background-size: 800% 100%;

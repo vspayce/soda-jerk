@@ -16,8 +16,8 @@ export const PLAYER_MAX_X = 85
 export const PLAYER_RUN_SPEED_X = 70
 
 // If an unserved customer's x reaches this point, they've made it all
-// the way down the bar — lose a life. They never stop and never turn
-// back; the only way to stop them is to serve them first.
+// the way down the bar — lose a life. Only a drink (or the dachshund's
+// show) stops them.
 export const END_OF_BAR_X = PLAYER_X + 4
 
 export const OFFSCREEN_X = 108
@@ -30,22 +30,21 @@ export const COUNTER_HEIGHT_PX = 44
 
 // Time (ms) for a mug to cross the full bar length if nothing's in the way.
 export const MUG_TRAVEL_MS = 800
-export const GLASS_RETURN_TRAVEL_MS = 4200
 
 // How long the bartender's throw-motion sprite plays after pourDrink(),
 // before falling back to stand/run — see Player.jsx.
 export const THROW_ANIM_MS = 500
 
 // A served customer doesn't turn around and walk out — the drink shoves
-// them back down the bar, Tapper-style, still facing the bartender. They
+// them back down the bar, still facing the bartender. They
 // slide rather than walk, which is why this can be brisk: the old walk-out
 // had to stay slow enough for a leg cycle to keep up with it, and every
 // version of the backwards-walking bug came out of that constraint. A
 // shove has no gait to match.
-// A drink shoves them a fixed DISTANCE back down the bar, as in Tapper —
-// it doesn't send them away. If the shove doesn't carry them off the far
-// end they walk straight back for another, so a patron who got close
-// takes several drinks to clear. That's the whole tension of the original:
+// A drink shoves them a fixed DISTANCE back down the bar — it
+// doesn't send them away. If the shove doesn't carry them off the far
+// end they stop to drink, slide the empty back, and come on again, so a
+// patron who got close takes several drinks to clear. That's the whole tension of the bar:
 // one drink buys you room, not a solved customer.
 export const CUSTOMER_PUSH_SPEED = 62 // lane-% per second at the moment of impact
 export const CUSTOMER_PUSH_DISTANCE = 34 // how far one drink moves them
@@ -67,28 +66,30 @@ export const WALK_PAUSE_CHANCE_PER_FRAME = 0.006
 export const WALK_PAUSE_MIN_MS = 350
 export const WALK_PAUSE_MAX_MS = 800
 
-// Difficulty (customer spawn rate and travel speed) is gated by score,
-// not survival time — see levels.js, which is the file to edit to
-// retune pacing.
+// Pacing and the crowd for each level live in levels.js.
 
-// Separate from the score-gated difficulty above: how many customers can
-// queue up walking in the same lane at once, by stage (index 0 = stage
-// 1). Stage 1 is one at a time; filling every lane and then clearing the
-// whole bar at once bumps the player to stage 2, where a second patron
-// can be waiting behind the first in every lane.
-// A third stage exists mainly so clearing stage 2 shows a LEVEL PASSED
-// screen at all: the clear at the TOP stage goes to a bonus round instead,
-// so with only two stages the stage-2 trick (the straw toss) could never be
-// reached. It doubles as real progression — three deep in every lane.
-export const STAGE_LANE_CAPACITY = [1, 2, 3]
+// The venue: stage 1 is the speakeasy, stage 2 on the soda fountain (see
+// PerspectiveBackdrop.jsx). It moves up one per level passed and stops at
+// the top.
+export const STAGE_COUNT = 3
 
-// Extra slowdown applied to customerTravelMs by stage (index 0 = stage 1)
-// on top of the score-gated pacing in levels.js — stage 2 has twice as
-// many patrons walking at once, so this eases their pace back down to
-// compensate, applied as a multiplier (1 = unchanged, higher = slower).
-export const STAGE_TRAVEL_MULTIPLIER = [1, 1.2, 1.45]
+// A bonus round follows every this-many levels passed.
+export const BONUS_EVERY_LEVELS = 3
 
-export const GLASS_RETURN_CHANCE = 0.35
+// A new patron (or one coming back in) waits at the door until whoever
+// came in before them in that lane has walked at least this far in, so
+// they don't enter stacked on top of each other.
+export const DOOR_GAP_X = 14
+
+// The show: grabbing the hot dog sets the dachshund dancing (see
+// Celebration.jsx) for SHOW_MS. Each patron walking in at that moment has
+// SHOW_WATCH_CHANCE of turning round to watch. A watcher stops advancing
+// and isn't thirsty — a drink sent at them slides straight past, out the
+// door. Some lose interest before the dog's done.
+export const SHOW_MS = 9800
+export const SHOW_WATCH_CHANCE = 0.6
+export const SHOW_MIN_WATCH_FRACTION = 0.55
+export const SHOW_MIN_WATCHER_X = 88
 
 // How long the bartender stays at the counter getting sprayed before the
 // "YOU MISSED" pause kicks in.
@@ -108,6 +109,9 @@ export const GLASS_REACH_X = 10
 // Between-level trick flourish (see game/tricks.js). It plays itself when
 // a level is passed and pays this flat bonus — the reward for the clear.
 export const TRICK_BONUS = 300
+// A beat on the pose before he throws, so the screen has settled and the
+// throw reads as the payoff rather than something already under way.
+export const TRICK_THROW_DELAY_MS = 450
 
 export const POINTS_PER_SERVE = 100
 export const POINTS_PER_CAUGHT_GLASS = 50
