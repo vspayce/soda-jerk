@@ -51,6 +51,9 @@ const PATRON_WALK_SHEETS = {
   6: sheets(6, 187, 0.386),
   7: sheets(7, 200, 0.3),
   8: sheets(8, 227, 0.14),
+  9: sheets(9, 206, 0.411),
+  10: sheets(10, 192, 0.181),
+  11: sheets(11, 158, 0.304),
 }
 
 // The legs have to cycle at whatever rate keeps the planted foot from

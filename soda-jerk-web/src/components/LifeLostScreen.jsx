@@ -26,7 +26,7 @@ export default function LifeLostScreen({ score, lives, missReason, onContinue })
     return () => clearTimeout(t)
   }, [secondsLeft])
 
-  const isBrokenGlass = missReason === 'glass' || missReason === 'mug'
+  const isBrokenGlass = ['glass', 'mug', 'drinking', 'watching'].includes(missReason)
   const image =
     missReason === 'spray' ? SPRAY_SRC
     : missReason === 'no-patron' ? SPILLED_MILKSHAKE_SRC
@@ -36,6 +36,8 @@ export default function LifeLostScreen({ score, lives, missReason, onContinue })
     missReason === 'glass' ? 'YOU MISSED A GLASS!'
     : missReason === 'mug' ? 'WRONG DRINK!'
     : missReason === 'no-patron' ? 'NO PATRON!'
+    : missReason === 'drinking' ? 'STILL DRINKING!'
+    : missReason === 'watching' ? "THEY'RE WATCHING THE SHOW!"
     : missReason === 'spray' ? 'YOU GOT SPRAYED!'
     : null
   const subtext = `SCORE ${score} · ${lives} ${lives === 1 ? 'LIFE' : 'LIVES'} LEFT`

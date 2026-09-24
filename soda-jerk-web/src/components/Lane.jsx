@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Customer from './Customer.jsx'
 import Player from './Player.jsx'
 import LevelPassTrick from './LevelPassTrick.jsx'
-import { PLAYER_X, COUNTER_HEIGHT_PX, DRINK_TYPES } from '../game/constants.js'
+import { PLAYER_X, COUNTER_HEIGHT_PX, DRINK_TYPES, DOOR_X } from '../game/constants.js'
 import { ART_SRC } from '../game/art.js'
 
 // Mugs, glasses, and the hot dog ride along the counter's top surface,
@@ -42,7 +42,6 @@ const FOUNTAIN_BY_LANE = [
 // feet (or base) at the counter's bottom edge, extending upward from
 // there. The fountain sits right behind the bartender's home spot.
 const FIXTURE_Y = `calc(50% + ${COUNTER_HEIGHT_PX / 2}px)`
-const DOOR_X = 95
 
 export default function Lane({
   customers,

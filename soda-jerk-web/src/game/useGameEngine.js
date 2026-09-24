@@ -225,7 +225,7 @@ function createInitialSim() {
     awaitingContinue: false, // true right after a life is lost (but the
     // game isn't over) — freezes the sim until continueAfterDeath() is
     // called, when the "YOU MISSED" button is tapped
-    missReason: null, // 'spray' | 'glass' | 'mug' | 'no-patron' | 'other' — which
+    missReason: null, // 'spray' | 'glass' | 'mug' | 'drinking' | 'watching' | 'no-patron' — which
     // kind of miss most recently triggered awaitingContinue, so the UI can
     // show the matching sprite
     customers: [],
@@ -1021,15 +1021,24 @@ function step(sim, dt) {
       target.toastMs = C.CUSTOMER_TOAST_MS
       const resistance = C.CUSTOMER_PUSH_RESISTANCE[target.patronType] ?? 1
       target.pushTargetX = target.x + C.CUSTOMER_PUSH_DISTANCE * resistance
+      // Past the doors is out the door.
+      if (target.pushTargetX >= C.DOOR_X) target.pushTargetX = C.OFFSCREEN_X + 1
 
       // The empty comes back once they've drunk up — see 'drinking' above.
       m._arrived = true
     } else if (m.x >= C.OFFSCREEN_X) {
       m._missed = true
-      // Distinguishes a drink thrown at the wrong-colored customer (still
-      // someone there to miss) from one thrown down a lane with no one
-      // walking in it at all — the UI shows a different message/art for each.
-      m._hadPatron = sim.customers.some((c) => c.lane === m.lane && c.status === 'walking')
+      // Why nobody caught it, for the miss screen: someone thirsty there
+      // but wanting the other drink; someone there who isn't taking one
+      // right now; or an empty lane.
+      const inLane = sim.customers.filter((c) => c.lane === m.lane && (c.status !== 'walking' || c.x <= C.DOOR_X))
+      m._reason = inLane.some((c) => c.status === 'walking')
+        ? 'mug'
+        : inLane.some((c) => c.status === 'watching')
+          ? 'watching'
+          : inLane.length > 0
+            ? 'drinking'
+            : 'no-patron'
     }
   }
   const missedMugCount = sim.mugs.filter((m) => m._missed).length
@@ -1037,7 +1046,7 @@ function step(sim, dt) {
     sim.mugCrashCount++
     loseLife(sim, missedMugCount)
     if (!sim.gameOver) {
-      sim.missReason = sim.mugs.some((m) => m._missed && !m._hadPatron) ? 'no-patron' : 'mug'
+      sim.missReason = sim.mugs.find((m) => m._missed)._reason
       sim.awaitingContinue = true
     }
   }

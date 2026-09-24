@@ -139,6 +139,45 @@ CLOWN = patron(
     hue=(10, 40), val=0.12,
 )
 
+# A 1920s home-run slugger in pinstripes (PixelLab, slugger.png; drawn
+# facing right, so mirrored).
+SLUGGER = patron(
+    {"portrait": "patron10", "spray": "spray-patron10"}, "slugger.png",
+    [{"hem": 142, "crotch": 212}],
+    hand=(34, 116),
+    mirror=True,
+    seeds=[(80, 100), (60, 170), (100, 170), (70, 10), (100, 130), (60, 125)],
+    # the bat's wood sits in the uniform's orange and touches it
+    protect=[(98, 5, BIG, 48), (15, 55, 52, 92)],
+    # the belly and his back edge are shaded a deeper orange than the rest
+    hue=(10, 40), val=0.12,
+    include=[(40, 105, 78, 142)],
+)
+
+# A prohibition agent in a trench coat, badge out (PixelLab, gman.png;
+# drawn facing right, so mirrored). The drink goes in the badge hand.
+GMAN = patron(
+    {"portrait": "patron11", "spray": "spray-patron11"}, "gman.png",
+    [{"hem": 197, "crotch": 216}],
+    hand=(47, 98),
+    mirror=True,
+    seeds=[(70, 150), (90, 80), (60, 60), (100, 120), (50, 180)],
+)
+
+# A flapper in a fringed drop-waist dress (PixelLab, flapper.png; drawn
+# facing right, so mirrored). Only her trailing arm shows, so the drink is
+# drawn in front of her, like Chaplin's.
+FLAPPER = patron(
+    {"portrait": "patron12", "spray": "spray-patron12"}, "flapper.png",
+    [{"hem": 199, "crotch": 214}],
+    hand=(60, 118),
+    mirror=True,
+    props_front=True,
+    seeds=[(50, 100), (60, 170), (40, 150), (60, 75)],
+    # the fringe breaks into strands too small to flood from a seed
+    include=[(20, 138, 78, 195)],
+)
+
 CHARACTERS = {
     "einstein": EINSTEIN,
     "man": MAN,
@@ -149,4 +188,7 @@ CHARACTERS = {
     "escapist": ESCAPIST,
     "boss": BOSS,
     "clown": CLOWN,
+    "slugger": SLUGGER,
+    "gman": GMAN,
+    "flapper": FLAPPER,
 }

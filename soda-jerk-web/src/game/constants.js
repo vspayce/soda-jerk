@@ -22,6 +22,12 @@ export const END_OF_BAR_X = PLAYER_X + 4
 
 export const OFFSCREEN_X = 108
 
+// Where the saloon doors stand (see Lane.jsx). A patron entering is hidden
+// until they reach it, and a shove that carries someone past it takes them
+// the rest of the way out — nobody stops to drink out of sight in the
+// doorway and sends an empty back from nowhere.
+export const DOOR_X = 95
+
 // Visual-only: height (px) of the counter graphic in Lane.jsx. Characters
 // anchor their feet to its bottom edge (so heads clear the top); mugs and
 // glasses ride along its top edge (so they read as sliding on the surface,
@@ -129,8 +135,8 @@ export const DRINK_TYPES = [
 // picked when a customer spawns — see trySpawnCustomer. The professor
 // (Einstein-styled, index 4) is weighted above an even share so he shows
 // up noticeably more than the others; the caricatures that came after him
-// (aviator/showman/gangster, indices 5-7, and the clown, 8) get a smaller
-// bump of their own.
+// (aviator/showman/gangster, indices 5-7, the clown, 8, and the slugger,
+// G-man and flapper, 9-11) get a smaller bump of their own.
 //
 // These used to be gated to the stage-2+ fountain venue, with stage 1
 // limited to the first three types. But reaching stage 2 means filling
@@ -138,7 +144,7 @@ export const DRINK_TYPES = [
 // life — demanding enough that a player could go a long time without
 // ever laying eyes on the caricatures, which are the most fun art in the
 // game. They spawn from the first customer now.
-export const PATRON_TYPE_WEIGHTS = [1, 1, 1, 1, 3, 2, 2, 2, 2]
+export const PATRON_TYPE_WEIGHTS = [1, 1, 1, 1, 3, 2, 2, 2, 2, 2, 2, 2]
 
 // A hot dog drops on the counter every so often, somewhere in the middle
 // or right portion of the bar (never right at the end near the player,
