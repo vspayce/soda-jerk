@@ -325,6 +325,15 @@ body {
   animation: patron-walk-cycle 900ms steps(8) infinite;
 }
 
+/* The jerk's run: the same 8-frame sheet mechanics, at a sprint. Fully
+   matching his ground speed would mean ~240ms a cycle, which is too fast
+   to read, so the feet slip a little in exchange for legible legs. */
+.jerk-run-cycle-sprite {
+  background-repeat: no-repeat;
+  background-size: 800% 100%;
+  animation: patron-walk-cycle 360ms steps(8) infinite;
+}
+
 
 /* Faint steam rising off the dishwasher in the plate-wash round. */
 @keyframes dishwasher-steam {

@@ -1,28 +1,18 @@
 import { COUNTER_HEIGHT_PX } from '../game/constants.js'
+import { ART_SRC, patronSpray } from '../game/art.js'
 
-const STAND_SRC = `${import.meta.env.BASE_URL}art/player-stand.png`
-const RUN_SRC = `${import.meta.env.BASE_URL}art/player-run.png`
-const THROW_SRC = `${import.meta.env.BASE_URL}art/player-throw.png`
-
-// The patron who reached the end of the bar sprays the bartender — shown
-// in their own patron illustration and drink color, leaning in from the
-// right (they face left, toward the bartender, already the right way
-// round for this). One row per patronType, one column per drink type —
-// same shape as Customer.jsx's PATRON_SRC.
-const SPRAY_SRC = [
-  [`${import.meta.env.BASE_URL}art/spray-orange.png`, `${import.meta.env.BASE_URL}art/spray-pink.png`],
-  [`${import.meta.env.BASE_URL}art/spray-patron2-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron2-pink.png`],
-  [`${import.meta.env.BASE_URL}art/spray-patron3-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron3-pink.png`],
-  [`${import.meta.env.BASE_URL}art/spray-patron4-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron4-pink.png`],
-  [`${import.meta.env.BASE_URL}art/spray-patron5-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron5-pink.png`],
-  [`${import.meta.env.BASE_URL}art/spray-patron6-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron6-pink.png`],
-  [`${import.meta.env.BASE_URL}art/spray-patron7-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron7-pink.png`],
-  [`${import.meta.env.BASE_URL}art/spray-patron8-orange.png`, `${import.meta.env.BASE_URL}art/spray-patron8-pink.png`],
-]
+const STAND_SRC = ART_SRC('player-stand.png')
+const THROW_SRC = ART_SRC('player-throw.png')
+// 8-frame run, rigged from one PixelLab picture of him mid-stride
+// (tools/patron_rig/jerk_run.py). Faces right, like his other poses.
+const RUN_SHEET = ART_SRC('player-run-cycle.png')
+const RUN_ASPECT = 249 / 358
+const HEIGHT = 94
 
 export default function Player({ x, spraying, sprayDrinkType, sprayPatronType, throwing, moveDir }) {
-  const running = moveDir !== 0
-  const poseSrc = throwing ? THROW_SRC : running ? RUN_SRC : STAND_SRC
+  const running = moveDir !== 0 && !throwing
+  // His art faces right; running left is the same art mirrored.
+  const flip = moveDir === -1 ? 'scaleX(-1)' : 'none'
 
   return (
     <div
@@ -34,19 +24,26 @@ export default function Player({ x, spraying, sprayDrinkType, sprayPatronType, t
       }}
     >
       <div className={`relative ${spraying ? 'player-flinch' : ''} ${throwing ? 'player-throw-pop' : ''}`}>
-        <img
-          src={poseSrc}
-          alt=""
-          style={{
-            height: 94,
-            width: 'auto',
-            display: 'block',
-            transform: moveDir === -1 ? 'scaleX(-1)' : 'none',
-          }}
-        />
+        {running ? (
+          <div
+            className="jerk-run-cycle-sprite"
+            style={{
+              height: HEIGHT,
+              width: HEIGHT * RUN_ASPECT,
+              backgroundImage: `url(${RUN_SHEET})`,
+              transform: flip,
+            }}
+          />
+        ) : (
+          <img
+            src={throwing ? THROW_SRC : STAND_SRC}
+            alt=""
+            style={{ height: HEIGHT, width: 'auto', display: 'block', transform: flip }}
+          />
+        )}
         {spraying && (
           <img
-            src={SPRAY_SRC[sprayPatronType][sprayDrinkType]}
+            src={patronSpray(sprayPatronType, sprayDrinkType)}
             alt=""
             className="absolute seltzer-spray"
             style={{ left: '100%', bottom: 0, marginLeft: 4, height: 97, width: 'auto' }}

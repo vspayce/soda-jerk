@@ -27,11 +27,8 @@ export const TRICKS = {
     id: 'shakerFlip',
     name: 'THE SHAKER FLIP',
     durationMs: 1900,
-    // How high the toss goes at the weakest and strongest wind-up. Spread
-    // wide on purpose — at 0.62-1.32 the difference between a tap and a
-    // full wind-up was about 55px, which didn't read as "charged" at all.
-    // This is roughly double that, and the animation now has headroom for
-    // the big one to actually go somewhere.
+    // How high the toss goes, from power 0 to 1. The level-pass screen
+    // always throws at full power, so it's maxReach that shows.
     minReach: 0.45,
     maxReach: 1.85,
     layers: [
@@ -95,14 +92,14 @@ export const TRICKS = {
     id: 'threeDrinkCarry',
     name: 'THE THREE-DRINK CARRY',
     durationMs: 2100,
-    // The meter means something different here: not how high something
-    // flies, but how many glasses he dares stack. Reach is unused.
+    // Power means something different here: not how high something flies,
+    // but how many glasses he dares stack. Reach is unused.
     minReach: 1,
     maxReach: 1,
     layers: [
       { ...STAND, className: 'trick-pose-carry' },
-      // Stacked on his outstretched hand, two at the lightest wind-up and
-      // five at a full one. overlap < 1 so each glass sits down inside the
+      // Stacked on his outstretched hand, two at the lowest power and five
+      // at full (which is what the level-pass screen plays). overlap < 1 so each glass sits down inside the
       // one below rather than floating a full height above it.
       {
         kind: 'prop',

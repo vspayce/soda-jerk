@@ -1227,8 +1227,7 @@ export function useGameEngine() {
   }, [])
 
   // Points from the between-level trick (see tricks.js) — the flourish is
-  // a victory lap, so this only ever adds. Muffing the timing just earns
-  // less, it never costs anything.
+  // a victory lap, so this only ever adds.
   const addTrickBonus = useCallback((points) => {
     const sim = simRef.current
     if (sim.gameOver || points <= 0) return

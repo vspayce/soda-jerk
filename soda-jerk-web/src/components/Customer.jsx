@@ -12,69 +12,45 @@ const DANGER_X = PLAYER_X + 22
 // throughout — a served customer is shoved backwards by the drink rather
 // than turning round, so nothing is ever mirrored.
 //
-// To add another patron type: drop in `patronN-orange.png` /
-// `patronN-pink.png`, add a row here (and a height below), plus a walk
-// sheet, and add a weight to PATRON_TYPE_WEIGHTS in constants.js.
-// Some illustrations (e.g. the mom-and-son pair) are wider than others,
-// so each patronType gets its own height to read at a consistent scale.
-// 25% bigger across the board, then another 10% on top of that — small
-// enough to miss details like the caricature patrons otherwise.
-const PATRON_HEIGHT = [89, 91, 89, 89, 89, 89, 89, 89]
-
-// The moment-of-catch pose: the same portrait art with the drink they
-// actually ordered placed in their outstretched hand, so the reward for a
-// correct serve is legible. The glass is the very same art the player taps
-// on the tap handle, composited in — not a redrawn one — so the colour
-// reads identically to the drink they chose. Padded symmetrically around
-// the body, so swapping this in doesn't jog the patron sideways.
-
-// Real 8-frame walk-cycle sprite sheets (PixelLab-generated from each static
-// illustration), used while a patron is actively walking in. Each entry's
-// aspectRatio (native frame width / height) keeps the sprite from stretching
-// at PATRON_HEIGHT.
+// Every patron's art is built by tools/patron_rig from ONE source portrait:
+// the walk is that portrait with its legs swung by a cut-out rig, pink is a
+// recolour of the same pixels, and the held-drink pose is the same figure
+// with the glass in its hand. So the orange and pink versions are always
+// the same person, and every file shares one canvas — swapping walk for
+// held never jogs the figure.
 //
-// `stride` is how far the leading foot travels across the cycle, as a
-// fraction of the frame's width — i.e. how much ground one step covers.
-// It's measured off the art itself and varies almost 2x between sheets
-// (0.20 to 0.39), because each was animated separately. It matters
-// because it sets how fast the legs have to cycle to keep the planted
-// foot still on the ground — see walkCycleMs().
+// To add a patron: add them to tools/patron_rig/characters.py, run its
+// build.py, add a row here with the canvas size and stride it prints, and
+// add a weight to PATRON_TYPE_WEIGHTS in constants.js.
+//
+// Every figure is drawn 267px tall on a 279px canvas, so one height puts
+// the whole roster at the same scale.
+const PATRON_HEIGHT = 89
+
+// Each entry's aspectRatio (canvas width / height) keeps the sprite from
+// stretching at PATRON_HEIGHT.
+//
+// `stride` is how far a foot travels across the cycle, as a fraction of
+// the frame's width — i.e. how much ground one step covers. build.py
+// measures it off the rig. It matters because it sets how fast the legs
+// have to cycle to keep the planted foot still on the ground — see
+// walkCycleMs(). The mom and the clown are low because only the mom's
+// calves show under her dress and the clown's baggy legs barely part:
+// they take quick short steps.
+const sheets = (patronType, width, stride) => [
+  { src: patronWalkSheet(patronType, 0), aspectRatio: width / 279, stride },
+  { src: patronWalkSheet(patronType, 1), aspectRatio: width / 279, stride },
+]
 const PATRON_WALK_SHEETS = {
-  0: [
-    { src: patronWalkSheet(0, 0), aspectRatio: 137 / 256, stride: 0.372 },
-    { src: patronWalkSheet(0, 1), aspectRatio: 131 / 256, stride: 0.393 },
-  ],
-  1: [
-    { src: patronWalkSheet(1, 0), aspectRatio: 235 / 256, stride: 0.270 },
-    { src: patronWalkSheet(1, 1), aspectRatio: 238 / 256, stride: 0.201 },
-  ],
-  2: [
-    { src: patronWalkSheet(2, 0), aspectRatio: 147 / 256, stride: 0.379 },
-    { src: patronWalkSheet(2, 1), aspectRatio: 144 / 256, stride: 0.379 },
-  ],
-  3: [
-    { src: patronWalkSheet(3, 0), aspectRatio: 137 / 256, stride: 0.278 },
-    { src: patronWalkSheet(3, 1), aspectRatio: 137 / 256, stride: 0.339 },
-  ],
-  // One PixelLab portrait, animated by a cut-out leg rig rather than
-  // generated frame by frame (tools/einstein_rig). Pink is a recolour of
-  // the same pixels, so both share one measured stride.
-  4: [
-    { src: patronWalkSheet(4, 0), aspectRatio: 196 / 279, stride: 0.320 },
-    { src: patronWalkSheet(4, 1), aspectRatio: 196 / 279, stride: 0.320 },
-  ],
-  5: [
-    { src: patronWalkSheet(5, 0), aspectRatio: 138 / 256, stride: 0.354 },
-    { src: patronWalkSheet(5, 1), aspectRatio: 138 / 256, stride: 0.339 },
-  ],
-  6: [
-    { src: patronWalkSheet(6, 0), aspectRatio: 138 / 256, stride: 0.345 },
-    { src: patronWalkSheet(6, 1), aspectRatio: 138 / 256, stride: 0.227 },
-  ],
-  7: [
-    { src: patronWalkSheet(7, 0), aspectRatio: 138 / 256, stride: 0.269 },
-    { src: patronWalkSheet(7, 1), aspectRatio: 138 / 256, stride: 0.371 },
-  ],
+  0: sheets(0, 191, 0.368),
+  1: sheets(1, 294, 0.126),
+  2: sheets(2, 201, 0.25),
+  3: sheets(3, 202, 0.304),
+  4: sheets(4, 196, 0.320),
+  5: sheets(5, 171, 0.34),
+  6: sheets(6, 187, 0.275),
+  7: sheets(7, 200, 0.3),
+  8: sheets(8, 227, 0.14),
 }
 
 // The legs have to cycle at whatever rate keeps the planted foot from
@@ -142,7 +118,7 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
           alt=""
           className={isToasting ? 'patron-toast' : undefined}
           style={{
-            height: PATRON_HEIGHT[patronType],
+            height: PATRON_HEIGHT,
             width: 'auto',
             display: 'block',
             // Rocked back on their heels while the shove carries them.
@@ -154,13 +130,13 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
         <div
           className="patron-walk-cycle-sprite"
           style={{
-            height: PATRON_HEIGHT[patronType],
-            width: PATRON_HEIGHT[patronType] * walkSheet.aspectRatio,
+            height: PATRON_HEIGHT,
+            width: PATRON_HEIGHT * walkSheet.aspectRatio,
             backgroundImage: `url(${walkSheet.src})`,
             // Safe alongside the sprite animation — that only animates
             // background-position-x, so it doesn't own this.
             animationDuration: `${Math.round(
-              walkCycleMs(walkSheet, PATRON_HEIGHT[patronType] * walkSheet.aspectRatio, speed)
+              walkCycleMs(walkSheet, PATRON_HEIGHT * walkSheet.aspectRatio, speed)
             )}ms`,
           }}
         />
@@ -170,7 +146,7 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
             src={patronPortrait(patronType, drinkType)}
             alt=""
             style={{
-              height: PATRON_HEIGHT[patronType],
+              height: PATRON_HEIGHT,
               width: 'auto',
               display: 'block',
             }}
