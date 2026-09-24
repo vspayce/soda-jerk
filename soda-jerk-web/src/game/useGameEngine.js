@@ -145,6 +145,7 @@ function createSlideLevelState() {
     patrons: [], // { id, lane, t, speed, patronType, drinkType } coming toward you
     glasses: [], // { id, lane, t, v, drinkType } sliding away from you
     served: 0,
+    wasted: false, // a drink went down a bar with nobody on it — ends the round
     resultText: null,
     resultKind: null,
     resultHoldMs: 0,
@@ -632,14 +633,22 @@ function stepSlide(sim, dt) {
       s.served++
       sim.score += C.SLIDE_POINTS
     } else if (g.t > 1 || g.v <= 0) {
-      // Off the far end, or run out of steam short of anyone.
+      // Off the far end, or run out of steam short of anyone. Sent down a
+      // bar with nobody on it at all, it ends the round — same as a drink
+      // slid to an empty lane on the main bar.
       g._done = true
+      if (!s.patrons.some((p) => !p._done && p.lane === g.lane)) s.wasted = true
     }
   }
   s.glasses = s.glasses.filter((g) => !g._done)
   s.patrons = s.patrons.filter((p) => !p._done)
 
-  if (s.patrons.some((p) => p.t <= 0)) {
+  if (s.wasted) {
+    s.ended = true
+    s.resultKind = 'no-patron'
+    s.resultText = `NOBODY THERE — ${s.served} SERVED`
+    s.resultHoldMs = C.SLIDE_END_HOLD_MS
+  } else if (s.patrons.some((p) => p.t <= 0)) {
     s.ended = true
     s.resultKind = 'breach'
     s.resultText = `THEY GOT THROUGH — ${s.served} SERVED`

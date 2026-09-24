@@ -86,7 +86,7 @@ export default function SlideLevel({ slideLevel, onFlick }) {
       >
         <div className="font-display text-brass text-lg tracking-[0.2em]">GLASS SLIDE</div>
         <div className="text-cream/60 text-[11px] tracking-[0.2em] mt-1">
-          KEEP THEM BACK — SWIPE UP A BAR
+          SWIPE UP A BAR — NEVER AN EMPTY ONE
         </div>
         <div className="font-display text-cream/80 text-sm tracking-widest mt-1">
           {slideLevel.served} SERVED

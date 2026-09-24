@@ -13,10 +13,8 @@ const ROWS = [
     label: 'Catch a returning glass',
     points: POINTS_PER_CAUGHT_GLASS,
     icons: [ART_SRC('glass-empty.png')],
-    // The glass art is a nearly-white, mostly-transparent outline — same
-    // problem as in the lane itself, so it gets the same glow treatment
-    // to actually be visible here.
-    glow: true,
+    // Twinkles like the returning glass does in the lane.
+    glint: true,
   },
   {
     label: 'Grab a hot dog',
@@ -32,7 +30,7 @@ export default function InstructionsScreen({ onContinue, onShowLingo }) {
       <div className="text-cream/50 text-xs tracking-[0.2em] mb-6">TAP A DRINK FOR A GLASS SLIDE — MATCH THEIR OUTFIT</div>
 
       <div className="w-full max-w-xs mb-6">
-        {ROWS.map(({ label, points, icons, glow }, i) => (
+        {ROWS.map(({ label, points, icons, glint }, i) => (
           <div
             key={label}
             className="flex items-center justify-between py-3 gap-3"
@@ -40,20 +38,6 @@ export default function InstructionsScreen({ onContinue, onShowLingo }) {
           >
             <div className="flex items-center gap-3">
               <div className="relative flex items-center justify-center gap-1" style={{ width: 52 }}>
-                {glow && (
-                  <div
-                    className="absolute"
-                    style={{
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
-                      background: 'radial-gradient(circle, rgba(255,221,140,0.85) 0%, rgba(255,221,140,0) 70%)',
-                    }}
-                  />
-                )}
                 {icons.map((src) => (
                   <img
                     key={src}
@@ -67,7 +51,7 @@ export default function InstructionsScreen({ onContinue, onShowLingo }) {
                     two out-of-sync glints (see Lane.jsx), so the thing
                     you're told to look for here looks like the thing you
                     then have to spot mid-game. */}
-                {glow && (
+                {glint && (
                   <>
                     <div className="glass-glint absolute" style={{ top: '22%', left: '36%' }} />
                     <div
