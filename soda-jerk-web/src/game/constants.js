@@ -87,6 +87,11 @@ export const BONUS_EVERY_LEVELS = 3
 // they don't enter stacked on top of each other.
 export const DOOR_GAP_X = 14
 
+// Each level opens with this many of every bar's crowd already standing at
+// it (at these spots along the bar), rather than everyone walking in.
+export const STARTING_PER_BAR = 2
+export const STARTING_X = [88, 70]
+
 // The show: grabbing the hot dog sets the dachshund dancing (see
 // Celebration.jsx) for SHOW_MS. Each patron walking in at that moment has
 // SHOW_WATCH_CHANCE of turning round to watch. A watcher stops advancing
@@ -457,13 +462,15 @@ export const TEMPEST_JERK_SPEED = 5.2 // spokes per second
 // once. The ramp below is what makes the round end, so the opening speed
 // only has to be playable — this is a touch quicker than it was, and gets
 // genuinely fast on its own.
-export const TEMPEST_PATRON_SPEED_MIN = 0.17 // t per second
-export const TEMPEST_PATRON_SPEED_MAX = 0.26
+// Then 15% quicker again — it was still too easy.
+export const TEMPEST_PATRON_SPEED_MIN = 0.195 // t per second
+export const TEMPEST_PATRON_SPEED_MAX = 0.3
 // Climbing speed ramps as well as spawn rate, so the round tightens
 // instead of just getting more crowded — and so it ends without a timer.
 export const TEMPEST_SPEED_RAMP = 1.6
-export const TEMPEST_SPAWN_MIN_MS = 900
-export const TEMPEST_SPAWN_MAX_MS = 1900
+// 15% more climbers than before (intervals cut by 1/1.15).
+export const TEMPEST_SPAWN_MIN_MS = 780
+export const TEMPEST_SPAWN_MAX_MS = 1650
 // Ramps up over the round so it keeps tightening.
 export const TEMPEST_SPAWN_RAMP = 0.55 // final interval as a fraction of the starting one
 

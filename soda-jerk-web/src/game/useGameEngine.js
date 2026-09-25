@@ -250,7 +250,7 @@ function createInitialSim() {
     // before awaitingContinue kicks in
     pendingMissReason: null, // which missReason to apply once
     // continuePauseInMs elapses — see the handler for it below
-    nextSpawnInMs: FIRST_ENTRY_MS,
+    nextSpawnInMs: 0, // set by startLevel
     nextBonusInMs: randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS),
     nextId: 1,
   }
@@ -285,18 +285,26 @@ function returnToBar(sim) {
   startLevel(sim)
 }
 
-// How soon the first patron of a level walks in.
-const FIRST_ENTRY_MS = 700
-
-// Sets the bar up for sim.level from scratch: its full crowd waiting at the
-// doors, nobody on the bar. Used at the start of every level, and to
-// restart one after a life is lost.
+// Sets the bar up for sim.level from scratch: STARTING_PER_BAR of each
+// bar's crowd already standing at it, the rest waiting at the doors. Used
+// at the start of every level, and to restart one after a life is lost.
 function startLevel(sim) {
-  sim.roster = [...getLevel(sim.level).crowd]
+  const lvl = getLevel(sim.level)
+  const walkSpeed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (lvl.travelMs / 1000)
+  sim.roster = [...lvl.crowd]
   sim.customers = []
   sim.mugs = []
   sim.glasses = []
-  sim.nextSpawnInMs = FIRST_ENTRY_MS
+  for (let lane = 0; lane < C.LANE_COUNT; lane++) {
+    const n = Math.min(C.STARTING_PER_BAR, sim.roster[lane])
+    for (let i = 0; i < n; i++) {
+      // spaced down the far half of the bar, a little different each lane
+      const x = C.STARTING_X[i] + randomBetween(-3, 3)
+      spawnPatron(sim, lane, walkSpeed, x)
+    }
+    sim.roster[lane] -= n
+  }
+  sim.nextSpawnInMs = lvl.entryMs
 }
 
 // Nobody walks in on top of someone who only just came through the same
@@ -308,14 +316,14 @@ function doorClear(sim, lane) {
   return !sim.customers.some((c) => c.lane === lane && c.x > C.OFFSCREEN_X - C.DOOR_GAP_X)
 }
 
-function spawnPatron(sim, lane, walkSpeed) {
+function spawnPatron(sim, lane, walkSpeed, x = C.OFFSCREEN_X) {
   const drinkType = Math.floor(Math.random() * C.DRINK_TYPES.length)
   // Patron types aren't picked evenly — see PATRON_TYPE_WEIGHTS.
   const patronType = pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
   sim.customers.push({
     id: sim.nextId++,
     lane,
-    x: C.OFFSCREEN_X,
+    x,
     // walking -> toasting -> leaving-happy (shoved back) -> either out the
     // door (removed, for good) or drinking -> walking again.
     // watching: turned round for the dachshund's show.
@@ -892,6 +900,10 @@ function step(sim, dt) {
     sim.bonus.remainingMs -= dt * 1000
     if (sim.bonus.remainingMs <= 0) {
       sim.bonus = null
+      // If he was running for it, he stops where he is — clearing only the
+      // target left him running on into the end of the bar, stuck there
+      // until the next pour reset him.
+      if (sim.runTargetX !== null) sim.moveDir = 0
       sim.runTargetX = null
     }
   }
@@ -1471,13 +1483,16 @@ export function useGameEngine() {
   }, [])
 
   const startGame = useCallback(() => {
-    simRef.current.started = true
+    const sim = simRef.current
+    sim.started = true
+    startLevel(sim) // puts level 1's opening patrons at the bar
     setTick((n) => n + 1)
   }, [])
 
   const restart = useCallback(() => {
     simRef.current = createInitialSim()
     simRef.current.started = true // reopening after game-over skips the splash
+    startLevel(simRef.current)
     lastTsRef.current = null
     setTick((n) => n + 1)
   }, [])
