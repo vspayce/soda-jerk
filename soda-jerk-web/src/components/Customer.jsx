@@ -20,7 +20,7 @@ const DANGER_X = PLAYER_X + 22
 // held never jogs the figure.
 //
 // To add a patron: add them to tools/patron_rig/characters.py, run its
-// build.py, add a row here with the canvas size and stride it prints, and
+// build.py, add a row here with the canvas size and ground it prints, and
 // add a weight to PATRON_TYPE_WEIGHTS in constants.js.
 //
 // Every figure is drawn 267px tall on a 279px canvas, so one height puts
@@ -30,64 +30,55 @@ const PATRON_HEIGHT = 89
 // Each entry's aspectRatio (canvas width / height) keeps the sprite from
 // stretching at PATRON_HEIGHT.
 //
-// `stride` is how far a foot travels across the cycle, as a fraction of
-// the frame's width — i.e. how much ground one step covers. build.py
-// measures it off the rig. It matters because it sets how fast the legs
-// have to cycle to keep the planted foot still on the ground — see
-// walkCycleMs(). The mom and the clown are low because only the mom's
-// calves show under her dress and the clown's baggy legs barely part:
-// they take quick short steps.
-const sheets = (patronType, width, stride) => [
-  { src: patronWalkSheet(patronType, 0), aspectRatio: width / 279, stride },
-  { src: patronWalkSheet(patronType, 1), aspectRatio: width / 279, stride },
+// `ground` is how far one walk cycle carries the figure, as a fraction of
+// its height: the backward travel of whichever foot is planted, added up
+// over the cycle. tools/patron_rig/build.py measures it off the rig and
+// prints it. It's what times the legs — see walkCycleMs().
+const sheets = (patronType, width, ground) => [
+  { src: patronWalkSheet(patronType, 0), aspectRatio: width / 279, ground },
+  { src: patronWalkSheet(patronType, 1), aspectRatio: width / 279, ground },
 ]
 const PATRON_WALK_SHEETS = {
-  0: sheets(0, 191, 0.368),
-  1: sheets(1, 294, 0.126),
-  2: sheets(2, 201, 0.333),
-  3: sheets(3, 202, 0.304),
-  4: sheets(4, 196, 0.374),
-  5: sheets(5, 171, 0.466),
-  6: sheets(6, 187, 0.386),
-  7: sheets(7, 200, 0.3),
-  8: sheets(8, 227, 0.14),
-  9: sheets(9, 206, 0.411),
-  10: sheets(10, 192, 0.181),
-  11: sheets(11, 158, 0.304),
+  0: sheets(0, 191, 0.436),
+  1: sheets(1, 294, 0.237),
+  2: sheets(2, 201, 0.427),
+  3: sheets(3, 202, 0.251),
+  4: sheets(4, 196, 0.471),
+  5: sheets(5, 171, 0.496),
+  6: sheets(6, 187, 0.456),
+  7: sheets(7, 200, 0.357),
+  8: sheets(8, 227, 0.192),
+  9: sheets(9, 206, 0.537),
+  10: sheets(10, 192, 0.211),
+  11: sheets(11, 158, 0.32),
 }
 
-// The legs have to cycle at whatever rate keeps the planted foot from
-// sliding along the floor. That rate isn't a constant: the game walks
-// patrons ~2.3x faster at the top level than the first (see
-// customerTravelMs in levels.js), and a served patron walks out faster
-// still, while the sheets themselves differ ~2x in how much ground one
-// step covers. A fixed duration therefore only ever matched one
-// combination, and everything else moonwalked — worst on the
-// short-stride sheets, which is why the two original hand-supplied
-// patrons (the longest strides in the set) looked fine while the
-// generated ones didn't.
+// The legs have to cycle so that, over one cycle, the body moves exactly
+// as far as the planted foot pushes it — then that foot stays put on the
+// floor. Cycle too fast and the foot slides backwards under them, which
+// reads as walking backwards; too slow and they skate.
 //
-// The reference point is patron-orange at the level-1 walk-in speed,
-// which is the combination that already read correctly; everything else
-// is scaled off it, so this is a pure ratio and needs no lane-width or
-// pixel conversion.
-const REF_CYCLE_MS = 900
-const REF_STRIDE = 0.372
-const REF_WIDTH = 89 * (137 / 256)
-const REF_SPEED = (108 - 16) / (14702 / 1000) // lane-% per second, level 1
-
-function walkCycleMs(sheet, widthPx, speed) {
-  if (!speed) return REF_CYCLE_MS
-  const groundPerCycle = (sheet.stride * widthPx) / (REF_STRIDE * REF_WIDTH)
-  const ms = REF_CYCLE_MS * groundPerCycle * (REF_SPEED / Math.abs(speed))
+// That's a straight distance-over-speed sum: the ground one cycle covers
+// (in px, from `ground` at PATRON_HEIGHT) over how fast they're walking (in
+// px/s, which needs the lane's actual width on screen, since positions
+// are percentages of it). An earlier version scaled everything off one
+// patron that looked right on one screen size instead, and every walk
+// came out about 1.5x too fast.
+function walkCycleMs(sheet, laneWidthPx, speed) {
+  if (!speed || !laneWidthPx) return 900
+  const pxPerSecond = (Math.abs(speed) / 100) * laneWidthPx
+  const ms = ((sheet.ground * PATRON_HEIGHT) / pxPerSecond) * 1000
   // Keep it inside a believable gait even if a level speed goes to an
   // extreme. The floor is roughly eight frames at 60fps — below that the
   // browser drops frames anyway, so a lower number buys nothing and only
   // lets the feet slip.
-  return Math.max(140, Math.min(1500, ms))
+  return Math.max(140, Math.min(1800, ms))
 }
 
-export default function Customer({ x, drinkType, patronType, status, drinkName, speed }) {
+// `still`: walking, but not going anywhere right now — a mid-walk hitch, or
+// the whole game frozen behind a screen. The legs stop too, or they'd walk
+// on the spot, which reads as walking backwards.
+export default function Customer({ x, drinkType, patronType, status, drinkName, speed, laneWidthPx, still }) {
   const isUrgent = status === 'walking' && x <= DANGER_X
   // Caught the drink and now sliding back from it. They keep
   // facing the bartender the whole way — they're being shoved, not walking
@@ -151,8 +142,9 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
             // Safe alongside the sprite animation — that only animates
             // background-position-x, so it doesn't own this.
             animationDuration: `${Math.round(
-              walkCycleMs(walkSheet, PATRON_HEIGHT * walkSheet.aspectRatio, speed)
+              walkCycleMs(walkSheet, laneWidthPx, speed)
             )}ms`,
+            animationPlayState: still ? 'paused' : 'running',
           }}
         />
       ) : (

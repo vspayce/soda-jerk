@@ -403,19 +403,22 @@ def _foot(leg):
     return (xs.min() + xs.max()) / 2 / SS, bot / SS
 
 
-def stride(cfg, img):
-    """How far a foot travels from its most forward to its most rearward
-    point across the cycle, as a fraction of the frame's width (averaged
-    over the two feet) — the `stride` Customer.jsx uses to time the legs so
-    the planted foot doesn't slide. Same measure the hand-checked sheets
-    were given."""
+def ground(cfg, img):
+    """How far the figure travels over one walk cycle, as a fraction of the
+    canvas height: the backward travel of whichever foot is planted, added
+    up frame by frame. Customer.jsx times each cycle so the body covers
+    exactly this much ground in it — then the planted foot stays put on
+    the floor instead of sliding back (which reads as walking backwards)
+    or forward (skating)."""
     feet = []
     frames(cfg, img, feet=feet)
-    spans = []
-    for k in (0, 1):
-        xs = [f[k][0] for f in feet]
-        spans.append(max(xs) - min(xs))
-    return sum(spans) / len(spans) / img.width
+    n = len(feet)
+    total = 0.0
+    for i in range(n):
+        f, g = feet[i], feet[(i + 1) % n]
+        k = 0 if f[0][1] >= f[1][1] else 1
+        total += g[k][0] - f[k][0]
+    return total / img.height
 
 
 def sheet(fr):

@@ -247,6 +247,7 @@ export default function App() {
               key={laneIndex}
               laneIndex={laneIndex}
               levelPassed={state.awaitingStageAdvance ? state.clearCount : null}
+              frozen={state.paused || state.awaitingContinue || state.awaitingStageAdvance || state.gameOver}
               isPlayerLane={state.playerLane === laneIndex}
               playerX={state.playerX}
               moveDir={state.playerLane === laneIndex ? state.moveDir : 0}

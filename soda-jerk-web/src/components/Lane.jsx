@@ -57,6 +57,7 @@ export default function Lane({
   throwing,
   laneIndex,
   levelPassed, // clearCount while the LEVEL PASSED screen is up, else null
+  frozen, // the sim isn't running (a miss, level-passed or settings screen)
   onGrabBonus,
   onGrabGlass,
 }) {
@@ -68,6 +69,21 @@ export default function Lane({
   // customer heading back out is left alone, still visible the whole way.
   const visibleCustomers = customers.filter((c) => c.status !== 'walking' || c.x <= DOOR_X)
   const enteringCount = customers.filter((c) => c.status === 'walking' && c.x <= DOOR_X).length
+
+  // Positions are percentages of the lane, so a patron's actual walking
+  // speed on screen depends on how wide it is — Customer needs that to time
+  // their legs to the ground.
+  const laneRef = useRef(null)
+  const [laneWidthPx, setLaneWidthPx] = useState(0)
+  useEffect(() => {
+    const el = laneRef.current
+    if (!el) return
+    const measure = () => setLaneWidthPx(el.getBoundingClientRect().width)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const prevEnteringCountRef = useRef(enteringCount)
   const [doorSwinging, setDoorSwinging] = useState(false)
@@ -82,7 +98,7 @@ export default function Lane({
   }, [enteringCount])
 
   return (
-    <div className="relative flex-1 min-h-0" data-lane-index={laneIndex}>
+    <div ref={laneRef} className="relative flex-1 min-h-0" data-lane-index={laneIndex}>
       {/* aisle floor beneath the counter, so the lane reads as a distinct row */}
       <div className="absolute left-0 right-0 top-1/2 h-9 -translate-y-1/2 opacity-25 bg-black rounded-sm" />
 
@@ -158,6 +174,8 @@ export default function Lane({
           status={c.status}
           drinkName={c.drinkName}
           speed={c.speed}
+          laneWidthPx={laneWidthPx}
+          still={frozen || c.pauseMs > 0}
         />
       ))}
 
