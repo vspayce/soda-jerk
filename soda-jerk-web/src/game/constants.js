@@ -63,14 +63,16 @@ export const CUSTOMER_PUSH_RESISTANCE = { 1: 0.55 }
 // the catch, not a pose.
 export const CUSTOMER_TOAST_MS = 220
 
-// A walking-in customer occasionally pauses for a beat instead of
-// marching in a dead straight line — feels more like browsing, less
-// like a conveyor belt, and gives more of a stuttering gait. Chance is
-// per frame (~60fps), so on average that's roughly one pause every
-// 2.5-3 seconds of walking.
-export const WALK_PAUSE_CHANCE_PER_FRAME = 0.006
-export const WALK_PAUSE_MIN_MS = 350
-export const WALK_PAUSE_MAX_MS = 800
+// Patrons come on in steps: a short walk, a stop, another short walk —
+// sizing you up on the way in rather than marching straight at you. Each
+// step covers WALK_STEP_MIN-MAX of the bar (in lane %), then they stand
+// for WALK_STEP_PAUSE_MIN-MAX ms. The pause is scaled by the level's
+// pace (against level 1), so faster levels stop for less time as well as
+// walking quicker.
+export const WALK_STEP_MIN = 5
+export const WALK_STEP_MAX = 9
+export const WALK_STEP_PAUSE_MIN_MS = 450
+export const WALK_STEP_PAUSE_MAX_MS = 900
 
 // Pacing and the crowd for each level live in levels.js.
 
@@ -88,9 +90,9 @@ export const BONUS_EVERY_LEVELS = 3
 export const DOOR_GAP_X = 14
 
 // Each level opens with this many of every bar's crowd already standing at
-// it (at these spots along the bar), rather than everyone walking in.
+// the far end of it, by the doors, rather than everyone walking in.
 export const STARTING_PER_BAR = 2
-export const STARTING_X = [88, 70]
+export const STARTING_X = [91, 82] // just inside the doors
 
 // The show: grabbing the hot dog sets the dachshund dancing (see
 // Celebration.jsx) for SHOW_MS. Each patron walking in at that moment has

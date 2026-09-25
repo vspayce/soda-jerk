@@ -335,8 +335,8 @@ function spawnPatron(sim, lane, walkSpeed, x = C.OFFSCREEN_X) {
     watchMs: 0,
     drinkType,
     patronType, // which illustration to use
-    pauseMs: 0, // counts down while paused mid-walk — see below, keeps
-    // them from marching in a dead straight line the whole way
+    pauseMs: 0, // counts down while standing between steps
+    stepLeft: randomBetween(C.WALK_STEP_MIN, C.WALK_STEP_MAX), // of this step, in lane %
     drinkName: C.DRINK_TYPES[drinkType].name,
     color: C.DRINK_TYPES[drinkType].color,
   })
@@ -945,12 +945,14 @@ function step(sim, dt) {
       if (c.pauseMs > 0) {
         c.pauseMs -= dt * 1000
       } else {
-        c.x -= c.speed * dt
-        // Every so often, stop for a beat instead of marching in dead
-        // a straight line the whole way — just a brief hitch, not a
-        // real stall.
-        if (Math.random() < C.WALK_PAUSE_CHANCE_PER_FRAME) {
-          c.pauseMs = randomBetween(C.WALK_PAUSE_MIN_MS, C.WALK_PAUSE_MAX_MS)
+        const d = c.speed * dt
+        c.x -= d
+        c.stepLeft -= d
+        // A step's done: stand a moment, then take the next one (see
+        // WALK_STEP_* in constants.js).
+        if (c.stepLeft <= 0) {
+          c.stepLeft = randomBetween(C.WALK_STEP_MIN, C.WALK_STEP_MAX)
+          c.pauseMs = randomBetween(C.WALK_STEP_PAUSE_MIN_MS, C.WALK_STEP_PAUSE_MAX_MS) * lvl.travelMs / getLevel(1).travelMs
         }
       }
     } else if (c.status === 'toasting') {
