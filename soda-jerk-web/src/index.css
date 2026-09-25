@@ -334,6 +334,18 @@ body {
 /* The jerk's run: the same 8-frame sheet mechanics, at a sprint. Fully
    matching his ground speed would mean ~240ms a cycle, which is too fast
    to read, so the feet slip a little in exchange for legible legs. */
+/* Standing between steps, clamouring for a drink: a little hop and a lean
+   in toward the bar, over and over. */
+@keyframes patron-clamor {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-3px) rotate(-3deg); }
+  60% { transform: translateY(0) rotate(1deg); }
+}
+.patron-clamor {
+  transform-origin: 50% 100%;
+  animation: patron-clamor 380ms ease-in-out infinite;
+}
+
 /* Drinking: tipped back on their heels for a swallow, again and again,
    pivoting at the feet so they stay planted on the counter line. */
 @keyframes patron-sip {

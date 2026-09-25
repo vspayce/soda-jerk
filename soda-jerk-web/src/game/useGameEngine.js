@@ -214,6 +214,12 @@ function createInitialSim() {
     // screen, entered when the player continues
     roster: [...getLevel(1).crowd], // per lane, patrons still to walk in
     // for the first time this level
+    reentries: [], // patrons shoved out the door, on their way back in:
+    // { lane, inMs, patronType, drinkType }
+    laneReversed: [false, false, false, false], // per bar: flipped, with the
+    // tap on the right and the door on the left (see `reversed` in levels.js).
+    // Everything in the sim stays in "distance from the tap" terms; only
+    // the drawing (Lane.jsx) and which way a drag runs are mirrored.
     awaitingStageAdvance: false, // true once the level's passed — freezes
     // the sim (like awaitingContinue) until the "LEVEL PASSED" screen is
     // dismissed via advanceStage()
@@ -272,6 +278,17 @@ function loseLife(sim, n = 1) {
 // and is still sitting there, stale, when the player comes back (a
 // returning glass frozen past the counter's edge then counts as missed
 // immediately). Clear the board on the way back instead.
+// Moving to another bar puts him back at its tap, wherever he'd run off to
+// along the one he left — bars can face opposite ways, so "the same spot"
+// wouldn't mean anything.
+function moveToLane(sim, lane) {
+  if (lane === sim.playerLane) return
+  sim.playerLane = lane
+  sim.playerX = C.PLAYER_X
+  sim.moveDir = 0
+  sim.runTargetX = null
+}
+
 function returnToBar(sim) {
   sim.mode = 'bar'
   for (const round of BONUS_ROUNDS) sim[round.key] = null
@@ -292,6 +309,8 @@ function startLevel(sim) {
   const lvl = getLevel(sim.level)
   const walkSpeed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (lvl.travelMs / 1000)
   sim.roster = [...lvl.crowd]
+  sim.reentries = []
+  sim.laneReversed = lvl.reversed.map(Boolean)
   sim.customers = []
   sim.mugs = []
   sim.glasses = []
@@ -316,16 +335,17 @@ function doorClear(sim, lane) {
   return !sim.customers.some((c) => c.lane === lane && c.x > C.OFFSCREEN_X - C.DOOR_GAP_X)
 }
 
-function spawnPatron(sim, lane, walkSpeed, x = C.OFFSCREEN_X) {
-  const drinkType = Math.floor(Math.random() * C.DRINK_TYPES.length)
+// `who` carries a returning patron's identity back in with them.
+function spawnPatron(sim, lane, walkSpeed, x = C.OFFSCREEN_X, who = null) {
+  const drinkType = who ? who.drinkType : Math.floor(Math.random() * C.DRINK_TYPES.length)
   // Patron types aren't picked evenly — see PATRON_TYPE_WEIGHTS.
-  const patronType = pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
+  const patronType = who ? who.patronType : pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
   sim.customers.push({
     id: sim.nextId++,
     lane,
     x,
     // walking -> toasting -> leaving-happy (shoved back) -> either out the
-    // door (removed, for good) or drinking -> walking again.
+    // door (removed, back in later) or drinking -> walking again.
     // watching: turned round for the dachshund's show.
     status: 'walking',
     speed: walkSpeed,
@@ -336,7 +356,7 @@ function spawnPatron(sim, lane, walkSpeed, x = C.OFFSCREEN_X) {
     drinkType,
     patronType, // which illustration to use
     pauseMs: 0, // counts down while standing between steps
-    stepLeft: randomBetween(C.WALK_STEP_MIN, C.WALK_STEP_MAX), // of this step, in lane %
+    stepLeft: C.WALK_STEP, // of this step, in lane %
     drinkName: C.DRINK_TYPES[drinkType].name,
     color: C.DRINK_TYPES[drinkType].color,
   })
@@ -820,6 +840,19 @@ function step(sim, dt) {
   const lvl = getLevel(sim.level)
   const walkSpeed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (lvl.travelMs / 1000)
 
+  // Patrons shoved out the door come back in after a while — unless the
+  // bar's clear of the whole crowd, in which case the level's passing and
+  // they stay out.
+  const barClear = sim.roster.every((n) => n === 0) && sim.customers.length === 0
+  for (const r of sim.reentries) {
+    r.inMs -= dt * 1000
+    if (!barClear && r.inMs <= 0 && doorClear(sim, r.lane)) {
+      spawnPatron(sim, r.lane, walkSpeed, C.OFFSCREEN_X, r)
+      r._done = true
+    }
+  }
+  sim.reentries = sim.reentries.filter((r) => !r._done)
+
   // The level's crowd walks in one at a time, into any lane that still has
   // someone waiting to come in. Nobody's kept waiting on an empty bar,
   // though — if you've cleared everyone who's in, the next one comes
@@ -951,8 +984,8 @@ function step(sim, dt) {
         // A step's done: stand a moment, then take the next one (see
         // WALK_STEP_* in constants.js).
         if (c.stepLeft <= 0) {
-          c.stepLeft = randomBetween(C.WALK_STEP_MIN, C.WALK_STEP_MAX)
-          c.pauseMs = randomBetween(C.WALK_STEP_PAUSE_MIN_MS, C.WALK_STEP_PAUSE_MAX_MS) * lvl.travelMs / getLevel(1).travelMs
+          c.stepLeft += C.WALK_STEP
+          c.pauseMs = (C.WALK_STEP_PAUSE_MS * lvl.travelMs) / getLevel(1).travelMs
         }
       }
     } else if (c.status === 'toasting') {
@@ -972,10 +1005,13 @@ function step(sim, dt) {
       // the stop lands exactly on pushTargetX however far the shove was.
       const remaining = c.pushTargetX - c.x
       if (remaining <= 0.2) {
-        // The shove is spent. Off the end means out the door, and done;
-        // short of that, they stop and drink up.
+        // The shove is spent. Off the end means out the door — that's what
+        // scores — and back in a while later; short of that, they stop and
+        // drink up.
         if (c.x >= C.OFFSCREEN_X) {
           c._remove = true
+          sim.score += C.OUST_POINTS_BY_STAGE[Math.min(sim.stage, C.OUST_POINTS_BY_STAGE.length) - 1]
+          sim.reentries.push({ lane: c.lane, inMs: lvl.reenterMs, patronType: c.patronType, drinkType: c.drinkType })
         } else {
           c.status = 'drinking'
           c.drinkMs = lvl.drinkMs
@@ -1020,7 +1056,6 @@ function step(sim, dt) {
       (c) => c.lane === m.lane && c.status === 'walking' && c.drinkType === m.drinkType
     )
     if (target && m.x >= target.x) {
-      sim.score += C.POINTS_PER_SERVE
       // Every drink shoves. Whether that's the last one
       // depends on where it leaves them, not on a per-customer counter.
       target.status = 'toasting'
@@ -1130,8 +1165,8 @@ function step(sim, dt) {
   // screens can't collide.
   const missPending = sim.continuePauseInMs !== null || sim.pendingSprayDrinkType !== null
   if (!sim.gameOver && !sim.awaitingContinue && !missPending && !sim.awaitingStageAdvance) {
-    const barClear = sim.roster.every((n) => n === 0) && sim.customers.length === 0
-    if (barClear && sim.mugs.length === 0 && sim.glasses.length === 0) {
+    const levelClear = sim.roster.every((n) => n === 0) && sim.customers.length === 0
+    if (levelClear && sim.mugs.length === 0 && sim.glasses.length === 0) {
       sim.clearCount += 1
       sim.awaitingStageAdvance = true
       sim.pendingBonusMode = sim.clearCount % C.BONUS_EVERY_LEVELS === 0 ? pick(BONUS_MODES) : null
@@ -1164,7 +1199,7 @@ export function useGameEngine() {
     let newLane = sim.playerLane + direction
     if (newLane < 0) newLane = C.LANE_COUNT - 1
     if (newLane >= C.LANE_COUNT) newLane = 0
-    sim.playerLane = newLane
+    moveToLane(sim, newLane)
   }, [])
 
   // Tapping a lane directly jumps straight to it — no need to swipe
@@ -1173,7 +1208,7 @@ export function useGameEngine() {
     const sim = simRef.current
     if (sim.gameOver) return
     if (laneIndex < 0 || laneIndex >= C.LANE_COUNT) return
-    sim.playerLane = laneIndex
+    moveToLane(sim, laneIndex)
   }, [])
 
   // Tapping a drink both picks it and pours it in one motion — no
@@ -1253,7 +1288,8 @@ export function useGameEngine() {
     // so the spray (and the pause after it) never actually fires.
     if (sim.pendingSprayDrinkType !== null) return
     sim.runTargetX = null // manual control cancels any auto-run to the hot dog
-    sim.moveDir = direction
+    // `direction` is on screen; a flipped bar runs the other way along it
+    sim.moveDir = sim.laneReversed[sim.playerLane] ? -direction : direction
   }, [])
 
   const stopRun = useCallback(() => {

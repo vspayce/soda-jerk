@@ -1,12 +1,13 @@
-import { POINTS_PER_SERVE, POINTS_PER_CAUGHT_GLASS, POINTS_PER_BONUS } from '../game/constants.js'
+import { OUST_POINTS_BY_STAGE, POINTS_PER_CAUGHT_GLASS, POINTS_PER_BONUS } from '../game/constants.js'
 import SignButton from './SignButton.jsx'
 import { ART_SRC } from '../game/art.js'
 
 
 const ROWS = [
   {
-    label: 'Serve a customer their drink',
-    points: POINTS_PER_SERVE,
+    label: 'Knock a patron out the door',
+    // more at the fancier venues
+    points: `${OUST_POINTS_BY_STAGE[0]}–${OUST_POINTS_BY_STAGE[OUST_POINTS_BY_STAGE.length - 1]}`,
     icons: [ART_SRC('drink-orange.png'), ART_SRC('drink-pink.png')],
   },
   {
@@ -78,9 +79,9 @@ export default function InstructionsScreen({ onContinue, onShowLingo }) {
         </div>
         <div className="text-cream/80 text-xs leading-snug">
           A drink <span className="text-brass font-display">knocks them back</span> down the bar. Knock them out the
-          door and they're done; otherwise they stop to drink, slide the empty back to you, and come on again. A
-          parent with their kid is heavier and moves less per drink. Clear the whole crowd out to pass the
-          level. Grab a hot dog and the dachshund puts on a show — anyone watching it won't take a drink.
+          door and they'll be back in a while; otherwise they stop to drink, slide the empty back to you, and
+          come on again. A parent with their kid is heavier and moves less per drink. Get the whole crowd out at
+          once to pass the level — and watch for bars that flip, with the tap on the other end. Grab a hot dog and the dachshund puts on a show — anyone watching it won't take a drink.
         </div>
       </div>
 

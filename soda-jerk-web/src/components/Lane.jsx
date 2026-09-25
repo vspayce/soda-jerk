@@ -58,6 +58,7 @@ export default function Lane({
   laneIndex,
   levelPassed, // clearCount while the LEVEL PASSED screen is up, else null
   frozen, // the sim isn't running (a miss, level-passed or settings screen)
+  reversed, // this bar's flipped: tap on the right, door on the left
   onGrabBonus,
   onGrabGlass,
 }) {
@@ -99,6 +100,10 @@ export default function Lane({
 
   return (
     <div ref={laneRef} className="relative flex-1 min-h-0" data-lane-index={laneIndex}>
+      {/* A flipped bar (tap on the right, door on the left) is the same bar
+          drawn mirrored — everything in it, patrons and jerk included, so
+          they face the way they're going. The sim never knows. */}
+      <div className="absolute inset-0" style={reversed ? { transform: 'scaleX(-1)' } : undefined}>
       {/* aisle floor beneath the counter, so the lane reads as a distinct row */}
       <div className="absolute left-0 right-0 top-1/2 h-9 -translate-y-1/2 opacity-25 bg-black rounded-sm" />
 
@@ -176,6 +181,7 @@ export default function Lane({
           speed={c.speed}
           laneWidthPx={laneWidthPx}
           still={frozen || c.pauseMs > 0}
+          clamoring={!frozen && c.status === 'walking' && c.pauseMs > 0}
         />
       ))}
 
@@ -240,6 +246,7 @@ export default function Lane({
           <img src={HOTDOG_SRC} alt="" className="glass-return" style={{ height: 13, width: 'auto', display: 'block' }} />
         </div>
       )}
+      </div>
     </div>
   )
 }

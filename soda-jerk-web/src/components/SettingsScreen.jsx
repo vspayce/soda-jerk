@@ -41,8 +41,9 @@ export default function SettingsScreen({
           <li>Tap a lane to jump to it, or swipe up/down to move one at a time.</li>
           <li>Drag left or right to run along the counter.</li>
           <li>Tap the drink matching a patron's outfit color to send a glass slide their way.</li>
-          <li>A drink knocks a patron back down the bar. Short of the door, they drink up, slide the empty back, and come on again.</li>
-          <li>Knock everyone in the level's crowd out the door to pass it — the count by your score shows how many are left.</li>
+          <li>A drink knocks a patron back down the bar. Knocked out the door, they score and come back later; short of it, they drink up, slide the empty back, and come on again.</li>
+          <li>Get the level's whole crowd out the door at once to pass it — the count by your score shows how many are on the bar or still to come.</li>
+          <li>Some levels flip bars around, with the tap on the right — drag toward the door to run that way.</li>
           <li>A hot dog sets the dachshund dancing; patrons who turn to watch won't take a drink — one sent at them slides out the door.</li>
           <li>Tap a returning glass or a hot dog to grab it, or just run over one.</li>
           <li>Don't let a patron reach the end of the bar — you'll lose a life and get sprayed.</li>

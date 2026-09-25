@@ -78,7 +78,8 @@ function walkCycleMs(sheet, laneWidthPx, speed) {
 // `still`: walking, but not going anywhere right now — a mid-walk hitch, or
 // the whole game frozen behind a screen. The legs stop too, or they'd walk
 // on the spot, which reads as walking backwards.
-export default function Customer({ x, drinkType, patronType, status, drinkName, speed, laneWidthPx, still }) {
+// `clamoring`: standing between steps, waving for a drink.
+export default function Customer({ x, drinkType, patronType, status, drinkName, speed, laneWidthPx, still, clamoring }) {
   const isUrgent = status === 'walking' && x <= DANGER_X
   // Caught the drink and now sliding back from it. They keep
   // facing the bartender the whole way — they're being shoved, not walking
@@ -133,20 +134,22 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
           style={{ height: PATRON_HEIGHT, width: 'auto', display: 'block' }}
         />
       ) : walkSheet ? (
-        <div
-          className="patron-walk-cycle-sprite"
-          style={{
-            height: PATRON_HEIGHT,
-            width: PATRON_HEIGHT * walkSheet.aspectRatio,
-            backgroundImage: `url(${walkSheet.src})`,
-            // Safe alongside the sprite animation — that only animates
-            // background-position-x, so it doesn't own this.
-            animationDuration: `${Math.round(
-              walkCycleMs(walkSheet, laneWidthPx, speed)
-            )}ms`,
-            animationPlayState: still ? 'paused' : 'running',
-          }}
-        />
+        <div className={clamoring ? 'patron-clamor' : undefined}>
+          <div
+            className="patron-walk-cycle-sprite"
+            style={{
+              height: PATRON_HEIGHT,
+              width: PATRON_HEIGHT * walkSheet.aspectRatio,
+              backgroundImage: `url(${walkSheet.src})`,
+              // Safe alongside the sprite animation — that only animates
+              // background-position-x, so it doesn't own this.
+              animationDuration: `${Math.round(
+                walkCycleMs(walkSheet, laneWidthPx, speed)
+              )}ms`,
+              animationPlayState: still ? 'paused' : 'running',
+            }}
+          />
+        </div>
       ) : (
         <div className="patron-walk">
           <img

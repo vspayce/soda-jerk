@@ -63,16 +63,12 @@ export const CUSTOMER_PUSH_RESISTANCE = { 1: 0.55 }
 // the catch, not a pose.
 export const CUSTOMER_TOAST_MS = 220
 
-// Patrons come on in steps: a short walk, a stop, another short walk —
-// sizing you up on the way in rather than marching straight at you. Each
-// step covers WALK_STEP_MIN-MAX of the bar (in lane %), then they stand
-// for WALK_STEP_PAUSE_MIN-MAX ms. The pause is scaled by the level's
-// pace (against level 1), so faster levels stop for less time as well as
-// walking quicker.
-export const WALK_STEP_MIN = 5
-export const WALK_STEP_MAX = 9
-export const WALK_STEP_PAUSE_MIN_MS = 450
-export const WALK_STEP_PAUSE_MAX_MS = 900
+// Patrons come on in even steps: WALK_STEP of the bar (lane %), then a
+// stand of WALK_STEP_PAUSE_MS clamouring for a drink, then the next step.
+// The pause is scaled by the level's pace (against level 1), so faster
+// levels stop for less time as well as walking quicker.
+export const WALK_STEP = 7
+export const WALK_STEP_PAUSE_MS = 650
 
 // Pacing and the crowd for each level live in levels.js.
 
@@ -126,8 +122,11 @@ export const TRICK_BONUS = 300
 // throw reads as the payoff rather than something already under way.
 export const TRICK_THROW_DELAY_MS = 450
 
-export const POINTS_PER_SERVE = 100
-export const POINTS_PER_CAUGHT_GLASS = 50
+// Points come from knocking a patron clean out the door — more at the
+// fancier venues (index = stage - 1) — and from catching the empties they
+// slide back. A drink that only shoves them back earns nothing by itself.
+export const OUST_POINTS_BY_STAGE = [50, 100, 150]
+export const POINTS_PER_CAUGHT_GLASS = 100
 
 // Selectable drink types — tap one of the taps to pour it. A customer's
 // outfit color shows which one they want; the wrong drink just sails
