@@ -179,9 +179,11 @@ export default function Lane({
           status={c.status}
           drinkName={c.drinkName}
           speed={c.speed}
+          vel={frozen ? 0 : c.vel}
+          walked={c.walked}
           laneWidthPx={laneWidthPx}
-          still={frozen || c.pauseMs > 0}
           clamoring={!frozen && c.status === 'walking' && c.pauseMs > 0}
+          pauseTotalMs={c.pauseTotalMs}
         />
       ))}
 

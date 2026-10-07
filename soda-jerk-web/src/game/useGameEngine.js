@@ -360,6 +360,26 @@ function doorClear(sim, lane) {
 }
 
 // `who` carries a returning patron's identity back in with them.
+// A step eases in and out: speeding up over the first STEP_EASE of it,
+// slowing to a stop over the last, steady in between. The peak is set so a
+// step still takes WALK_STEP / speed of time in all — the level's pace is
+// unchanged, it's just no longer a lurch and a dead stop.
+function stepDurationMs(speed) {
+  return (C.WALK_STEP / speed) * 1000
+}
+function stepVelocity(speed, ms) {
+  const r = C.STEP_EASE
+  const peak = speed / (1 - r)
+  const s = Math.min(1, ms / stepDurationMs(speed))
+  if (s < r) return peak * (1 - Math.cos((Math.PI * s) / r)) / 2
+  if (s > 1 - r) return peak * (1 - Math.cos((Math.PI * (1 - s)) / r)) / 2
+  return peak
+}
+function startStep(c) {
+  c.stepLeft = C.WALK_STEP
+  c.stepMs = 0
+}
+
 function spawnPatron(sim, lane, walkSpeed, x = C.OFFSCREEN_X, who = null) {
   const drinkType = who ? who.drinkType : Math.floor(Math.random() * C.DRINK_TYPES.length)
   // Patron types aren't picked evenly — see PATRON_TYPE_WEIGHTS.
@@ -380,7 +400,11 @@ function spawnPatron(sim, lane, walkSpeed, x = C.OFFSCREEN_X, who = null) {
     drinkType,
     patronType, // which illustration to use
     pauseMs: 0, // counts down while standing between steps
+    pauseTotalMs: 0, // how long this pause was, so the clamour fits it
     stepLeft: C.WALK_STEP, // of this step, in lane %
+    stepMs: 0, // time into this step — see stepVelocity
+    vel: 0, // how fast they're actually moving right now, lane %/s
+    walked: 0, // lane % walked in all, which times the legs (Customer.jsx)
     drinkName: C.DRINK_TYPES[drinkType].name,
     color: C.DRINK_TYPES[drinkType].color,
   })
@@ -1018,15 +1042,27 @@ function step(sim, dt) {
     if (c.status === 'walking') {
       if (c.pauseMs > 0) {
         c.pauseMs -= dt * 1000
+        c.vel = 0
       } else {
-        const d = c.speed * dt
+        // Each step eases in and out (see stepVelocity) — same distance in
+        // the same time as walking it flat out, just without lurching off
+        // and stopping dead.
+        c.stepMs += dt * 1000
+        const v = stepVelocity(c.speed, c.stepMs)
+        const d = Math.min(v * dt, c.stepLeft)
         c.x -= d
+        c.walked += d
         c.stepLeft -= d
+        c.vel = v
         // A step's done: stand a moment, then take the next one (see
         // WALK_STEP_* in constants.js).
-        if (c.stepLeft <= 0) {
-          c.stepLeft += C.WALK_STEP
+        if (c.stepLeft <= 1e-6 || c.stepMs >= stepDurationMs(c.speed)) {
+          c.x -= c.stepLeft
+          c.walked += c.stepLeft
+          startStep(c)
+          c.vel = 0
           c.pauseMs = (C.WALK_STEP_PAUSE_MS * lvl.travelMs) / getLevel(1).travelMs
+          c.pauseTotalMs = c.pauseMs
         }
       }
     } else if (c.status === 'toasting') {
@@ -1074,12 +1110,14 @@ function step(sim, dt) {
         })
         c.status = 'walking'
         c.speed = c.walkSpeed
+        startStep(c)
       }
     } else if (c.status === 'watching') {
       c.watchMs -= dt * 1000
       if (c.watchMs <= 0) {
         c.status = 'walking'
         c.speed = c.walkSpeed
+        startStep(c)
       }
     }
   }

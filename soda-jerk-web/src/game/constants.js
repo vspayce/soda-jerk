@@ -74,6 +74,9 @@ export const CUSTOMER_TOAST_MS = 220
 // levels stop for less time as well as walking quicker.
 export const WALK_STEP = 7
 export const WALK_STEP_PAUSE_MS = 650
+// The share of each step spent speeding up at its start (and again slowing
+// down at its end) — see stepVelocity in useGameEngine.js.
+export const STEP_EASE = 0.35
 
 // Pacing and the crowd for each level live in levels.js.
 

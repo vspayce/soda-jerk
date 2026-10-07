@@ -1,4 +1,4 @@
-import { PLAYER_X, COUNTER_HEIGHT_PX } from '../game/constants.js'
+import { PLAYER_X, COUNTER_HEIGHT_PX, STEP_EASE } from '../game/constants.js'
 import { patronPortrait, patronHeld, patronWalkSheet } from '../game/art.js'
 
 // Glows red once a still-walking customer gets close to the end of
@@ -33,7 +33,7 @@ const PATRON_HEIGHT = 89
 // `ground` is how far one walk cycle carries the figure, as a fraction of
 // its height: the backward travel of whichever foot is planted, added up
 // over the cycle. tools/patron_rig/build.py measures it off the rig and
-// prints it. It's what times the legs — see walkCycleMs().
+// prints it. It's what times the legs — see strideOf().
 const sheets = (patronType, width, ground) => [
   { src: patronWalkSheet(patronType, 0), aspectRatio: width / 279, ground },
   { src: patronWalkSheet(patronType, 1), aspectRatio: width / 279, ground },
@@ -53,33 +53,28 @@ const PATRON_WALK_SHEETS = {
   11: sheets(11, 158, 0.32),
 }
 
-// The legs have to cycle so that, over one cycle, the body moves exactly
-// as far as the planted foot pushes it — then that foot stays put on the
-// floor. Cycle too fast and the foot slides backwards under them, which
-// reads as walking backwards; too slow and they skate.
-//
-// That's a straight distance-over-speed sum: the ground one cycle covers
-// (in px, from `ground` at PATRON_HEIGHT) over how fast they're walking (in
-// px/s, which needs the lane's actual width on screen, since positions
-// are percentages of it). An earlier version scaled everything off one
-// patron that looked right on one screen size instead, and every walk
-// came out about 1.5x too fast.
-function walkCycleMs(sheet, laneWidthPx, speed) {
-  if (!speed || !laneWidthPx) return 900
-  const pxPerSecond = (Math.abs(speed) / 100) * laneWidthPx
-  const ms = ((sheet.ground * PATRON_HEIGHT) / pxPerSecond) * 1000
-  // Keep it inside a believable gait even if a level speed goes to an
-  // extreme. The floor is roughly eight frames at 60fps — below that the
-  // browser drops frames anyway, so a lower number buys nothing and only
-  // lets the feet slip.
-  return Math.max(140, Math.min(1800, ms))
+// Body movement while walking: a lean into the bar at full stride, and a
+// rock from foot to foot with each step. Both scale with how fast they're
+// actually going, so they ease off to upright as a step slows to a stop.
+const LEAN_DEG = 3
+const ROCK_DEG = 1.6
+
+// The legs are driven by the ground covered, not by a clock: one cycle per
+// `ground` of distance (in px, at PATRON_HEIGHT). The planted foot then
+// stays put on the floor however the pace changes through a step — speed
+// up and the legs speed up with it, slow to a stop and they settle with
+// it, instead of a timer walking them on the spot or sliding the feet.
+function strideOf(sheet, walked, laneWidthPx) {
+  if (!laneWidthPx) return 0
+  const walkedPx = (walked / 100) * laneWidthPx
+  const cycles = walkedPx / (sheet.ground * PATRON_HEIGHT)
+  return cycles - Math.floor(cycles) // 0..1 through the cycle
 }
 
-// `still`: walking, but not going anywhere right now — a mid-walk hitch, or
-// the whole game frozen behind a screen. The legs stop too, or they'd walk
-// on the spot, which reads as walking backwards.
-// `clamoring`: standing between steps, waving for a drink.
-export default function Customer({ x, drinkType, patronType, status, drinkName, speed, laneWidthPx, still, clamoring }) {
+// `walked`, `vel`: distance walked so far and current pace (lane %, %/s),
+// from the engine — see strideOf.
+// `clamoring`: standing between steps, rocking toward the bar for a drink.
+export default function Customer({ x, drinkType, patronType, status, drinkName, speed, vel, walked, laneWidthPx, clamoring, pauseTotalMs }) {
   const isUrgent = status === 'walking' && x <= DANGER_X
   // Caught the drink and now sliding back from it. They keep
   // facing the bartender the whole way — they're being shoved, not walking
@@ -95,6 +90,11 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
   // what they caught.
   const heldSrc = isToasting || isLeaving || isDrinking ? patronHeld(patronType, drinkType) : null
   const walkSheet = status === 'walking' ? PATRON_WALK_SHEETS[patronType]?.[drinkType] : null
+  const stride = walkSheet ? strideOf(walkSheet, walked, laneWidthPx) : 0
+  const frame = Math.floor(stride * 8) % 8
+  // 0 standing, 1 at the top speed of a step
+  const pace = speed ? Math.min(1, (vel || 0) / (speed / (1 - STEP_EASE))) : 0
+  const tilt = -LEAN_DEG * pace + ROCK_DEG * Math.sin(stride * 4 * Math.PI) * pace
 
   return (
     <div
@@ -134,19 +134,23 @@ export default function Customer({ x, drinkType, patronType, status, drinkName, 
           style={{ height: PATRON_HEIGHT, width: 'auto', display: 'block' }}
         />
       ) : walkSheet ? (
-        <div className={clamoring ? 'patron-clamor' : undefined}>
+        <div
+          className={clamoring ? 'patron-clamor' : undefined}
+          // one rock per pause, so it's upright again as the next step starts
+          style={clamoring && pauseTotalMs ? { animationDuration: `${Math.round(pauseTotalMs)}ms` } : undefined}
+        >
           <div
             className="patron-walk-cycle-sprite"
             style={{
               height: PATRON_HEIGHT,
               width: PATRON_HEIGHT * walkSheet.aspectRatio,
               backgroundImage: `url(${walkSheet.src})`,
-              // Safe alongside the sprite animation — that only animates
-              // background-position-x, so it doesn't own this.
-              animationDuration: `${Math.round(
-                walkCycleMs(walkSheet, laneWidthPx, speed)
-              )}ms`,
-              animationPlayState: still ? 'paused' : 'running',
+              // the frame comes from the distance walked (see strideOf),
+              // not from the sheet's own timed animation
+              animation: 'none',
+              backgroundPositionX: `${(frame / 7) * 100}%`,
+              transform: `rotate(${tilt.toFixed(2)}deg)`,
+              transformOrigin: '50% 100%',
             }}
           />
         </div>
