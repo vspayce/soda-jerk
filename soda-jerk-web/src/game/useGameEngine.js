@@ -199,7 +199,10 @@ function createInitialSim() {
     playerX: C.PLAYER_X,
     moveDir: 0, // -1 left, 0 still, 1 right — set by holding a run button
     runTargetX: null, // set when the bartender is auto-running to a tapped
-    // hot dog; overridden the instant manual dragging starts
+    // hot dog (or back to the tap to pour); overridden the instant manual
+    // dragging starts
+    queuedPour: null, // drink index to pour once he's run back to the tap
+    pourCooldownMs: 0, // counts down after a throw — see POUR_COOLDOWN_MS
     selectedDrink: 0, // index into C.DRINK_TYPES — what the next mug pours
     lives: C.STARTING_LIVES,
     nextExtraLifeAt: C.EXTRA_LIFE_EVERY, // score that earns the next one
@@ -287,6 +290,27 @@ function moveToLane(sim, lane) {
   sim.playerX = C.PLAYER_X
   sim.moveDir = 0
   sim.runTargetX = null
+  sim.queuedPour = null
+}
+
+// Sends a mug down the bartender's lane from the tap. As many as you like
+// can be in flight on one bar — a crowded bar wants rapid fire — but one
+// too many, with nobody thirsty left to catch it, sails off the end and
+// breaks. Only POUR_COOLDOWN_MS between throws.
+function throwMug(sim, index) {
+  if (sim.pendingSprayDrinkType !== null || sim.continuePauseInMs !== null) return
+  if (sim.pourCooldownMs > 0) return
+  sim.selectedDrink = index
+  sim.throwingMs = C.THROW_ANIM_MS
+  sim.pourCooldownMs = C.POUR_COOLDOWN_MS
+  sim.mugs.push({
+    id: sim.nextId++,
+    lane: sim.playerLane,
+    x: C.PLAYER_X,
+    speed: (C.OFFSCREEN_X - C.PLAYER_X) / (C.MUG_TRAVEL_MS / 1000),
+    drinkType: index,
+    color: C.DRINK_TYPES[index].color,
+  })
 }
 
 function returnToBar(sim) {
@@ -837,6 +861,9 @@ function step(sim, dt) {
   if (sim.throwingMs > 0) {
     sim.throwingMs = Math.max(0, sim.throwingMs - dt * 1000)
   }
+  if (sim.pourCooldownMs > 0) {
+    sim.pourCooldownMs = Math.max(0, sim.pourCooldownMs - dt * 1000)
+  }
   const lvl = getLevel(sim.level)
   const walkSpeed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (lvl.travelMs / 1000)
 
@@ -882,6 +909,13 @@ function step(sim, dt) {
       sim.playerX = sim.runTargetX
       sim.runTargetX = null
       sim.moveDir = 0
+      // Back at the tap with a drink ordered — pour it now. (A cooldown
+      // still running just costs him the throw, same as a tap too soon.)
+      if (sim.queuedPour !== null && sim.playerX <= C.PLAYER_X) {
+        const index = sim.queuedPour
+        sim.queuedPour = null
+        throwMug(sim, index)
+      }
     }
   } else if (sim.moveDir !== 0) {
     sim.playerX += sim.moveDir * C.PLAYER_RUN_SPEED_X * dt
@@ -936,8 +970,11 @@ function step(sim, dt) {
       // If he was running for it, he stops where he is — clearing only the
       // target left him running on into the end of the bar, stuck there
       // until the next pour reset him.
-      if (sim.runTargetX !== null) sim.moveDir = 0
-      sim.runTargetX = null
+      // A run back to the tap to pour carries on regardless.
+      if (sim.queuedPour === null) {
+        if (sim.runTargetX !== null) sim.moveDir = 0
+        sim.runTargetX = null
+      }
     }
   }
 
@@ -962,10 +999,14 @@ function step(sim, dt) {
       c.watchMs = C.SHOW_MS * randomBetween(C.SHOW_MIN_WATCH_FRACTION, 1)
       c.pauseMs = 0
     }
+    // He stays where he grabbed it — getting back to the tap is up to
+    // him, and that walk is the price of going for it. Unless he was
+    // already running home to pour, in which case he keeps going.
     sim.bonus = null
-    sim.playerX = C.PLAYER_X
-    sim.runTargetX = null
-    sim.moveDir = 0
+    if (sim.queuedPour === null) {
+      sim.runTargetX = null
+      sim.moveDir = 0
+    }
   }
 
   // Customers move first. Removal is decided afterward (below), once mugs
@@ -1052,9 +1093,13 @@ function step(sim, dt) {
     m.x += m.speed * dt
   }
   for (const m of sim.mugs) {
-    const target = sim.customers.find(
-      (c) => c.lane === m.lane && c.status === 'walking' && c.drinkType === m.drinkType
-    )
+    // The nearest one it'll reach — with several mugs on a bar, list order
+    // isn't bar order (patrons coming back in join the end of the list).
+    let target = null
+    for (const c of sim.customers) {
+      if (c.lane !== m.lane || c.status !== 'walking' || c.drinkType !== m.drinkType) continue
+      if (!target || c.x < target.x) target = c
+    }
     if (target && m.x >= target.x) {
       // Every drink shoves. Whether that's the last one
       // depends on where it leaves them, not on a per-customer counter.
@@ -1212,9 +1257,9 @@ export function useGameEngine() {
   }, [])
 
   // Tapping a drink both picks it and pours it in one motion — no
-  // separate JERK press. Picking a drink means heading back to the
-  // fountain to pour it, so this jumps him straight back home first,
-  // wherever he'd run off to, same as the old select-then-press flow did.
+  // separate JERK press. Pouring happens at the tap: if he's off down the
+  // bar (after a glass or the hot dog) he runs back first and pours when he
+  // gets there, so straying from the tap costs real time.
   const pourDrink = useCallback((index) => {
     const sim = simRef.current
     if (sim.gameOver) return
@@ -1225,37 +1270,15 @@ export function useGameEngine() {
     // before the player has even seen the first one land.
     if (sim.pendingSprayDrinkType !== null || sim.continuePauseInMs !== null) return
 
-    // Nobody gets a second drink while they're still busy with the first —
-    // catching it, being shoved back by it, or drinking it. If that's all
-    // there is in this lane, the throw just doesn't happen. (Someone
-    // thirsty further back is fair game: the drink slides past the
-    // drinker to them.)
-    const inLane = sim.customers.filter((c) => c.lane === sim.playerLane)
-    const busy = inLane.some((c) => c.status === 'toasting' || c.status === 'leaving-happy' || c.status === 'drinking')
-    const thirsty = inLane.some((c) => c.status === 'walking')
-    if (busy && !thirsty) return
-
     sim.selectedDrink = index
-    sim.playerX = C.PLAYER_X
+    if (sim.playerX > C.PLAYER_X) {
+      sim.queuedPour = index
+      sim.runTargetX = C.PLAYER_X
+      return
+    }
     sim.moveDir = 0
     sim.runTargetX = null
-    sim.throwingMs = C.THROW_ANIM_MS
-
-    const lane = sim.playerLane
-
-    // One mug in flight per lane at a time, to keep the prototype simple.
-    // No check for a customer actually being there — pouring down an
-    // empty lane is allowed, it just sails through and breaks.
-    if (sim.mugs.some((m) => m.lane === lane)) return
-
-    sim.mugs.push({
-      id: sim.nextId++,
-      lane,
-      x: sim.playerX,
-      speed: (C.OFFSCREEN_X - C.PLAYER_X) / (C.MUG_TRAVEL_MS / 1000),
-      drinkType: index,
-      color: C.DRINK_TYPES[index].color,
-    })
+    throwMug(sim, index)
   }, [])
 
   // Tapping a returning glass directly catches it, wherever it is — no
@@ -1275,7 +1298,8 @@ export function useGameEngine() {
   const grabBonus = useCallback(() => {
     const sim = simRef.current
     if (sim.gameOver || !sim.bonus) return
-    sim.playerLane = sim.bonus.lane
+    if (sim.bonus.lane !== sim.playerLane) moveToLane(sim, sim.bonus.lane)
+    sim.queuedPour = null
     sim.runTargetX = sim.bonus.x
   }, [])
 
@@ -1288,6 +1312,7 @@ export function useGameEngine() {
     // so the spray (and the pause after it) never actually fires.
     if (sim.pendingSprayDrinkType !== null) return
     sim.runTargetX = null // manual control cancels any auto-run to the hot dog
+    sim.queuedPour = null // ...or back to the tap to pour
     // `direction` is on screen; a flipped bar runs the other way along it
     sim.moveDir = sim.laneReversed[sim.playerLane] ? -direction : direction
   }, [])
@@ -1316,6 +1341,7 @@ export function useGameEngine() {
       // running the instant it closes.
       sim.moveDir = 0
       sim.runTargetX = null
+      sim.queuedPour = null
     }
   }, [])
 
@@ -1333,6 +1359,7 @@ export function useGameEngine() {
     sim.playerX = C.PLAYER_X
     sim.moveDir = 0
     sim.runTargetX = null
+    sim.queuedPour = null
     sim.pendingSprayDrinkType = null
     // A spray sequence's hold timer can still be silently ticking down in
     // the background if a faster miss (glass/mug) showed its screen

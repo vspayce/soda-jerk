@@ -37,6 +37,11 @@ export const COUNTER_HEIGHT_PX = 44
 // Time (ms) for a mug to cross the full bar length if nothing's in the way.
 export const MUG_TRAVEL_MS = 800
 
+// Shortest gap (ms) between two throws. Any number of mugs can be on one
+// bar at once, so this is what stops a held-down tap from becoming a solid
+// stream — and keeps consecutive mugs visibly apart on the counter.
+export const POUR_COOLDOWN_MS = 280
+
 // How long the bartender's throw-motion sprite plays after pourDrink(),
 // before falling back to stand/run — see Player.jsx.
 export const THROW_ANIM_MS = 500

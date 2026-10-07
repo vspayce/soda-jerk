@@ -3,8 +3,8 @@ import { ART_SRC, patronSpray } from '../game/art.js'
 
 const STAND_SRC = ART_SRC('player-stand.png')
 const THROW_SRC = ART_SRC('player-throw.png')
-// 8-frame run, rigged from one PixelLab picture of him mid-stride
-// (tools/patron_rig/jerk_run.py). Faces right, like his other poses.
+// 8-frame run, rigged in Blender from one PixelLab picture of him mid-stride
+// (tools/patron_rig/blender_jerk_run.py). Faces right, like his other poses.
 const RUN_SHEET = ART_SRC('player-run-cycle.png')
 const RUN_ASPECT = 249 / 358
 const HEIGHT = 94
