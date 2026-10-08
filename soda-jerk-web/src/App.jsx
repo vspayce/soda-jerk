@@ -17,6 +17,7 @@ import ShakerLevel from './components/ShakerLevel.jsx'
 import SlideLevel from './components/SlideLevel.jsx'
 import TempestLevel from './components/TempestLevel.jsx'
 import LeaderboardScreen from './components/LeaderboardScreen.jsx'
+import { VENUES } from './game/venues.js'
 import PerspectiveBackdrop from './components/PerspectiveBackdrop.jsx'
 import SplashScreen from './components/SplashScreen.jsx'
 import Celebration from './components/Celebration.jsx'
@@ -213,7 +214,20 @@ export default function App() {
           'radial-gradient(120% 80% at 50% 0%, #1B6F62 0%, #0E4B43 35%, #151014 100%)',
       }}
     >
-      <PerspectiveBackdrop stage={state.stage} />
+      <PerspectiveBackdrop venue={VENUES[state.venue].id} />
+      {state.started && state.mode === 'bar' && (
+        // keyed on the venue, so it plays again each time you arrive somewhere new
+        <div
+          key={state.venue}
+          className="venue-banner absolute left-1/2 top-1/2 z-40 pointer-events-none text-center px-6 py-3"
+          style={{ background: 'rgba(12,10,13,0.82)', border: '2px solid #C6A15B', borderRadius: 6 }}
+        >
+          <div className="font-script text-3xl" style={{ color: '#FCE4C4', whiteSpace: 'nowrap' }}>{VENUES[state.venue].name}</div>
+          <div className="font-display tracking-[0.25em] text-xs mt-1" style={{ color: '#C6A15B', whiteSpace: 'nowrap' }}>
+            {VENUES[state.venue].tagline.toUpperCase()}
+          </div>
+        </div>
+      )}
 
       <HUD
         score={state.score}
@@ -249,6 +263,7 @@ export default function App() {
               levelPassed={state.awaitingStageAdvance ? state.clearCount : null}
               frozen={state.paused || state.awaitingContinue || state.awaitingStageAdvance || state.gameOver}
               reversed={state.laneReversed[laneIndex]}
+              venue={VENUES[state.venue].id}
               isPlayerLane={state.playerLane === laneIndex}
               playerX={state.playerX}
               moveDir={state.playerLane === laneIndex ? state.moveDir : 0}
@@ -372,7 +387,7 @@ export default function App() {
               : null
           }
           onSkipToNewVenue={
-            state.started && !state.gameOver && state.mode === 'bar' && state.stage < 2
+            state.started && !state.gameOver && state.mode === 'bar'
               ? withAudio(() => {
                   closeSettings()
                   skipToNewVenue()

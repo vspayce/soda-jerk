@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import * as C from './constants'
 import { getLevel } from './levels.js'
+import { venueIndexForLevel, firstLevelOfNextVenue } from './venues.js'
 
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)]
@@ -210,7 +211,8 @@ function createInitialSim() {
     score: 0,
     survivalMs: 0,
     level: 1, // the level being played — its crowd and pacing are in levels.js
-    stage: 1, // the venue — see STAGE_COUNT in constants.js
+    stage: 1, // scoring tier, up one per level passed — see STAGE_COUNT
+    venue: 0, // index into VENUES (venues.js) — set from the level
     clearCount: 0, // levels passed so far — also picks which trick the
     // LEVEL PASSED screen shows, so they cycle
     pendingBonusMode: null, // bonus round queued behind the LEVEL PASSED
@@ -331,6 +333,7 @@ function returnToBar(sim) {
 // at the start of every level, and to restart one after a life is lost.
 function startLevel(sim) {
   const lvl = getLevel(sim.level)
+  sim.venue = venueIndexForLevel(sim.level)
   const walkSpeed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (lvl.travelMs / 1000)
   sim.roster = [...lvl.crowd]
   sim.reentries = []
@@ -1594,13 +1597,17 @@ export function useGameEngine() {
     enterBonusRound(sim, mode)
   }, [])
 
-  // Dev shortcut — jumps straight to the stage-2+ soda-fountain venue
-  // (see PerspectiveBackdrop.jsx / Lane.jsx, which reskin once
-  // state.stage >= 2) without having to actually clear a bonus round.
+  // Dev shortcut — jumps straight to the first level of the next venue
+  // (see venues.js) without having to clear the levels and bonus round
+  // in between.
   const skipToNewVenue = useCallback(() => {
     const sim = simRef.current
-    if (sim.gameOver || !sim.started) return
-    sim.stage = Math.max(sim.stage, 2)
+    if (sim.gameOver || !sim.started || sim.mode !== 'bar') return
+    sim.level = firstLevelOfNextVenue(sim.level)
+    sim.clearCount = sim.level - 1
+    sim.awaitingContinue = false
+    sim.awaitingStageAdvance = false
+    startLevel(sim)
   }, [])
 
   const startGame = useCallback(() => {

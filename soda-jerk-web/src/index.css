@@ -646,3 +646,64 @@ body {
   animation-fill-mode: both;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
+
+/* ---- venues (see PerspectiveBackdrop.jsx / venues.js) ---- */
+
+/* Pop's neon sign: steady, with the odd stutter a real tube gives. */
+@keyframes neon-flicker {
+  0%, 18%, 22%, 62%, 64%, 100% { opacity: 1; }
+  20%, 63% { opacity: 0.55; }
+}
+.neon-flicker {
+  animation: neon-flicker 5.5s linear infinite;
+}
+
+/* Big Top spotlights: a soft cone from each top corner, sweeping. */
+.spotlight {
+  top: -10%;
+  width: 70%;
+  height: 120%;
+  background: linear-gradient(180deg, rgba(255,246,214,0.38) 0%, rgba(255,246,214,0.08) 70%, transparent 100%);
+  clip-path: polygon(46% 0%, 54% 0%, 100% 100%, 0% 100%);
+  mix-blend-mode: screen;
+  transform-origin: 50% 0%;
+}
+.spotlight-left {
+  left: -18%;
+  animation: spotlight-sweep 7s ease-in-out infinite alternate;
+}
+.spotlight-right {
+  right: -18%;
+  animation: spotlight-sweep 8s ease-in-out -3s infinite alternate-reverse;
+}
+@keyframes spotlight-sweep {
+  from { transform: rotate(-24deg); }
+  to { transform: rotate(18deg); }
+}
+
+/* Marquee bulbs round the Big Top sign, chasing. */
+.marquee-bulbs {
+  margin: -5px;
+  border-radius: 9px;
+  background:
+    radial-gradient(circle, #FFF2B0 0 2px, transparent 2.5px) 0 0 / 10px 10px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 4px;
+  animation: marquee-chase 0.8s steps(2) infinite;
+}
+@keyframes marquee-chase {
+  from { background-position: 0 0; }
+  to { background-position: 10px 0; }
+}
+
+/* The venue's name card as you arrive. */
+@keyframes venue-banner {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  12%, 80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.04); }
+}
+.venue-banner {
+  animation: venue-banner 2600ms ease-out forwards;
+}

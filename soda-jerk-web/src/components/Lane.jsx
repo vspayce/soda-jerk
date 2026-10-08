@@ -13,9 +13,32 @@ import { ART_SRC } from '../game/art.js'
 const COUNTER_SURFACE_Y = `calc(50% - ${COUNTER_HEIGHT_PX / 2 + 10}px)`
 
 const DRINK_ICON_SRC = (icon) => ART_SRC(icon)
-const BAR_COUNTER_SRC = ART_SRC('bar-counter.png')
-const SALOON_DOOR_LEFT_SRC = ART_SRC('saloon-door-left.png')
-const SALOON_DOOR_RIGHT_SRC = ART_SRC('saloon-door-right.png')
+// Each venue's counter and door leaves (see venues.js). The fountain and
+// circus art is modelled in Blender (tools/venue_art/blender_venues.py);
+// every door leaf shares the saloon leaf's proportions, so they all lay
+// out and swing the same way.
+const VENUE_FIXTURES = {
+  speakeasy: {
+    counter: ART_SRC('bar-counter.png'),
+    doorLeft: ART_SRC('saloon-door-left.png'),
+    doorRight: ART_SRC('saloon-door-right.png'),
+  },
+  fountain: {
+    counter: ART_SRC('counter-fountain.png'),
+    doorLeft: ART_SRC('door-fountain-left.png'),
+    doorRight: ART_SRC('door-fountain-right.png'),
+    stool: ART_SRC('stool-fountain.png'),
+  },
+  circus: {
+    counter: ART_SRC('counter-circus.png'),
+    doorLeft: ART_SRC('door-circus-left.png'),
+    doorRight: ART_SRC('door-circus-right.png'),
+  },
+}
+// Pop's stools stand along the customers' side of the counter, behind
+// whoever's walking past them.
+const STOOL_XS = [30, 47, 64, 81]
+const STOOL_HEIGHT = 30
 const DOOR_HEIGHT = 55
 // Each leaf image is roughly half the full door's native width — matches
 // the split made from saloon-door.png (410x898 / 411x898 at source res).
@@ -59,6 +82,7 @@ export default function Lane({
   levelPassed, // clearCount while the LEVEL PASSED screen is up, else null
   frozen, // the sim isn't running (a miss, level-passed or settings screen)
   reversed, // this bar's flipped: tap on the right, door on the left
+  venue = 'speakeasy', // which venue's counter and doors — see venues.js
   onGrabBonus,
   onGrabGlass,
 }) {
@@ -68,6 +92,7 @@ export default function Lane({
   // customer stays unrendered until they reach the door's x position, then
   // appears right there as the door swings open — a served ("leaving-happy")
   // customer heading back out is left alone, still visible the whole way.
+  const fixtures = VENUE_FIXTURES[venue] ?? VENUE_FIXTURES.speakeasy
   const visibleCustomers = customers.filter((c) => c.status !== 'walking' || c.x <= DOOR_X)
   const enteringCount = customers.filter((c) => c.status === 'walking' && c.x <= DOOR_X).length
 
@@ -110,11 +135,22 @@ export default function Lane({
       {/* bar counter — spans the full lane so patrons are always walking
           along the bar itself */}
       <img
-        src={BAR_COUNTER_SRC}
+        src={fixtures.counter}
         alt=""
         className="absolute left-0 right-0 top-1/2 -translate-y-1/2"
         style={{ width: '100%', height: COUNTER_HEIGHT_PX, objectFit: 'cover', boxShadow: '0 3px 6px rgba(0,0,0,0.6)' }}
       />
+
+      {fixtures.stool &&
+        STOOL_XS.map((x) => (
+          <img
+            key={x}
+            src={fixtures.stool}
+            alt=""
+            className="absolute"
+            style={{ left: `${x}%`, top: FIXTURE_Y, height: STOOL_HEIGHT, width: 'auto', transform: 'translate(-50%, -100%)' }}
+          />
+        ))}
 
       {/* saloon door — where customers enter from, split into its two
           swinging leaves so each can hinge from its own outer post */}
@@ -130,13 +166,13 @@ export default function Lane({
         }}
       >
         <img
-          src={SALOON_DOOR_LEFT_SRC}
+          src={fixtures.doorLeft}
           alt=""
           className="saloon-door-leaf saloon-door-leaf-left absolute top-0 left-0"
           style={{ height: DOOR_HEIGHT, width: DOOR_LEAF_WIDTH, transformOrigin: 'left center' }}
         />
         <img
-          src={SALOON_DOOR_RIGHT_SRC}
+          src={fixtures.doorRight}
           alt=""
           className="saloon-door-leaf saloon-door-leaf-right absolute top-0 right-0"
           style={{ height: DOOR_HEIGHT, width: DOOR_LEAF_WIDTH, transformOrigin: 'right center' }}
