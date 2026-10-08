@@ -19,6 +19,10 @@
 //
 // Past the last row the game stays at that row's numbers for good.
 export const LEVELS = [
+  // Warm-up: one or two at each bar, an unhurried walk, time to drink.
+  { crowd: [1, 2, 1, 2], travelMs: 17000, entryMs: 2800, drinkMs: 1900, glassMs: 4800, reenterMs: 5600, reversed: [0, 0, 0, 0] },
+  { crowd: [2, 2, 2, 2], travelMs: 14000, entryMs: 2300, drinkMs: 1650, glassMs: 4300, reenterMs: 4900, reversed: [0, 0, 0, 0] },
+  // From here on, the original curve.
   { crowd: [2, 2, 2, 2], travelMs: 11000, entryMs: 1800, drinkMs: 1400, glassMs: 3800, reenterMs: 4200, reversed: [0, 0, 0, 0] },
   { crowd: [2, 3, 2, 3], travelMs: 10000, entryMs: 1650, drinkMs: 1300, glassMs: 3600, reenterMs: 4000, reversed: [0, 0, 0, 0] },
   { crowd: [3, 3, 3, 3], travelMs: 9200, entryMs: 1500, drinkMs: 1200, glassMs: 3400, reenterMs: 3800, reversed: [0, 1, 0, 1] },

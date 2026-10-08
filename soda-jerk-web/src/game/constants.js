@@ -70,13 +70,16 @@ export const CUSTOMER_TOAST_MS = 220
 
 // Patrons come on in even steps: WALK_STEP of the bar (lane %), then a
 // stand of WALK_STEP_PAUSE_MS clamouring for a drink, then the next step.
-// The pause is scaled by the level's pace (against level 1), so faster
+// The pause is scaled by the level's pace (see PACE_REFERENCE_MS), so faster
 // levels stop for less time as well as walking quicker.
 export const WALK_STEP = 7
 export const WALK_STEP_PAUSE_MS = 650
+// The level pace (travelMs) that stands exactly WALK_STEP_PAUSE_MS between
+// steps; slower levels stand longer, faster ones shorter, in proportion.
+export const PACE_REFERENCE_MS = 11000
 // The share of each step spent speeding up at its start (and again slowing
 // down at its end) — see stepVelocity in useGameEngine.js.
-export const STEP_EASE = 0.35
+export const STEP_EASE = 0.25
 // Nobody steps in unison: each patron's stride is WALK_STEP times a gait
 // within ±GAIT_SPREAD (their stand scales with it, so the pace is the same),
 // and every stand varies ±WALK_PAUSE_JITTER around their own.

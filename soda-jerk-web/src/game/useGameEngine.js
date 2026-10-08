@@ -394,7 +394,7 @@ function startStep(c) {
 // on average and the level's pace is untouched. Each stand also varies a
 // little around that patron's own.
 function standMs(c, lvl) {
-  const base = (C.WALK_STEP_PAUSE_MS * lvl.travelMs) / getLevel(1).travelMs
+  const base = (C.WALK_STEP_PAUSE_MS * lvl.travelMs) / C.PACE_REFERENCE_MS
   return base * c.gait * randomBetween(1 - C.WALK_PAUSE_JITTER, 1 + C.WALK_PAUSE_JITTER)
 }
 
