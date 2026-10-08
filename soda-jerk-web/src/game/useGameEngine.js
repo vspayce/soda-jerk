@@ -344,6 +344,10 @@ function startLevel(sim) {
       // spaced down the far half of the bar, a little different each lane
       const x = C.STARTING_X[i] + randomBetween(-3, 3)
       spawnPatron(sim, lane, walkSpeed, x)
+      // Already standing at the bar when it opens: each sets off at their
+      // own moment, not all on the first frame.
+      const c = sim.customers[sim.customers.length - 1]
+      c.pauseMs = c.pauseTotalMs = randomBetween(0, stepDurationMs(c) + standMs(c, getLevel(sim.level)))
     }
     sim.roster[lane] -= n
   }
@@ -364,26 +368,38 @@ function doorClear(sim, lane) {
 // slowing to a stop over the last, steady in between. The peak is set so a
 // step still takes WALK_STEP / speed of time in all — the level's pace is
 // unchanged, it's just no longer a lurch and a dead stop.
-function stepDurationMs(speed) {
-  return (C.WALK_STEP / speed) * 1000
+function stepDurationMs(c) {
+  return (c.stepLen / c.speed) * 1000
 }
-function stepVelocity(speed, ms) {
+function stepVelocity(c) {
   const r = C.STEP_EASE
-  const peak = speed / (1 - r)
-  const s = Math.min(1, ms / stepDurationMs(speed))
+  const peak = c.speed / (1 - r)
+  const s = Math.min(1, c.stepMs / stepDurationMs(c))
   if (s < r) return peak * (1 - Math.cos((Math.PI * s) / r)) / 2
   if (s > 1 - r) return peak * (1 - Math.cos((Math.PI * (1 - s)) / r)) / 2
   return peak
 }
 function startStep(c) {
-  c.stepLeft = C.WALK_STEP
+  c.stepLeft = c.stepLen
   c.stepMs = 0
+}
+
+// Everyone keeps their own time, the way a real crowd does — nobody
+// steps in unison. Each patron has a stride (`gait`): a bigger step with a
+// longer stand after it, or a quick little shuffle with a short one. Step
+// and stand scale together, so every gait covers the bar in the same time
+// on average and the level's pace is untouched. Each stand also varies a
+// little around that patron's own.
+function standMs(c, lvl) {
+  const base = (C.WALK_STEP_PAUSE_MS * lvl.travelMs) / getLevel(1).travelMs
+  return base * c.gait * randomBetween(1 - C.WALK_PAUSE_JITTER, 1 + C.WALK_PAUSE_JITTER)
 }
 
 function spawnPatron(sim, lane, walkSpeed, x = C.OFFSCREEN_X, who = null) {
   const drinkType = who ? who.drinkType : Math.floor(Math.random() * C.DRINK_TYPES.length)
   // Patron types aren't picked evenly — see PATRON_TYPE_WEIGHTS.
   const patronType = who ? who.patronType : pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
+  const gait = who?.gait ?? randomBetween(1 - C.GAIT_SPREAD, 1 + C.GAIT_SPREAD)
   sim.customers.push({
     id: sim.nextId++,
     lane,
@@ -401,7 +417,9 @@ function spawnPatron(sim, lane, walkSpeed, x = C.OFFSCREEN_X, who = null) {
     patronType, // which illustration to use
     pauseMs: 0, // counts down while standing between steps
     pauseTotalMs: 0, // how long this pause was, so the clamour fits it
-    stepLeft: C.WALK_STEP, // of this step, in lane %
+    gait, // stride, relative to WALK_STEP — see standMs
+    stepLen: C.WALK_STEP * gait, // this patron's step, in lane %
+    stepLeft: C.WALK_STEP * gait, // of this step, in lane %
     stepMs: 0, // time into this step — see stepVelocity
     vel: 0, // how fast they're actually moving right now, lane %/s
     walked: 0, // lane % walked in all, which times the legs (Customer.jsx)
@@ -1048,7 +1066,7 @@ function step(sim, dt) {
         // the same time as walking it flat out, just without lurching off
         // and stopping dead.
         c.stepMs += dt * 1000
-        const v = stepVelocity(c.speed, c.stepMs)
+        const v = stepVelocity(c)
         const d = Math.min(v * dt, c.stepLeft)
         c.x -= d
         c.walked += d
@@ -1056,12 +1074,12 @@ function step(sim, dt) {
         c.vel = v
         // A step's done: stand a moment, then take the next one (see
         // WALK_STEP_* in constants.js).
-        if (c.stepLeft <= 1e-6 || c.stepMs >= stepDurationMs(c.speed)) {
+        if (c.stepLeft <= 1e-6 || c.stepMs >= stepDurationMs(c)) {
           c.x -= c.stepLeft
           c.walked += c.stepLeft
           startStep(c)
           c.vel = 0
-          c.pauseMs = (C.WALK_STEP_PAUSE_MS * lvl.travelMs) / getLevel(1).travelMs
+          c.pauseMs = standMs(c, lvl)
           c.pauseTotalMs = c.pauseMs
         }
       }
@@ -1088,7 +1106,7 @@ function step(sim, dt) {
         if (c.x >= C.OFFSCREEN_X) {
           c._remove = true
           sim.score += C.OUST_POINTS_BY_STAGE[Math.min(sim.stage, C.OUST_POINTS_BY_STAGE.length) - 1]
-          sim.reentries.push({ lane: c.lane, inMs: lvl.reenterMs, patronType: c.patronType, drinkType: c.drinkType })
+          sim.reentries.push({ lane: c.lane, inMs: lvl.reenterMs, patronType: c.patronType, drinkType: c.drinkType, gait: c.gait })
         } else {
           c.status = 'drinking'
           c.drinkMs = lvl.drinkMs

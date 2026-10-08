@@ -77,6 +77,11 @@ export const WALK_STEP_PAUSE_MS = 650
 // The share of each step spent speeding up at its start (and again slowing
 // down at its end) — see stepVelocity in useGameEngine.js.
 export const STEP_EASE = 0.35
+// Nobody steps in unison: each patron's stride is WALK_STEP times a gait
+// within ±GAIT_SPREAD (their stand scales with it, so the pace is the same),
+// and every stand varies ±WALK_PAUSE_JITTER around their own.
+export const GAIT_SPREAD = 0.3
+export const WALK_PAUSE_JITTER = 0.4
 
 // Pacing and the crowd for each level live in levels.js.
 
