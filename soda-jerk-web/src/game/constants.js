@@ -52,13 +52,13 @@ export const THROW_ANIM_MS = 500
 // had to stay slow enough for a leg cycle to keep up with it, and every
 // version of the backwards-walking bug came out of that constraint. A
 // shove has no gait to match.
-// A drink shoves them a fixed DISTANCE back down the bar — it
-// doesn't send them away. If the shove doesn't carry them off the far
-// end they stop to drink, slide the empty back, and come on again, so a
-// patron who got close takes several drinks to clear. That's the whole tension of the bar:
-// one drink buys you room, not a solved customer.
-export const CUSTOMER_PUSH_SPEED = 62 // lane-% per second at the moment of impact
-export const CUSTOMER_PUSH_DISTANCE = 34 // how far one drink moves them
+// A drink shoves them back down the bar — it doesn't send them away. If the
+// shove doesn't carry them off the far end they stop to drink, slide the
+// empty back, and come on again, so a patron who got close takes several
+// drinks to clear. That's the whole tension of the bar: one drink buys you
+// room, not a solved customer.
+// How far, and how fast, comes from the arcade (see arcadePatrons.js): a
+// different distance every time, and a bigger share of the shorter bars.
 export const CUSTOMER_PUSH_MIN_SPEED = 9 // so the slide always finishes
 // The mom-and-son pair is two people to shift, so one drink moves them
 // less — which is what their old "needs 2 drinks" special case really
@@ -68,23 +68,20 @@ export const CUSTOMER_PUSH_RESISTANCE = { 1: 0.55 }
 // the catch, not a pose.
 export const CUSTOMER_TOAST_MS = 220
 
-// Patrons come on in even steps: WALK_STEP of the bar (lane %), then a
-// stand of WALK_STEP_PAUSE_MS clamouring for a drink, then the next step.
-// The pause is scaled by the level's pace (see PACE_REFERENCE_MS), so faster
-// levels stop for less time as well as walking quicker.
-export const WALK_STEP = 7
-export const WALK_STEP_PAUSE_MS = 650
-// The level pace (travelMs) that stands exactly WALK_STEP_PAUSE_MS between
-// steps; slower levels stand longer, faster ones shorter, in proportion.
-export const PACE_REFERENCE_MS = 11000
+// Patrons come on in even steps, then stand clamouring for a drink, then take
+// the next. How big a step is and how long the stand lasts come from the
+// arcade — both differ from bar to bar — and the level's pace (travelMs in
+// levels.js) scales the time, so faster levels stand for less as well as
+// walking quicker. See laneGait in arcadePatrons.js.
 // The share of each step spent speeding up at its start (and again slowing
 // down at its end) — see stepVelocity in useGameEngine.js.
 export const STEP_EASE = 0.25
-// Nobody steps in unison: each patron's stride is WALK_STEP times a gait
+// Nobody steps in unison: each patron's stride is the bar's step times a gait
 // within ±GAIT_SPREAD (their stand scales with it, so the pace is the same),
-// and every stand varies ±WALK_PAUSE_JITTER around their own.
+// and every stand varies ±WALK_PAUSE_JITTER around their own. The arcade's
+// own patrons repeat their pause exactly, so that jitter is only a little.
 export const GAIT_SPREAD = 0.3
-export const WALK_PAUSE_JITTER = 0.4
+export const WALK_PAUSE_JITTER = 0.1
 
 // Pacing and the crowd for each level live in levels.js.
 
@@ -102,9 +99,9 @@ export const BONUS_EVERY_LEVELS = 3
 export const DOOR_GAP_X = 14
 
 // Each level opens with this many of every bar's crowd already standing at
-// the far end of it, by the doors, rather than everyone walking in.
+// the far end of it, by the doors, rather than everyone walking in. Where
+// each one stands is startX in arcadePatrons.js.
 export const STARTING_PER_BAR = 2
-export const STARTING_X = [91, 82] // just inside the doors
 
 // The show: grabbing the hot dog sets the dachshund dancing (see
 // Celebration.jsx) for SHOW_MS. Each patron walking in at that moment has
@@ -115,6 +112,14 @@ export const SHOW_MS = 9800
 export const SHOW_WATCH_CHANCE = 0.6
 export const SHOW_MIN_WATCH_FRACTION = 0.55
 export const SHOW_MIN_WATCHER_X = 88
+// Turning away to watch, and back again when it's over, takes this long —
+// he's on his feet but still, so the turn can be seen (see Customer.jsx).
+export const SHOW_TURN_MS = 400
+// A watcher can't be served, so a bar with nobody but watchers left on it —
+// and no one still to come in — has nothing to do but wait. Once that's so
+// the act wraps up for them within this long, rather than keeping the level
+// open for the rest of SHOW_MS.
+export const SHOW_WRAP_MS = 1500
 
 // How long the bartender stays at the counter getting sprayed before the
 // "YOU MISSED" pause kicks in.

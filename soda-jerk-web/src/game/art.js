@@ -22,6 +22,17 @@ export const patronWalkSheet = (patronType, drinkType) =>
 export const patronHeld = (patronType, drinkType) =>
   ART_SRC(`${patronBase(patronType)}-${drinkSuffix(drinkType)}-held.png`)
 
+// The patron seen from behind — back of the head — for turning away to watch
+// the dachshund's show. Same canvas, scale and baseline as the portrait, so
+// swapping never jogs the figure.
+export const patronBack = (patronType, drinkType) =>
+  ART_SRC(`${patronBase(patronType)}-${drinkSuffix(drinkType)}-back.png`)
+
+// Which patrons have rear-view art yet (by patronType). Anyone not listed
+// still turns by flipping their portrait — add a type here as its
+// <patron>-<orange|pink>-back.png files go into public/art.
+export const BACK_VIEW_TYPES = new Set([])
+
 // The patron leaning in to spray the jerk after reaching the end of the bar.
 export const patronSpray = (patronType, drinkType) =>
   ART_SRC(

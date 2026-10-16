@@ -58,3 +58,15 @@ or just resize the window — the game locks itself to a portrait
 - Placeholder art is CSS shapes + emoji, not real sprites. Swap
   `Customer.jsx` / `Player.jsx` for image-based sprites once you've
   got AI-generated or commissioned art to drop in.
+
+## Arcade reference and tests
+
+- `docs/TAPPER_MECHANICS.md` — how the arcade original actually behaves
+  (patron cycle, per-bar pace, shoves, drinking, levels, scoring), measured
+  from its own ROM. Each fact says whether it was measured, read from a
+  table, or only read from code.
+- `src/game/arcadePatrons.js` — the patron model taken from it, as pure
+  functions. `LANE_CHARACTER` there dials how much of the arcade's
+  bar-to-bar difference to keep (1 = all of it, 0 = every bar the same).
+- `npm test` — checks the model against the measured numbers, and drives the
+  real sim headlessly through a shove, a drink and the empty coming back.

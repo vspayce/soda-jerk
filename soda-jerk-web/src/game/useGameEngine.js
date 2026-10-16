@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
-import * as C from './constants'
+import * as C from './constants.js'
 import { getLevel } from './levels.js'
 import { venueIndexForLevel, firstLevelOfNextVenue } from './venues.js'
+import * as A from './arcadePatrons.js'
 
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)]
@@ -182,7 +183,9 @@ function pickPlateKind() {
   return 'dollar'
 }
 
-function createInitialSim() {
+// Exported with startLevel and step so the sim can be driven headlessly
+// (see useGameEngine.test.js) — nothing in the app imports them.
+export function createInitialSim() {
   return {
     started: false,
     paused: false, // true while the settings menu is open — see setPaused
@@ -210,6 +213,8 @@ function createInitialSim() {
     extraLifeCount: 0, // bumped on each award — App watches it for the fanfare
     score: 0,
     survivalMs: 0,
+    levelMs: 0, // time played in this attempt at the level — the crowd's
+    // pauses shrink with it (see pauseRamp in arcadePatrons.js)
     level: 1, // the level being played — its crowd and pacing are in levels.js
     stage: 1, // scoring tier, up one per level passed — see STAGE_COUNT
     venue: 0, // index into VENUES (venues.js) — set from the level
@@ -331,10 +336,10 @@ function returnToBar(sim) {
 // Sets the bar up for sim.level from scratch: STARTING_PER_BAR of each
 // bar's crowd already standing at it, the rest waiting at the doors. Used
 // at the start of every level, and to restart one after a life is lost.
-function startLevel(sim) {
+export function startLevel(sim) {
   const lvl = getLevel(sim.level)
   sim.venue = venueIndexForLevel(sim.level)
-  const walkSpeed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (lvl.travelMs / 1000)
+  sim.levelMs = 0
   sim.roster = [...lvl.crowd]
   sim.reentries = []
   sim.laneReversed = lvl.reversed.map(Boolean)
@@ -344,13 +349,13 @@ function startLevel(sim) {
   for (let lane = 0; lane < C.LANE_COUNT; lane++) {
     const n = Math.min(C.STARTING_PER_BAR, sim.roster[lane])
     for (let i = 0; i < n; i++) {
-      // spaced down the far half of the bar, a little different each lane
-      const x = C.STARTING_X[i] + randomBetween(-3, 3)
-      spawnPatron(sim, lane, walkSpeed, x)
+      // Staggered in from the door the way the arcade lines them up, with a
+      // hair of give so two levels never open identically.
+      spawnPatron(sim, lane, A.startX(lane, i) + randomBetween(-1.5, 1.5))
       // Already standing at the bar when it opens: each sets off at their
       // own moment, not all on the first frame.
       const c = sim.customers[sim.customers.length - 1]
-      c.pauseMs = c.pauseTotalMs = randomBetween(0, stepDurationMs(c) + standMs(c, getLevel(sim.level)))
+      c.pauseMs = c.pauseTotalMs = A.startWaitMs()
     }
     sim.roster[lane] -= n
   }
@@ -369,7 +374,7 @@ function doorClear(sim, lane) {
 // `who` carries a returning patron's identity back in with them.
 // A step eases in and out: speeding up over the first STEP_EASE of it,
 // slowing to a stop over the last, steady in between. The peak is set so a
-// step still takes WALK_STEP / speed of time in all — the level's pace is
+// step still takes stepLen / speed of time in all — the level's pace is
 // unchanged, it's just no longer a lurch and a dead stop.
 function stepDurationMs(c) {
   return (c.stepLen / c.speed) * 1000
@@ -387,22 +392,36 @@ function startStep(c) {
   c.stepMs = 0
 }
 
-// Everyone keeps their own time, the way a real crowd does — nobody
-// steps in unison. Each patron has a stride (`gait`): a bigger step with a
-// longer stand after it, or a quick little shuffle with a short one. Step
-// and stand scale together, so every gait covers the bar in the same time
-// on average and the level's pace is untouched. Each stand also varies a
-// little around that patron's own.
-function standMs(c, lvl) {
-  const base = (C.WALK_STEP_PAUSE_MS * lvl.travelMs) / C.PACE_REFERENCE_MS
-  return base * c.gait * randomBetween(1 - C.WALK_PAUSE_JITTER, 1 + C.WALK_PAUSE_JITTER)
+// How fast the level runs compared with its first level — 1 there, smaller
+// as the levels get quicker. The arcade's cadence is the first level's; this
+// is what carries it up Soda Jerk's own difficulty curve (levels.js).
+function levelPace(sim) {
+  return getLevel(sim.level).travelMs / getLevel(1).travelMs
 }
 
-function spawnPatron(sim, lane, walkSpeed, x = C.OFFSCREEN_X, who = null) {
+// Everyone keeps their own time, the way a real crowd does — nobody
+// steps in unison. A patron stands for the pause that belongs to their bar
+// (long on the short bottom bars, brief on the top one — see laneGait), and
+// that pause shrinks as the level wears on (see pauseRamp). Each also has a
+// stride (`gait`): a bigger step with a longer stand after it, or a quick
+// little shuffle with a short one. Step and stand scale together, so every
+// gait covers the bar in the same time on average. The jitter is small — the
+// arcade's own patrons repeat their pause exactly, and drift apart only
+// because they set off at different moments.
+function standMs(sim, c) {
+  const jitter = randomBetween(1 - C.WALK_PAUSE_JITTER, 1 + C.WALK_PAUSE_JITTER)
+  return A.rampedPauseMs(c.pauseBaseMs * c.gait * jitter, sim.levelMs, levelPace(sim))
+}
+
+function spawnPatron(sim, lane, x = C.OFFSCREEN_X, who = null) {
   const drinkType = who ? who.drinkType : Math.floor(Math.random() * C.DRINK_TYPES.length)
   // Patron types aren't picked evenly — see PATRON_TYPE_WEIGHTS.
   const patronType = who ? who.patronType : pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
   const gait = who?.gait ?? randomBetween(1 - C.GAIT_SPREAD, 1 + C.GAIT_SPREAD)
+  // A patron's sip is theirs for life — it comes back in with them.
+  const sipFrames = who?.sipFrames ?? A.rollSipFrames()
+  const g = A.laneGait(lane, levelPace(sim))
+  const walkSpeed = g.stepPct / (g.burstMs / 1000) // lane % a second through a step
   sim.customers.push({
     id: sim.nextId++,
     lane,
@@ -413,16 +432,19 @@ function spawnPatron(sim, lane, walkSpeed, x = C.OFFSCREEN_X, who = null) {
     status: 'walking',
     speed: walkSpeed,
     walkSpeed, // restored after a shove, a drink or the show
+    pushSpeed: A.shoveSpeedPct(lane), // how fast a drink slides them back
     pushTargetX: 0,
     drinkMs: 0,
+    sipFrames, // how long they savour a drink — see drinkScale
     watchMs: 0,
     drinkType,
     patronType, // which illustration to use
     pauseMs: 0, // counts down while standing between steps
     pauseTotalMs: 0, // how long this pause was, so the clamour fits it
-    gait, // stride, relative to WALK_STEP — see standMs
-    stepLen: C.WALK_STEP * gait, // this patron's step, in lane %
-    stepLeft: C.WALK_STEP * gait, // of this step, in lane %
+    pauseBaseMs: g.pauseMs, // the pause this bar gives at the level's pace
+    gait, // stride, relative to the bar's own step — see standMs
+    stepLen: g.stepPct * gait, // this patron's step, in lane %
+    stepLeft: g.stepPct * gait, // of this step, in lane %
     stepMs: 0, // time into this step — see stepVelocity
     vel: 0, // how fast they're actually moving right now, lane %/s
     walked: 0, // lane % walked in all, which times the legs (Customer.jsx)
@@ -877,7 +899,7 @@ function enterBonusRound(sim, mode) {
   sim[round.key] = round.create()
 }
 
-function step(sim, dt) {
+export function step(sim, dt) {
   if (!sim.started) return
   // Covers every mode, bonus rounds included — the settings menu opens
   // straight over live play, and the belts/patrons kept right on moving
@@ -903,6 +925,7 @@ function step(sim, dt) {
   if (sim.awaitingStageAdvance) return
 
   sim.survivalMs += dt * 1000
+  sim.levelMs += dt * 1000
   if (sim.throwingMs > 0) {
     sim.throwingMs = Math.max(0, sim.throwingMs - dt * 1000)
   }
@@ -910,7 +933,6 @@ function step(sim, dt) {
     sim.pourCooldownMs = Math.max(0, sim.pourCooldownMs - dt * 1000)
   }
   const lvl = getLevel(sim.level)
-  const walkSpeed = (C.OFFSCREEN_X - C.END_OF_BAR_X) / (lvl.travelMs / 1000)
 
   // Patrons shoved out the door come back in after a while — unless the
   // bar's clear of the whole crowd, in which case the level's passing and
@@ -919,7 +941,7 @@ function step(sim, dt) {
   for (const r of sim.reentries) {
     r.inMs -= dt * 1000
     if (!barClear && r.inMs <= 0 && doorClear(sim, r.lane)) {
-      spawnPatron(sim, r.lane, walkSpeed, C.OFFSCREEN_X, r)
+      spawnPatron(sim, r.lane, C.OFFSCREEN_X, r)
       r._done = true
     }
   }
@@ -937,7 +959,7 @@ function step(sim, dt) {
     if (lanes.length) {
       const lane = pick(lanes)
       sim.roster[lane] -= 1
-      spawnPatron(sim, lane, walkSpeed)
+      spawnPatron(sim, lane)
       sim.nextSpawnInMs = lvl.entryMs
     } else {
       sim.nextSpawnInMs = 200 // every door's busy — try again shortly
@@ -1082,7 +1104,11 @@ function step(sim, dt) {
           c.walked += c.stepLeft
           startStep(c)
           c.vel = 0
-          c.pauseMs = standMs(c, lvl)
+          // No standing about in the doorway: until he's through the door he
+          // can't be seen, and the level waits on him — a long stand there
+          // reads as a clear bar that won't advance. The stands start once
+          // he's on the bar.
+          c.pauseMs = c.x > C.DOOR_X ? 0 : standMs(sim, c)
           c.pauseTotalMs = c.pauseMs
         }
       }
@@ -1095,7 +1121,7 @@ function step(sim, dt) {
       c.toastMs -= dt * 1000
       if (c.toastMs <= 0) {
         c.status = 'leaving-happy'
-        c.speed = C.CUSTOMER_PUSH_SPEED
+        c.speed = c.pushSpeed
       }
     } else if (c.status === 'leaving-happy') {
       // Sliding back from the shove, easing off as they approach where it
@@ -1109,13 +1135,13 @@ function step(sim, dt) {
         if (c.x >= C.OFFSCREEN_X) {
           c._remove = true
           sim.score += C.OUST_POINTS_BY_STAGE[Math.min(sim.stage, C.OUST_POINTS_BY_STAGE.length) - 1]
-          sim.reentries.push({ lane: c.lane, inMs: lvl.reenterMs, patronType: c.patronType, drinkType: c.drinkType, gait: c.gait })
+          sim.reentries.push({ lane: c.lane, inMs: lvl.reenterMs, patronType: c.patronType, drinkType: c.drinkType, gait: c.gait, sipFrames: c.sipFrames })
         } else {
           c.status = 'drinking'
-          c.drinkMs = lvl.drinkMs
+          c.drinkMs = lvl.drinkMs * A.drinkScale(c.sipFrames)
         }
       } else {
-        c.speed = Math.max(C.CUSTOMER_PUSH_MIN_SPEED, Math.min(C.CUSTOMER_PUSH_SPEED, remaining * 3.2))
+        c.speed = Math.max(C.CUSTOMER_PUSH_MIN_SPEED, Math.min(c.pushSpeed, remaining * 3.2))
         c.x += c.speed * dt
       }
     } else if (c.status === 'drinking') {
@@ -1132,6 +1158,10 @@ function step(sim, dt) {
         c.status = 'walking'
         c.speed = c.walkSpeed
         startStep(c)
+        // The empty's gone back: he holds the throw, recovers, and only
+        // then stands his usual pause before the next step. Still servable
+        // all the while — he's 'walking', just not moving.
+        c.pauseMs = c.pauseTotalMs = A.afterThrowMs() + standMs(sim, c)
       }
     } else if (c.status === 'watching') {
       c.watchMs -= dt * 1000
@@ -1139,8 +1169,22 @@ function step(sim, dt) {
         c.status = 'walking'
         c.speed = c.walkSpeed
         startStep(c)
+        // Turning back round to the bar takes a moment, standing still —
+        // long enough for the turn to be seen (Customer.jsx plays it).
+        c.pauseMs = c.pauseTotalMs = C.SHOW_TURN_MS
       }
     }
+  }
+
+  // Nobody but watchers left, and no one still to walk in: there's nothing
+  // to do but wait for the act to end, and the level can't pass until they've
+  // been served. Wrap the show up rather than make the player stand about.
+  if (
+    sim.customers.length > 0 &&
+    sim.roster.every((n) => n === 0) &&
+    sim.customers.every((c) => c.status === 'watching')
+  ) {
+    for (const c of sim.customers) c.watchMs = Math.min(c.watchMs, C.SHOW_WRAP_MS)
   }
 
   // Mugs in flight — thrown toward whichever customer is still walking in
@@ -1164,8 +1208,10 @@ function step(sim, dt) {
       // depends on where it leaves them, not on a per-customer counter.
       target.status = 'toasting'
       target.toastMs = C.CUSTOMER_TOAST_MS
+      // How far is the arcade's own dice: a different shove every time, and
+      // a bigger share of the shorter bars (see shovePct).
       const resistance = C.CUSTOMER_PUSH_RESISTANCE[target.patronType] ?? 1
-      target.pushTargetX = target.x + C.CUSTOMER_PUSH_DISTANCE * resistance
+      target.pushTargetX = target.x + A.shovePct(target.lane) * resistance
       // Past the doors is out the door.
       if (target.pushTargetX >= C.DOOR_X) target.pushTargetX = C.OFFSCREEN_X + 1
 

@@ -358,10 +358,76 @@ body {
   animation: patron-sip 700ms ease-in-out infinite;
 }
 
-/* Watching the dachshund: turned round (mirrored) and bobbing along. */
+/* Watching the dachshund: they turn their back on the bar — a quick
+   swing round through edge-on, with a little hop at the turn — and stay
+   that way, bobbing along, while it plays. The turn is one-shot and holds
+   its last frame; the bob underneath it never stops. Turning back is the
+   same swing the other way. */
+@keyframes patron-turn-away {
+  0% { transform: scaleX(1) translateY(0); }
+  50% { transform: scaleX(0.07) translateY(-5px); }
+  100% { transform: scaleX(-1) translateY(0); }
+}
+@keyframes patron-turn-back {
+  0% { transform: scaleX(-1) translateY(0); }
+  50% { transform: scaleX(0.07) translateY(-5px); }
+  100% { transform: scaleX(1) translateY(0); }
+}
+.patron-turn-away,
+.patron-turn-back {
+  transform-origin: 50% 100%;
+  animation-duration: var(--turn-ms, 400ms);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+.patron-turn-away { animation-name: patron-turn-away; }
+.patron-turn-back { animation-name: patron-turn-back; }
+/* The same turn with a proper rear view: the profile squeezes edge-on and
+   vanishes while the back of the head swells out of the same spot. Turning
+   back runs it the other way. Both drawings share a canvas. */
+.patron-turn { transform-origin: 50% 100%; }
+.patron-turn-side,
+.patron-turn-rear {
+  transform-origin: 50% 100%;
+  animation-duration: var(--turn-ms, 400ms);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+@keyframes turn-side-out {
+  0% { transform: scaleX(1); opacity: 1; }
+  49% { transform: scaleX(0.14); opacity: 1; }
+  50%, 100% { transform: scaleX(0.14); opacity: 0; }
+}
+@keyframes turn-rear-in {
+  0%, 50% { transform: scaleX(0.14); opacity: 0; }
+  51% { transform: scaleX(0.14); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+@keyframes turn-rear-out {
+  0% { transform: scaleX(1); opacity: 1; }
+  49% { transform: scaleX(0.14); opacity: 1; }
+  50%, 100% { transform: scaleX(0.14); opacity: 0; }
+}
+@keyframes turn-side-in {
+  0%, 50% { transform: scaleX(0.14); opacity: 0; }
+  51% { transform: scaleX(0.14); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+.patron-turn-to-rear .patron-turn-side { animation-name: turn-side-out; }
+.patron-turn-to-rear .patron-turn-rear { animation-name: turn-rear-in; }
+.patron-turn-to-front .patron-turn-rear { animation-name: turn-rear-out; }
+.patron-turn-to-front .patron-turn-side { animation-name: turn-side-in; }
+/* Standing with his back to you: a slow shift of weight, looking up. */
+@keyframes patron-sway {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-2px) rotate(1deg); }
+}
+.patron-turn-to-rear {
+  animation: patron-sway 900ms ease-in-out var(--turn-ms, 400ms) infinite;
+}
 @keyframes patron-watch {
-  0%, 100% { transform: scaleX(-1) translateY(0); }
-  50% { transform: scaleX(-1) translateY(-2px); }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
 }
 .patron-watch {
   transform-origin: 50% 100%;
