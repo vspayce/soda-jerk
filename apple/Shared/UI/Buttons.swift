@@ -83,9 +83,15 @@ final class SignButton: ButtonNode {
 final class DecoButton: ButtonNode {
     let subLabel: SKLabelNode?
 
-    init(_ title: String, subtext: String? = nil, titlePx: CGFloat = 36, action: @escaping () -> Void) {
+    /// `maxWidth` (points) shrinks the title until the whole button fits.
+    init(_ title: String, subtext: String? = nil, titlePx: CGFloat = 36, maxWidth: CGFloat? = nil, action: @escaping () -> Void) {
         let u = Theme.u
-        let t = Theme.label(title, .display, titlePx, color: Theme.brassLight, weight: 700, tracking: 0.15)
+        var px = titlePx
+        var t = Theme.label(title, .display, px, color: Theme.brassLight, weight: 700, tracking: 0.15)
+        while let maxWidth, px > 12, t.frame.width + (60 + 16 + 80) * u > maxWidth {
+            px -= 1
+            t = Theme.label(title, .display, px, color: Theme.brassLight, weight: 700, tracking: 0.15)
+        }
         subLabel = subtext.map { Theme.label($0, .body, 11, color: Theme.cream.withAlphaComponent(0.7), tracking: 0.25) }
         super.init()
         self.action = action

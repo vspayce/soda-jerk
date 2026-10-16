@@ -406,7 +406,7 @@ final class StagePassedScreen: Overlay {
         self.trickBonus = trickBonus
         throwDelay = throwDelayMs / 1000
         hasTrick = trickName != nil
-        button = DecoButton("LEVEL \(clearCount) PASSED", subtext: "\(tapWord) TO CONTINUE · 5", titlePx: 30) {}
+        button = DecoButton("LEVEL \(clearCount) PASSED", subtext: "\(tapWord) TO CONTINUE · 5", titlePx: 36, maxWidth: size.width - 32 * Theme.u) {}
         bonusLabel = Theme.label(" ", .body, 11, color: Theme.cream.withAlphaComponent(0.6), tracking: 0.2)
         super.init(size: size, backdropAlpha: 0)
         let u = Theme.u

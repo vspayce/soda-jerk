@@ -33,12 +33,12 @@ final class HUDView: SKNode {
         muteButton.position = CGPoint(x: x - 9 * u, y: centerY)
         x -= 18 * u + 14 * u
         // the lives pill, laid out right to left
-        let pillW: CGFloat = 70 * u, pillH: CGFloat = 30 * u
+        let pillW: CGFloat = 62 * u, pillH: CGFloat = 30 * u
         pill.path = CGPath(roundedRect: CGRect(x: -pillW / 2, y: -pillH / 2, width: pillW, height: pillH), cornerWidth: pillH / 2, cornerHeight: pillH / 2, transform: nil)
         pill.fillColor = Theme.ink.withAlphaComponent(0.55)
         pill.lineWidth = u
         pill.position = CGPoint(x: x - pillW / 2, y: centerY)
-        head.position = CGPoint(x: -pillW / 2 + 10 * u + head.size.width / 2, y: 0)
+        head.position = CGPoint(x: -pillW / 2 + 8 * u + head.size.width / 2, y: 0)
         livesLabel.position = CGPoint(x: head.position.x + head.size.width / 2 + 5 * u, y: 0)
         pill.addChild(head); pill.addChild(livesLabel)
         for n in [pill, muteButton, settingsButton] as [SKNode] { addChild(n) }

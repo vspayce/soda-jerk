@@ -63,6 +63,14 @@ final class Engine {
         api.invokeMethod(function, withArguments: args)?.toObject()
     }
 
+    /// For testing: runs `body` as a JavaScript function of the sim, e.g.
+    /// "sim.awaitingStageAdvance = true".
+    func debugRun(_ body: String) {
+        context.evaluateScript("var __debug = function(sim, S) { \(body) }")
+        context.objectForKeyedSubscript("__debug")?.call(withArguments: [sim, api as Any])
+        refresh()
+    }
+
     /// A brand-new game, straight onto the bar.
     func newGame() {
         sim = api.invokeMethod("newGame", withArguments: [])

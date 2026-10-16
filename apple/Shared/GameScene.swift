@@ -66,6 +66,9 @@ final class GameScene: SKScene {
             }
             engine.refresh()
         }
+        // `-js "<code>"` runs code on the sim at launch (for testing), e.g.
+        // `-js "sim.awaitingStageAdvance = true; sim.clearCount = 2"`
+        if let i = args.firstIndex(of: "-js"), i + 1 < args.count { engine.debugRun(args[i + 1]) }
         // `-show <screen>` opens a screen at launch, to look at it
         if let i = args.firstIndex(of: "-show"), i + 1 < args.count { debugShow = args[i + 1] }
     }
@@ -511,7 +514,7 @@ final class BonusComingSoon: Overlay {
         super.init(size: size, backdropAlpha: 0.95)
         add(Theme.label("BONUS ROUND", .display, 28, color: Theme.brass, weight: 700, tracking: 0.1))
         add(Theme.label("Coming to this version soon", .body, 14, color: Theme.cream.withAlphaComponent(0.7)), gap: 12)
-        add(DecoButton("ON TO THE NEXT LEVEL", titlePx: 18, action: onSkip), gap: 28)
+        add(DecoButton("ON TO THE NEXT LEVEL", titlePx: 18, maxWidth: size.width - 32 * Theme.u, action: onSkip), gap: 28)
         finishLayout()
     }
     required init?(coder: NSCoder) { fatalError() }
