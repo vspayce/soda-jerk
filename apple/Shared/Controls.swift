@@ -17,10 +17,12 @@ final class Controls {
         var pourOrange = false // pressed this frame
         var pourPink = false
         var pause = false
-        var any: Bool { laneStep != 0 || pourOrange || pourPink || pause }
+        var navLeft = false    // left/right pressed this frame (menus)
+        var navRight = false
+        var any: Bool { laneStep != 0 || pourOrange || pourPink || pause || navLeft || navRight }
     }
 
-    private var wasUp = false, wasDown = false
+    private var wasUp = false, wasDown = false, wasLeft = false, wasRight = false
     private var wasA = false, wasB = false, wasMenu = false
 
     init() {
@@ -75,7 +77,9 @@ final class Controls {
         f.pourOrange = a && !wasA
         f.pourPink = b && !wasB
         f.pause = menu && !wasMenu
-        wasUp = up; wasDown = down; wasA = a; wasB = b; wasMenu = menu
+        f.navLeft = left && !wasLeft
+        f.navRight = right && !wasRight
+        wasUp = up; wasDown = down; wasLeft = left; wasRight = right; wasA = a; wasB = b; wasMenu = menu
         return f
     }
 }

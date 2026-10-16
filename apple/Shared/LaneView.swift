@@ -131,8 +131,9 @@ final class LaneView {
 
     // ------------------------------------------------------------ per frame
 
-    func update(state s: Snap, engine: Engine, time: TimeInterval) {
+    func update(state s: Snap, engine: Engine, time: TimeInterval, spraying: Bool = false) {
         drawPlayer(s, time: time)
+        drawSpray(s, time: time, on: spraying && s.int("playerLane") == index)
         drawPatrons(s.list("customers").filter { $0.int("lane") == index }, time: time)
         sync(&mugs, items: s.list("mugs").filter { $0.int("lane") == index }) { m, sprite in
             let icon = drinkIcons.indices.contains(m.int("drinkType")) ? drinkIcons[m.int("drinkType")] : "drink-orange.png"
@@ -185,6 +186,40 @@ final class LaneView {
         // his art faces right; running left is the same art mirrored
         player.xScale = moveDir == -1 ? -1 : 1
         player.position = CGPoint(x: L.x(s.double("playerX")), y: L.feetY)
+    }
+
+    // The seltzer in the face (Player.jsx): the patron who reached the end
+    // of the bar sprays him, an 8-frame jet beside him, while he flinches.
+    private let spray = SKSpriteNode()
+    private var sprayStarted: TimeInterval?
+
+    private func drawSpray(_ s: Snap, time: TimeInterval, on: Bool) {
+        if !on {
+            sprayStarted = nil
+            spray.isHidden = true
+            player.zRotation = 0
+            return
+        }
+        let t0 = sprayStarted ?? time
+        sprayStarted = t0
+        let t = time - t0
+        if spray.parent == nil {
+            spray.anchorPoint = CGPoint(x: 0, y: 0)
+            spray.zPosition = 21
+            node.addChild(spray)
+        }
+        let type = s.int("lastSpillPatronType"), drink = s.int("lastSpillDrinkType")
+        let file = type == 0 ? "spray-\(Art.drinkSuffix(drink)).png" : "spray-patron\(type + 1)-\(Art.drinkSuffix(drink)).png"
+        let frames = Art.frames(file, count: 8)
+        spray.texture = frames[Int(t / 0.055) % 8]
+        let h = L.laneH * 97 / 144
+        spray.size = CGSize(width: h * 390 / 279, height: h)
+        spray.position = CGPoint(x: player.position.x + player.size.width / 2 - L.laneH * 10 / 144, y: L.feetY)
+        spray.isHidden = false
+        spray.alpha = t < 0.13 ? CGFloat(t / 0.13) : t > 0.93 ? CGFloat(max(0, (1.1 - t) / 0.17)) : 1
+        // player-flinch: a shaking lean that settles over 1.1s
+        let k = max(0, 1 - t / 1.1)
+        player.zRotation = CGFloat(-7 * k * sin(t * 2 * .pi / 0.44)) * .pi / 180
     }
 
     private func drawPatrons(_ list: [Snap], time: TimeInterval) {

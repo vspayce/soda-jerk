@@ -57,6 +57,12 @@ final class Engine {
         api.invokeMethod(action, withArguments: [sim] + args)
     }
 
+    /// Calls one of the shared module's plain functions (not an action on
+    /// the sim): `value("trickForClear", 3)`.
+    func value(_ function: String, _ args: Any...) -> Any? {
+        api.invokeMethod(function, withArguments: args)?.toObject()
+    }
+
     /// A brand-new game, straight onto the bar.
     func newGame() {
         sim = api.invokeMethod("newGame", withArguments: [])

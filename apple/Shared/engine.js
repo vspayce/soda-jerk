@@ -27,6 +27,7 @@ var SodaJerk = (() => {
     LEVELS: () => LEVELS,
     PATRON_ART: () => PATRON_ART,
     PATRON_CANVAS_HEIGHT: () => PATRON_CANVAS_HEIGHT,
+    TRICKS: () => TRICKS,
     VENUES: () => VENUES,
     addTrickBonus: () => addTrickBonus,
     advanceStage: () => advanceStage,
@@ -59,7 +60,8 @@ var SodaJerk = (() => {
     startRun: () => startRun,
     step: () => step,
     stopRun: () => stopRun,
-    tempestMoveTo: () => tempestMoveTo
+    tempestMoveTo: () => tempestMoveTo,
+    trickForClear: () => trickForClear
   });
 
   // src/game/constants.js
@@ -1874,6 +1876,106 @@ var SodaJerk = (() => {
   ];
   var patronBase = (patronType) => patronType === 0 ? "patron" : `patron${patronType + 1}`;
   var drinkSuffix = (drinkType) => drinkType === 0 ? "orange" : "pink";
+
+  // src/game/tricks.js
+  var STAND = { kind: "pose", src: "player-stand.png", aspect: 361 / 1006, feetX: 0.578 };
+  var THROW = { kind: "pose", src: "player-throw.png", aspect: 160 / 280, feetX: 0.497 };
+  var TRICKS = {
+    shakerFlip: {
+      id: "shakerFlip",
+      name: "THE SHAKER FLIP",
+      durationMs: 1900,
+      // How high the toss goes, from power 0 to 1. The level-pass screen
+      // always throws at full power, so it's maxReach that shows.
+      minReach: 0.45,
+      maxReach: 1.85,
+      layers: [
+        { ...STAND, className: "trick-pose-stand" },
+        { ...THROW, className: "trick-pose-throw" },
+        // Launches from, and returns to, the throw pose's raised hand.
+        {
+          kind: "prop",
+          src: "bonus-cup.png",
+          aspect: 509 / 734,
+          heightRatio: 0.3,
+          x: -5e-3,
+          y: 0.83,
+          className: "trick-prop-shaker-flip"
+        }
+      ]
+    },
+    strawToss: {
+      id: "strawToss",
+      name: "THE STRAW TOSS",
+      durationMs: 2e3,
+      // Only the arc's height varies — the straw still has to finish in the
+      // cup, and that landing is fixed by the layout.
+      minReach: 0.55,
+      maxReach: 1.7,
+      layers: [
+        // A flick of the wrist, not a heave — he stays on the standing pose
+        // the whole way through and the straw does the performing.
+        { ...STAND, className: "trick-pose-flick" },
+        // A proper glass of soda for the straw to land in, slid into place
+        // during the wind-up so the target arrives rather than just sitting
+        // there. Its own art, with no straw drawn in it — the whole point of
+        // the trick is putting one there.
+        {
+          kind: "prop",
+          src: "trick-soda.png",
+          aspect: 100 / 240,
+          heightRatio: 0.42,
+          x: 0.34,
+          y: 0.21,
+          className: "trick-prop-straw-glass"
+        },
+        // Laid out where it LANDS — upright in the cup's mouth — and
+        // animated from his hand to here, so the resting place is fixed by
+        // the layout instead of by percentages accumulating down the
+        // keyframe, which left it hanging in mid-air beside the cup.
+        {
+          kind: "prop",
+          src: "trick-straw.png",
+          aspect: 105 / 241,
+          heightRatio: 0.23,
+          x: 0.34,
+          y: 0.36,
+          className: "trick-prop-straw"
+        }
+      ]
+    },
+    threeDrinkCarry: {
+      id: "threeDrinkCarry",
+      name: "THE THREE-DRINK CARRY",
+      durationMs: 2100,
+      // Power means something different here: not how high something flies,
+      // but how many glasses he dares stack. Reach is unused.
+      minReach: 1,
+      maxReach: 1,
+      layers: [
+        { ...STAND, className: "trick-pose-carry" },
+        // Stacked on his outstretched hand, two at the lowest power and five
+        // at full (which is what the level-pass screen plays). overlap < 1 so each glass sits down inside the
+        // one below rather than floating a full height above it.
+        {
+          kind: "prop",
+          src: "trick-soda.png",
+          aspect: 100 / 240,
+          heightRatio: 0.32,
+          x: -0.24,
+          y: 0.56,
+          className: "trick-prop-carry-glass",
+          repeat: { min: 2, max: 5, overlap: 0.78 }
+        }
+      ]
+    }
+  };
+  var TRICK_ORDER = ["shakerFlip", "strawToss", "threeDrinkCarry"];
+  function trickForClear(clearCount) {
+    if (TRICK_ORDER.length === 0) return null;
+    const key = TRICK_ORDER[(Math.max(1, clearCount) - 1) % TRICK_ORDER.length];
+    return TRICKS[key] ?? null;
+  }
 
   // src/game/native.js
   function snapshot(sim) {

@@ -34,10 +34,8 @@ enum Backdrop {
         switch venue {
         case "fountain":
             for (blur, alpha) in [(true, 0.6), (false, 1.0)] {
-                let sign = SKLabelNode(fontNamed: "SnellRoundhand-Black")
-                sign.text = "Soda Fountain"
-                sign.fontSize = L.laneH * 0.42
-                sign.fontColor = blur ? SKColor(hex: 0xFF2E8A) : SKColor(hex: 0xFFE3F1)
+                // Berkshire Swash, the web's script face, lit pink
+                let sign = Theme.label("Soda Fountain", .script, 30, color: blur ? SKColor(hex: 0xFF2E8A) : SKColor(hex: 0xFFE3F1))
                 sign.alpha = alpha
                 sign.position = CGPoint(x: size.width / 2, y: y)
                 if blur {
@@ -50,16 +48,13 @@ enum Backdrop {
                 }
             }
         case "circus":
-            let sign = SKLabelNode(fontNamed: "AvenirNext-Heavy")
-            sign.text = "THE BIG TOP"
-            sign.fontSize = L.laneH * 0.3
-            sign.fontColor = SKColor(hex: 0xFFD447)
+            let sign = Theme.label("THE BIG TOP", .display, 22, color: SKColor(hex: 0xFFD447), weight: 800, tracking: 0.12)
             sign.position = CGPoint(x: size.width / 2, y: y)
             let plate = SKShapeNode(rectOf: CGSize(width: sign.frame.width + L.laneH * 0.4, height: L.laneH * 0.48), cornerRadius: 8)
             plate.fillColor = SKColor(hex: 0x5A0A0E, alpha: 0.9)
             plate.strokeColor = SKColor(hex: 0xFFD447)
             plate.lineWidth = 3
-            plate.position = CGPoint(x: size.width / 2, y: y + L.laneH * 0.1)
+            plate.position = CGPoint(x: size.width / 2, y: y)
             layer.addChild(plate)
             layer.addChild(sign)
         default:

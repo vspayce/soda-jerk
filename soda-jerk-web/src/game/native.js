@@ -7,6 +7,7 @@ export * as C from './constants.js'
 export { LEVELS, getLevel } from './levels.js'
 export { VENUES } from './venues.js'
 export { PATRON_ART, PATRON_CANVAS_HEIGHT, patronBase, drinkSuffix } from './patronArt.js'
+export { TRICKS, trickForClear } from './tricks.js'
 
 // The whole sim as JSON, for the app to draw each frame. Drops nothing —
 // the sim is plain data.
