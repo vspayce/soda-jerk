@@ -43,3 +43,11 @@ ahead N venues.
 
 The bonus rounds (they're skipped for now), the jerk's between-level trick,
 sound effects, the door swing and the patrons' turn to watch the show.
+
+## TestFlight
+
+    ./testflight.sh ios     # or tvos
+
+archives a Release build, signs it for distribution and uploads it to App
+Store Connect, with a build number from the clock. The app record
+(com.spayce.sodajerk) has to exist in App Store Connect first.
