@@ -106,6 +106,14 @@ enum Theme {
 }
 
 extension SKLabelNode {
+    /// The height of one line of this label's font (frame height can come
+    /// back short for an attributed label).
+    var lineHeight: CGFloat {
+        guard let a = attributedText, a.length > 0, let f = a.attribute(.font, at: 0, effectiveRange: nil) as? UIFont else { return frame.height }
+        let lines = max(1, (frame.height / max(1, f.lineHeight)).rounded())
+        return max(frame.height, f.lineHeight * lines)
+    }
+
     /// Re-sets an attributed label's text, keeping its attributes.
     func setText(_ text: String) {
         guard let a = attributedText, a.length > 0 else { self.text = text; return }

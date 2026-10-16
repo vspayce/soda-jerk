@@ -19,6 +19,9 @@ final class Controls {
         var pause = false
         var navLeft = false    // left/right pressed this frame (menus)
         var navRight = false
+        var aHeld = false      // A (or the remote's click) held right now
+        var stickX: Float = 0  // the stick (or d-pad / remote swipe), -1…1, up positive
+        var stickY: Float = 0
         var any: Bool { laneStep != 0 || pourOrange || pourPink || pause || navLeft || navRight }
     }
 
@@ -34,6 +37,8 @@ final class Controls {
     func read() -> Frame {
         var up = false, down = false, left = false, right = false
         var a = false, b = false, menu = false
+        var sx: Float = 0, sy: Float = 0
+        func stick(_ x: Float, _ y: Float) { if abs(x) > abs(sx) { sx = x }; if abs(y) > abs(sy) { sy = y } }
 
         for c in GCController.controllers() {
             if let g = c.extendedGamepad {
@@ -44,6 +49,8 @@ final class Controls {
                 right = right || x > 0.5
                 up = up || y > 0.5
                 down = down || y < -0.5
+                stick(g.leftThumbstick.xAxis.value, g.leftThumbstick.yAxis.value)
+                stick(g.dpad.xAxis.value, g.dpad.yAxis.value)
                 a = a || g.buttonA.isPressed
                 b = b || g.buttonB.isPressed || g.buttonX.isPressed
                 menu = menu || g.buttonMenu.isPressed || (g.buttonOptions?.isPressed ?? false)
@@ -54,6 +61,7 @@ final class Controls {
                 right = right || m.dpad.xAxis.value > 0.5
                 up = up || m.dpad.yAxis.value > 0.5
                 down = down || m.dpad.yAxis.value < -0.5
+                stick(m.dpad.xAxis.value, m.dpad.yAxis.value)
                 a = a || m.buttonA.isPressed
                 b = b || m.buttonX.isPressed
                 menu = menu || m.buttonMenu.isPressed
@@ -68,6 +76,7 @@ final class Controls {
             a = a || held(.spacebar) || held(.keyZ) || held(.returnOrEnter)
             b = b || held(.keyX)
             menu = menu || held(.escape) || held(.keyP)
+            stick(left ? -1 : right ? 1 : 0, up ? 1 : down ? -1 : 0)
         }
 
         var f = Frame()
@@ -79,6 +88,9 @@ final class Controls {
         f.pause = menu && !wasMenu
         f.navLeft = left && !wasLeft
         f.navRight = right && !wasRight
+        f.aHeld = a
+        f.stickX = abs(sx) > 0.15 ? sx : 0
+        f.stickY = abs(sy) > 0.15 ? sy : 0
         wasUp = up; wasDown = down; wasLeft = left; wasRight = right; wasA = a; wasB = b; wasMenu = menu
         return f
     }

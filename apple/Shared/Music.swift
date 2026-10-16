@@ -20,9 +20,10 @@ final class Music {
     init() {
         volume = defaults.object(forKey: "soda-jerk-volume") as? Float ?? 0.22
         isMuted = defaults.bool(forKey: "soda-jerk-muted")
-        // Ambient: plays alongside the player's own audio and respects the
-        // silent switch, like most games.
-        try? AVAudioSession.sharedInstance().setCategory(.ambient)
+        // Playback, so the music plays even with the phone's silent switch
+        // on (ambient was silenced by it, and the phone stayed quiet);
+        // mixWithOthers keeps the player's own music from being stopped.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
     }
 

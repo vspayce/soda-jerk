@@ -23,6 +23,9 @@ final class GameScene: SKScene {
     private let lanesLayer = SKNode()
     private let effectsLayer = SKNode()
     private let controlsLayer = SKNode()
+    private let bonusLayer = SKNode()
+    private var bonusView: BonusView?
+    private var bonusMode = ""
     private let hudLayer = SKNode()
     private let screenLayer = SKNode()
     private var lanes: [LaneView] = []
@@ -42,6 +45,7 @@ final class GameScene: SKScene {
     // the engine's event counters, last seen (App.jsx's useOnCounter)
     private var seen: [String: Int] = [:]
     private var sprayUntil: TimeInterval = 0
+    private var lastPlatesResult = "", lastWheelResult = ""
     private var now: TimeInterval = 0
 
     // ------------------------------------------------------------ setup
@@ -50,7 +54,7 @@ final class GameScene: SKScene {
         backgroundColor = SKColor(hex: 0x151014)
         scaleMode = .resizeFill
         for (layer, z) in [(backdropLayer, 0), (lanesLayer, 10), (effectsLayer, 60), (controlsLayer, 90),
-                           (hudLayer, 100), (screenLayer, 200)] as [(SKNode, CGFloat)] {
+                           (bonusLayer, 95), (hudLayer, 100), (screenLayer, 200)] as [(SKNode, CGFloat)] {
             layer.zPosition = z
             addChild(layer)
         }
@@ -109,7 +113,9 @@ final class GameScene: SKScene {
         lastTime = currentTime
         now = currentTime
 
-        handle(controls.read())
+        let frame = controls.read()
+        handle(frame)
+        if menus.isEmpty, let b = bonusView { b.control(frame, dt: dt) }
         engine.step(dt)
         engine.refresh()
         let s = engine.state
@@ -121,6 +127,7 @@ final class GameScene: SKScene {
             openDebugScreen(name)
         }
         if stateScreenKey != "debug" { syncScreens(s) }
+        syncBonus(s, time: currentTime, dt: dt)
         for o in menus { o.tick(dt) }
         stateScreen?.tick(dt)
     }
@@ -132,7 +139,6 @@ final class GameScene: SKScene {
         var key = ""
         if !s.bool("started") { key = showInstructions ? "" : "splash" }
         else if s.bool("gameOver") { key = "over" }
-        else if s.string("mode") != "bar" { key = "bonus-\(s.string("mode") ?? "")" }
         else if s.bool("awaitingContinue") { key = "lost-\(s.int("lives"))-\(s.string("missReason") ?? "")" }
         else if s.bool("awaitingStageAdvance") { key = "passed-\(s.int("clearCount"))" }
         if showInstructions && !s.bool("started") && menus.isEmpty { pushMenu(makeInstructions()) }
@@ -170,10 +176,37 @@ final class GameScene: SKScene {
                                        onContinue: { [weak self] in self?.engine.call("advanceStage") },
                                        onTrickBonus: { [weak self] in self?.engine.call("addTrickBonus", $0) })
         default:
-            screen = BonusComingSoon(size: size) { [weak self] in self?.engine.call("finishBonusRound") }
+            return
         }
         stateScreen = screen
         screenLayer.addChild(screen)
+    }
+
+    /// The bonus round the engine's in, if any (App.jsx's mode switch),
+    /// drawn under the HUD like the web's.
+    private static let bonusRounds: [String: (key: String, make: (Engine, CGSize, CGFloat) -> BonusView)] = [
+        "bonusWheel": ("bonusLevel", { WheelBonus(engine: $0, size: $1, safeTop: $2) }),
+        "bonusPlates": ("platesLevel", { PlatesBonus(engine: $0, size: $1, safeTop: $2) }),
+        "bonusShaker": ("shakerLevel", { ShakerBonus(engine: $0, size: $1, safeTop: $2) }),
+        "bonusSlide": ("slideLevel", { SlideBonus(engine: $0, size: $1, safeTop: $2) }),
+        "bonusTempest": ("tempestLevel", { TempestBonus(engine: $0, size: $1, safeTop: $2) }),
+    ]
+
+    private func syncBonus(_ s: Snap, time: TimeInterval, dt: Double) {
+        let mode = s.bool("started") && !s.bool("gameOver") ? (s.string("mode") ?? "bar") : "bar"
+        if mode != bonusMode {
+            bonusMode = mode
+            bonusView?.removeFromParent()
+            bonusView = nil
+            if let r = Self.bonusRounds[mode] {
+                let v = r.make(engine, size, layout.safeTop)
+                bonusLayer.addChild(v)
+                bonusView = v
+            }
+        }
+        if let v = bonusView, let r = Self.bonusRounds[mode], let round = s.object(r.key) {
+            v.update(round, time: time, dt: dt)
+        }
     }
 
     private func makeInstructions() -> Overlay {
@@ -241,6 +274,20 @@ final class GameScene: SKScene {
             sfx.celebrate()
             effectsLayer.addChild(Effects.extraLife(at: CGPoint(x: size.width / 2, y: size.height * 0.68)))
         }
+        // the bonus rounds' stings (App.jsx)
+        if let p = s.object("platesLevel") {
+            if ticked("platesPop", p.int("popCount")) { sfx.celebrate() }
+            let r = p.string("resultText") ?? ""
+            if r != lastPlatesResult && !r.isEmpty && r != "TIME'S UP!" { sfx.glassShatter() }
+            lastPlatesResult = r
+        } else { lastPlatesResult = "" }
+        if let sh = s.object("shakerLevel"), ticked("shakerResolved", sh.int("resolvedCount")), sh.string("resultKind") == "hit" { sfx.celebrate() }
+        if let w = s.object("bonusLevel") {
+            let r = w.string("resultText") ?? ""
+            if r != lastWheelResult && r.hasPrefix("HIT") { sfx.celebrate() }
+            lastWheelResult = r
+        } else { lastWheelResult = "" }
+
         let over = s.bool("gameOver") ? 1 : 0
         if ticked("gameOver", over) {
             music.stop()
@@ -270,8 +317,8 @@ final class GameScene: SKScene {
             return
         }
         let s = engine.state
+        if f.pause && s.bool("started") && !s.bool("gameOver") { openSettings(); return }
         guard s.bool("started"), s.string("mode") == "bar" else { return }
-        if f.pause { openSettings(); return }
         if f.laneStep != 0 { engine.call("changeLane", f.laneStep) }
         // Running: sent only when the controller's own left/right changes
         // (and again after a bar change, which stops him at the new bar's
@@ -451,6 +498,7 @@ final class GameScene: SKScene {
         let p = t.location(in: self)
         if let screen = top { screen.touchBegan(p); return }
         if let b = hud?.buttons.first(where: { $0.contains(scenePoint: p) }) { b.press(); return }
+        if let v = bonusView { v.touchBegan(p); return }
         let names = nodes(at: p).compactMap(\.name)
         if !controlsLayer.isHidden, let name = names.first(where: { $0.hasPrefix(Self.drinkButtonName) }),
            let i = Int(name.dropFirst(Self.drinkButtonName.count)) {
@@ -477,6 +525,7 @@ final class GameScene: SKScene {
         guard let t = touches.first else { return }
         let p = t.location(in: self)
         if let screen = top { screen.touchMoved(p); return }
+        if let v = bonusView { v.touchMoved(p); return }
         guard let start = dragStart else { return }
         let u = Theme.u
         let dx = p.x - start.x, dy = p.y - start.y
@@ -492,6 +541,7 @@ final class GameScene: SKScene {
         guard let t = touches.first else { return }
         let p = t.location(in: self)
         if let screen = top { screen.touchEnded(p); return }
+        if let v = bonusView { v.touchEnded(p); return }
         defer { dragStart = nil }
         guard dragStart != nil else { return }
         if sentRun != 0 { setRun(0) }
@@ -506,18 +556,6 @@ final class GameScene: SKScene {
         setRun(0)
     }
     #endif
-}
-
-/// Shown in place of a bonus round until the round's been brought over.
-final class BonusComingSoon: Overlay {
-    init(size: CGSize, onSkip: @escaping () -> Void) {
-        super.init(size: size, backdropAlpha: 0.95)
-        add(Theme.label("BONUS ROUND", .display, 28, color: Theme.brass, weight: 700, tracking: 0.1))
-        add(Theme.label("Coming to this version soon", .body, 14, color: Theme.cream.withAlphaComponent(0.7)), gap: 12)
-        add(DecoButton("ON TO THE NEXT LEVEL", titlePx: 18, maxWidth: size.width - 32 * Theme.u, action: onSkip), gap: 28)
-        finishLayout()
-    }
-    required init?(coder: NSCoder) { fatalError() }
 }
 
 /// Where everything goes for the current screen. Phones are portrait like
