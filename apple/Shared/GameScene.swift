@@ -10,6 +10,7 @@ import SpriteKit
 final class GameScene: SKScene {
     let engine = Engine()
     let controls = Controls()
+    let music = Music()
 
     private var lastTime: TimeInterval?
     private var sentRun = 0
@@ -120,6 +121,7 @@ final class GameScene: SKScene {
             buildBar(venue: venue, reversed: reversed)
             builtKey = key
         }
+        if s.bool("started") { music.play(venue: venue) }
         let inBar = s.string("mode") == "bar" && s.bool("started")
         lanesLayer.isHidden = !inBar
         if inBar {

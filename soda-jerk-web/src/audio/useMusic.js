@@ -8,6 +8,10 @@ const VOLUME_KEY = 'soda-jerk-volume'
 // see App.jsx, which calls it on the first Controls press.
 export function useMusic(src, { loop = true, volume: defaultVolume = 0.5 } = {}) {
   const audioRef = useRef(null)
+  // Whether the music should be playing, and muted — kept apart from any
+  // one Audio element so they carry over when the track changes.
+  const wantPlayingRef = useRef(false)
+  const mutedRef = useRef(false)
   const [isMuted, setIsMuted] = useState(false)
   const [volume, setVolume] = useState(() => {
     try {
@@ -18,10 +22,17 @@ export function useMusic(src, { loop = true, volume: defaultVolume = 0.5 } = {})
     }
   })
 
+  // A new track (a new venue) takes over where the last left off: same
+  // volume, same mute, and playing if the last one was.
+  const volumeRef = useRef(volume)
+  volumeRef.current = volume
   useEffect(() => {
     const audio = new Audio(src)
     audio.loop = loop
+    audio.volume = volumeRef.current
+    audio.muted = mutedRef.current
     audioRef.current = audio
+    if (wantPlayingRef.current) audio.play().catch(() => {})
     return () => {
       audio.pause()
       audioRef.current = null
@@ -57,6 +68,7 @@ export function useMusic(src, { loop = true, volume: defaultVolume = 0.5 } = {})
   }, [volume])
 
   const start = () => {
+    wantPlayingRef.current = true
     const audio = audioRef.current
     if (!audio || !audio.paused) return
     audio.play().catch(() => {
@@ -65,6 +77,7 @@ export function useMusic(src, { loop = true, volume: defaultVolume = 0.5 } = {})
   }
 
   const stop = () => {
+    wantPlayingRef.current = false
     const audio = audioRef.current
     if (!audio) return
     audio.pause()
@@ -75,6 +88,7 @@ export function useMusic(src, { loop = true, volume: defaultVolume = 0.5 } = {})
     const audio = audioRef.current
     if (!audio) return
     audio.muted = !audio.muted
+    mutedRef.current = audio.muted
     setIsMuted(audio.muted)
   }
 

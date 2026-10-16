@@ -25,9 +25,11 @@ import LingoScreen from './components/LingoScreen.jsx'
 import SettingsScreen from './components/SettingsScreen.jsx'
 import InstructionsScreen from './components/InstructionsScreen.jsx'
 
+// Each venue has its own tune: public-domain ragtime, recorded fresh by
+// tools/music/render-tracks.mjs (see tools/music/scores/SOURCES.md).
 // BASE_URL respects the vite.config.js `base` setting, so this still
 // resolves correctly once deployed under /soda-jerk/ on GitHub Pages.
-const MUSIC_SRC = `${import.meta.env.BASE_URL}audio/wurlitzer-loop.mp3`
+const musicSrc = (venueId) => `${import.meta.env.BASE_URL}audio/music-${venueId}.mp3`
 
 // No joystick — tap a lane to jump straight to it, swipe up/down to move
 // one lane at a time, and drag left/right to run the bartender along the
@@ -66,7 +68,7 @@ export default function App() {
   // Keeps the frame inside whatever the browser actually leaves visible —
   // on iOS Safari the toolbars otherwise sit on top of the drink taps.
   useViewportHeight()
-  const music = useMusic(MUSIC_SRC, { volume: 0.22 })
+  const music = useMusic(musicSrc(VENUES[state.venue]?.id ?? 'speakeasy'), { volume: 0.22 })
   const [spraying, setSpraying] = useState(false)
   const [celebrate, setCelebrate] = useState(null)
   const [showSettings, setShowSettings] = useState(false)

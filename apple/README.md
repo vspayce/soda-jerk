@@ -12,8 +12,10 @@ into `Shared/engine.js`, which the apps run in JavaScriptCore
 a rule in `src/game` and the web game, the iPhone app and the Apple TV app
 all pick it up; every Xcode build re-bundles it first.
 
-The art is `soda-jerk-web/public/art`, copied into the apps as-is. There's
-no music in the apps.
+The art and audio are `soda-jerk-web/public/art` and `public/audio`, copied
+into the apps as-is. Each venue's music is public-domain ragtime recorded
+fresh for the game (`soda-jerk-web/tools/music`), the same tracks as the web
+game.
 
 ## Build
 
@@ -42,7 +44,7 @@ ahead N venues.
 ## Not in the apps yet
 
 The bonus rounds (they're skipped for now), the jerk's between-level trick,
-sound effects, the door swing and the patrons' turn to watch the show.
+sound effects (the music's in), the door swing and the patrons' turn to watch the show.
 
 ## TestFlight
 

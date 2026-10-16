@@ -6,7 +6,7 @@
 # controls) and run the same rules as the web game: Shared/engine.js is
 # bundled from soda-jerk-web/src/game by its `npm run build:engine`, which
 # the pre-build step below runs on every build. The art is the web game's
-# own public/art folder, copied in as-is.
+# own public/art and public/audio folders, copied in as-is.
 name: SodaJerk
 options:
   bundleIdPrefix: com.vspayce
@@ -36,6 +36,9 @@ targetTemplates:
     sources:
       - path: Shared
       - path: ../soda-jerk-web/public/art
+        type: folder
+        buildPhase: resources
+      - path: ../soda-jerk-web/public/audio
         type: folder
         buildPhase: resources
     preBuildScripts:
