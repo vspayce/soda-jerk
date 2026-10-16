@@ -13,7 +13,8 @@ final class GameScene: SKScene {
     let music = Music()
 
     private var lastTime: TimeInterval?
-    private var sentRun = 0
+    private var sentRun = 0         // what the engine was last told
+    private var controllerRun = 0   // what the controller last asked for
     private var lastLane = -1
 
     private let backdropLayer = SKNode()
@@ -91,11 +92,13 @@ final class GameScene: SKScene {
         }
         if f.pause { engine.call("setPaused", true); return }
         if f.laneStep != 0 { engine.call("changeLane", f.laneStep) }
-        // Running: sent when it changes, and again after a bar change,
-        // which stops him (he starts the new bar at its tap).
-        if f.run != sentRun || (f.laneStep != 0 && f.run != 0) {
-            if f.run == 0 { engine.call("stopRun") } else { engine.call("startRun", f.run) }
-            sentRun = f.run
+        // Running: sent only when the controller's own left/right changes
+        // (and again after a bar change, which stops him at the new bar's
+        // tap). Comparing against what was last sent instead would cancel a
+        // run started by touch on the very next frame.
+        if f.run != controllerRun || (f.laneStep != 0 && f.run != 0) {
+            setRun(f.run)
+            controllerRun = f.run
         }
         if f.pourOrange { engine.call("pourDrink", 0) }
         if f.pourPink { engine.call("pourDrink", 1) }
@@ -281,9 +284,21 @@ final class GameScene: SKScene {
         guard let t = touches.first else { return }
         if confirm() { return }
         let p = t.location(in: self)
-        if let name = nodes(at: p).compactMap(\.name).first(where: { $0.hasPrefix(Self.drinkButtonName) }),
+        let names = nodes(at: p).compactMap(\.name)
+        if let name = names.first(where: { $0.hasPrefix(Self.drinkButtonName) }),
            let i = Int(name.dropFirst(Self.drinkButtonName.count)) {
             engine.call("pourDrink", i)
+            return
+        }
+        // As on the web: tap a returning glass to catch it, or the hot dog
+        // to send him running for it.
+        if let name = names.first(where: { $0.hasPrefix(LaneView.glassName) }),
+           let id = Int(name.dropFirst(LaneView.glassName.count)) {
+            engine.call("grabGlass", id)
+            return
+        }
+        if names.contains(LaneView.hotdogName) {
+            engine.call("grabBonus")
             return
         }
         if let lane = layout.laneCenters.firstIndex(where: { abs($0 - p.y) <= layout.laneH / 2 }) {

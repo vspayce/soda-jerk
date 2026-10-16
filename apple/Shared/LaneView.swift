@@ -5,6 +5,10 @@ import SpriteKit
 /// engine's lane percentages. A flipped bar is the same bar mirrored — the
 /// whole node, patrons and jerk included — exactly as the web game does it.
 final class LaneView {
+    /// Sprite names the touch controls look for (GameScene).
+    static let glassName = "glass:"
+    static let hotdogName = "hotdog"
+
     let node = SKNode()
     let index: Int
     private let L: Layout
@@ -39,6 +43,11 @@ final class LaneView {
         node.addChild(player)
         hotdog.size = hotdog.texture!.size().fitting(height: L.laneH * 0.16)
         hotdog.zPosition = 15
+        hotdog.name = Self.hotdogName
+        // an easier target for a fingertip than the drawing itself
+        let hotdogHit = SKSpriteNode(color: .clear, size: CGSize(width: L.laneH * 0.45, height: L.laneH * 0.4))
+        hotdogHit.name = Self.hotdogName
+        hotdog.addChild(hotdogHit)
         node.addChild(hotdog)
     }
 
@@ -138,7 +147,11 @@ final class LaneView {
             if sprite.texture == nil {
                 sprite.texture = Art.texture("glass-empty.png")
                 sprite.size = sprite.texture!.size().fitting(height: L.laneH * 30 / 144)
+                let hit = SKSpriteNode(color: .clear, size: CGSize(width: L.laneH * 0.4, height: L.laneH * 0.4))
+                sprite.addChild(hit)
             }
+            sprite.name = Self.glassName + "\(g.int("id"))"
+            sprite.children.forEach { $0.name = sprite.name }
             sprite.position = CGPoint(x: L.x(g.double("x")), y: L.surfaceY)
             sprite.zRotation = g.bool("_missed") ? -0.9 : 0
             sprite.zPosition = 15
