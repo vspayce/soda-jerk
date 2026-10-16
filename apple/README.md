@@ -50,4 +50,4 @@ sound effects, the door swing and the patrons' turn to watch the show.
 
 archives a Release build, signs it for distribution and uploads it to App
 Store Connect, with a build number from the clock. The app record
-(com.spayce.sodajerk) has to exist in App Store Connect first.
+(com.vspayce.sodajerk) has to exist in App Store Connect first.
