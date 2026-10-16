@@ -3,7 +3,7 @@
 // pause -> step. Run with `npm test`.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createInitialSim, startLevel, step } from './useGameEngine.js'
+import { createInitialSim, startLevel, step } from './engine.js'
 import * as A from './arcadePatrons.js'
 import * as C from './constants.js'
 import { getLevel } from './levels.js'

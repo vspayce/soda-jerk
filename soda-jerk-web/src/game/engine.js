@@ -1,0 +1,1646 @@
+// Soda Jerk's rules: the whole simulation and every action a player can
+// take, as plain functions of a `sim` object. No React and no DOM, so the
+// same file runs in the web game (useGameEngine.js wraps it in a hook), in
+// the tests, and inside the iOS and tvOS apps (bundled by
+// scripts/build-engine.mjs and run in JavaScriptCore).
+import * as C from './constants.js'
+import { getLevel } from './levels.js'
+import { venueIndexForLevel, firstLevelOfNextVenue } from './venues.js'
+import * as A from './arcadePatrons.js'
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+// Picks an index 0..weights.length-1, biased by each entry's weight
+// (e.g. [1, 1, 3] picks index 2 three times as often as index 0 or 1).
+function pickWeightedIndex(weights) {
+  const total = weights.reduce((sum, w) => sum + w, 0)
+  let r = Math.random() * total
+  for (let i = 0; i < weights.length; i++) {
+    r -= weights[i]
+    if (r < 0) return i
+  }
+  return weights.length - 1
+}
+
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min)
+}
+
+// Fresh state for a bonus-round attempt — the scoop starts at rest on
+// the launch anchor, ready to be pulled back, tinted a random flavor
+// that has to land in the matching cup to score.
+function createBonusLevelState() {
+  return {
+    wheelAngle: 0,
+    throwsLeft: C.BONUS_LEVEL_THROWS,
+    scoopState: 'ready', // 'ready' | 'aiming' | 'flying' | 'result'
+    scoopX: C.BONUS_LAUNCH_ANCHOR.x,
+    scoopY: C.BONUS_LAUNCH_ANCHOR.y,
+    vx: 0,
+    vy: 0,
+    aimDX: 0, // how far the scoop's currently pulled back from the
+    aimDY: 0, // anchor, while aiming — the drag vector itself
+    iceCreamColor: Math.floor(Math.random() * C.BONUS_CUP_COUNT), // index
+    // into BONUS_CUP_COLORS — which cup this throw's scoop needs to land in
+    resultText: null, // 'HIT! +500' | 'MISS' while scoopState is 'result'
+    resultHoldMs: 0,
+  }
+}
+
+// Fresh state for a plate-wash bonus-round attempt.
+function createPlatesLevelState() {
+  return {
+    remainingMs: C.PLATES_ROUND_MS,
+    // One independent spawn timer per lane/conveyor belt — see stepPlates —
+    // so all three run concurrently instead of one shared timer picking a
+    // single random lane each time.
+    nextSpawnInMs: Object.fromEntries(
+      C.PLATES_LANES.map((lane) => [lane, randomBetween(C.PLATES_SPAWN_INTERVAL_MIN_MS, C.PLATES_SPAWN_INTERVAL_MAX_MS)])
+    ),
+    plates: [], // { id, lane, progress (0-1), kind: 'dirty'|'clean'|'dollar' }
+    popCount: 0, // bumped whenever a dirty/dollar plate is sprayed — App.jsx
+    // watches this for a little sfx, same pattern as celebrateCount etc.
+    lastPopKind: null,
+    resultText: null, // set once the round is ending — "TIME'S UP!" or the
+    // clean-plate scold — shown for resultHoldMs before returning to the bar
+    resultHoldMs: 0,
+    ended: false,
+    nextId: 1,
+  }
+}
+
+// Bounds of the belt each row's cups travel along — padded off both edges
+// of the screen so cups scroll on/off seamlessly instead of popping.
+const SHAKER_TRACK_MIN_X = -C.SHAKER_TRACK_PAD_PCT
+const SHAKER_TRACK_MAX_X = 100 + C.SHAKER_TRACK_PAD_PCT
+const SHAKER_TRACK_LENGTH = SHAKER_TRACK_MAX_X - SHAKER_TRACK_MIN_X
+const SHAKER_ROW_BY_LANE = Object.fromEntries(C.SHAKER_ROWS.map((row) => [row.lane, row]))
+
+// Fresh state for a shaker-cup bonus-round attempt — each row is a train
+// of evenly-spaced cups spanning the whole belt, all cups within a row
+// moving at one shared speed so the spacing (and the sushi-conveyor
+// look) holds steady as they scroll past.
+function createShakerLevelState() {
+  const cups = []
+  for (const row of C.SHAKER_ROWS) {
+    // Round to the nearest cup count that tiles the belt with NO seam —
+    // using the raw target spacing directly left a leftover fractional gap
+    // that wrapped around into a near-duplicate cup sitting right on top of
+    // another. Deriving the actual spacing from the count instead makes
+    // count * spacing land on SHAKER_TRACK_LENGTH exactly. Done per row
+    // since each row's cup size (and so its spacing) scales differently
+    // for the perspective effect — see SHAKER_ROWS' `scale`.
+    const spacingTarget = C.SHAKER_CUP_SPACING_PCT * row.scale
+    const count = Math.max(1, Math.round(SHAKER_TRACK_LENGTH / spacingTarget))
+    const spacing = SHAKER_TRACK_LENGTH / count
+    // Smaller (more distant-looking) cups drift slower, same depth cue as
+    // their smaller size — real motion, not just a smaller sprite.
+    const speed = randomBetween(C.SHAKER_CUP_SPEED_MIN_X, C.SHAKER_CUP_SPEED_MAX_X) * row.scale
+    const phase = Math.random() * spacing
+    for (let i = 0; i < count; i++) {
+      const raw = SHAKER_TRACK_MIN_X + phase + i * spacing
+      const x = (((raw - SHAKER_TRACK_MIN_X) % SHAKER_TRACK_LENGTH) + SHAKER_TRACK_LENGTH) % SHAKER_TRACK_LENGTH + SHAKER_TRACK_MIN_X
+      cups.push({
+        id: `${row.lane}-${i}`,
+        lane: row.lane,
+        y: row.y,
+        x,
+        dir: row.dir,
+        speed,
+        size: C.SHAKER_CUP_SIZE_PCT * row.scale,
+        color: Math.floor(Math.random() * C.BONUS_CUP_COUNT), // which flavor
+        // this cup is — landing on one that doesn't match iceCreamColor
+        // below is a WRONG CUP, same idea as the wheel round
+      })
+    }
+  }
+  return {
+    throwsLeft: C.SHAKER_ROUND_THROWS,
+    cups,
+    iceCreamColor: Math.floor(Math.random() * C.BONUS_CUP_COUNT), // index into
+    // BONUS_CUP_COLORS — which flavor this throw's scoop needs to land in
+    scoopState: 'ready', // 'ready' | 'aiming' | 'flying' | 'result' — same
+    // shape as the wheel round's bonusLevel.scoopState
+    scoopX: C.SHAKER_LAUNCH_ANCHOR.x,
+    scoopY: C.SHAKER_LAUNCH_ANCHOR.y,
+    aimDX: 0,
+    aimDY: 0,
+    vx: 0,
+    vy: 0,
+    resultText: null, // e.g. 'GLOB! +75' | 'WRONG CUP' | 'MISS' — brief
+    // flash after each throw resolves. Real jerk-jargon terms on a hit
+    // (see SHAKER_HIT_JARGON) mean this can't be string-matched to tell
+    // whether it landed — that's what resultKind is for.
+    resultKind: null, // 'hit' | 'wrong' | 'miss'
+    resultSubtext: null, // the jargon term's plain-English meaning, only set on a hit
+    resultHoldMs: 0,
+    resolvedCount: 0, // bumped every time a throw resolves — App.jsx watches
+    // this (alongside resultText) to fire the matching hit/miss sfx
+    ended: false,
+  }
+}
+
+// Fresh state for the endless glass-slide round. Patrons keep coming down
+// the bars; you keep swiping glasses up them until one gets through.
+function createSlideLevelState() {
+  return {
+    elapsedMs: 0,
+    nextSpawnInMs: 700,
+    patrons: [], // { id, lane, t, speed, patronType, drinkType } coming toward you
+    glasses: [], // { id, lane, t, v, drinkType } sliding away from you
+    served: 0,
+    wasted: false, // a drink went down a bar with nobody on it — ends the round
+    resultText: null,
+    resultKind: null,
+    resultHoldMs: 0,
+    ended: false,
+    nextId: 1,
+  }
+}
+
+// Fresh state for the Tempest-style round. The jerk starts on spoke 0 and
+// fires down whichever spoke he's on; patrons climb outward from the hub.
+function createTempestLevelState() {
+  return {
+    elapsedMs: 0,
+    spoke: 0, // where he is, as a (fractional) spoke index around the rim
+    targetSpoke: 0,
+    fireCooldownMs: 0,
+    nextSpawnInMs: randomBetween(C.TEMPEST_SPAWN_MIN_MS, C.TEMPEST_SPAWN_MAX_MS),
+    patrons: [], // { id, spoke, t, speed, patronType, drinkType }
+    glasses: [], // { id, spoke, t, drinkType } travelling inward
+    served: 0,
+    resultText: null,
+    resultKind: null, // 'time' | 'breach'
+    resultHoldMs: 0,
+    ended: false,
+    nextId: 1,
+  }
+}
+
+function pickPlateKind() {
+  const r = Math.random()
+  if (r < C.PLATES_KIND_WEIGHTS.dirty) return 'dirty'
+  if (r < C.PLATES_KIND_WEIGHTS.dirty + C.PLATES_KIND_WEIGHTS.clean) return 'clean'
+  return 'dollar'
+}
+
+// Exported with startLevel and step so the sim can be driven headlessly
+// (see useGameEngine.test.js) — nothing in the app imports them.
+export function createInitialSim() {
+  return {
+    started: false,
+    paused: false, // true while the settings menu is open — see setPaused
+    trickBonus: 0, // points earned from the last between-level trick
+    mode: 'bar', // 'bar' | 'bonusWheel' | 'bonusPlates' | 'bonusShaker' — swaps
+    // the whole gameplay loop over to one of the three bonus mini-games; see
+    // stepBonus()/BonusLevel.jsx, stepPlates()/PlatesLevel.jsx, and
+    // stepShaker()/ShakerLevel.jsx
+    bonusLevel: null, // set to createBonusLevelState() while mode is 'bonusWheel'
+    platesLevel: null, // set to createPlatesLevelState() while mode is 'bonusPlates'
+    shakerLevel: null, // set to createShakerLevelState() while mode is 'bonusShaker'
+    slideLevel: null, // set to createSlideLevelState() while mode is 'bonusSlide'
+    tempestLevel: null, // set to createTempestLevelState() while mode is 'bonusTempest'
+    playerLane: 0,
+    playerX: C.PLAYER_X,
+    moveDir: 0, // -1 left, 0 still, 1 right — set by holding a run button
+    runTargetX: null, // set when the bartender is auto-running to a tapped
+    // hot dog (or back to the tap to pour); overridden the instant manual
+    // dragging starts
+    queuedPour: null, // drink index to pour once he's run back to the tap
+    pourCooldownMs: 0, // counts down after a throw — see POUR_COOLDOWN_MS
+    selectedDrink: 0, // index into C.DRINK_TYPES — what the next mug pours
+    lives: C.STARTING_LIVES,
+    nextExtraLifeAt: C.EXTRA_LIFE_EVERY, // score that earns the next one
+    extraLifeCount: 0, // bumped on each award — App watches it for the fanfare
+    score: 0,
+    survivalMs: 0,
+    levelMs: 0, // time played in this attempt at the level — the crowd's
+    // pauses shrink with it (see pauseRamp in arcadePatrons.js)
+    level: 1, // the level being played — its crowd and pacing are in levels.js
+    stage: 1, // scoring tier, up one per level passed — see STAGE_COUNT
+    venue: 0, // index into VENUES (venues.js) — set from the level
+    clearCount: 0, // levels passed so far — also picks which trick the
+    // LEVEL PASSED screen shows, so they cycle
+    pendingBonusMode: null, // bonus round queued behind the LEVEL PASSED
+    // screen, entered when the player continues
+    roster: [...getLevel(1).crowd], // per lane, patrons still to walk in
+    // for the first time this level
+    reentries: [], // patrons shoved out the door, on their way back in:
+    // { lane, inMs, patronType, drinkType }
+    laneReversed: [false, false, false, false], // per bar: flipped, with the
+    // tap on the right and the door on the left (see `reversed` in levels.js).
+    // Everything in the sim stays in "distance from the tap" terms; only
+    // the drawing (Lane.jsx) and which way a drag runs are mirrored.
+    awaitingStageAdvance: false, // true once the level's passed — freezes
+    // the sim (like awaitingContinue) until the "LEVEL PASSED" screen is
+    // dismissed via advanceStage()
+    gameOver: false,
+    awaitingContinue: false, // true right after a life is lost (but the
+    // game isn't over) — freezes the sim until continueAfterDeath() is
+    // called, when the "YOU MISSED" button is tapped
+    missReason: null, // 'spray' | 'glass' | 'mug' | 'drinking' | 'watching' | 'no-patron' — which
+    // kind of miss most recently triggered awaitingContinue, so the UI can
+    // show the matching sprite
+    customers: [],
+    mugs: [],
+    glasses: [],
+    bonus: null,
+    celebrateCount: 0, // bumped whenever a hot dog is grabbed — App.jsx
+    // watches this to fire a little confetti-and-points celebration.
+    lastCelebrate: null, // { lane, x } of the most recent hot dog grab
+    spillCount: 0, // bumped whenever an unserved customer reaches the end
+    // of the bar in the player's own lane — App.jsx watches this to fire
+    // the seltzer-in-the-face reaction.
+    throwingMs: 0, // counts down after pourDrink() — Player.jsx plays the
+    // throw-motion sprite while this is > 0, then falls back to stand/run
+    lastSpillDrinkType: 0, // whose drink they wanted — picks which patron sprays
+    lastSpillPatronType: 0, // and which illustration — picks which patron sprays
+    missedGlassCount: 0, // bumped whenever a returning glass slides off
+    // the counter uncaught — App.jsx watches this to play the shatter sfx
+    mugCrashCount: 0, // bumped whenever a thrown mug sails past with no
+    // one to catch it — App.jsx watches this to play the crash sfx
+    pendingSprayDrinkType: null, // set while the bartender is being
+    // recalled to the counter after a spill, until he's actually back
+    pendingSprayPatronType: 0,
+    continuePauseInMs: null, // counts down while he's held at the counter
+    // getting sprayed (or a missed glass plays its fall animation),
+    // before awaitingContinue kicks in
+    pendingMissReason: null, // which missReason to apply once
+    // continuePauseInMs elapses — see the handler for it below
+    nextSpawnInMs: 0, // set by startLevel
+    nextBonusInMs: randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS),
+    nextId: 1,
+  }
+}
+
+function loseLife(sim, n = 1) {
+  sim.lives -= n
+  if (sim.lives <= 0) {
+    sim.lives = 0
+    sim.gameOver = true
+  }
+}
+
+// Hands control back to the bar after a bonus round. A bonus round is
+// triggered the moment the last CUSTOMER is gone (see the trigger in
+// step()), which says nothing about glasses or mugs — either can still
+// be mid-slide at that instant. The bar's own step() is skipped entirely
+// while a bonus round runs, so anything left over just freezes in place
+// and is still sitting there, stale, when the player comes back (a
+// returning glass frozen past the counter's edge then counts as missed
+// immediately). Clear the board on the way back instead.
+// Moving to another bar puts him back at its tap, wherever he'd run off to
+// along the one he left — bars can face opposite ways, so "the same spot"
+// wouldn't mean anything.
+function moveToLane(sim, lane) {
+  if (lane === sim.playerLane) return
+  sim.playerLane = lane
+  sim.playerX = C.PLAYER_X
+  sim.moveDir = 0
+  sim.runTargetX = null
+  sim.queuedPour = null
+}
+
+// Sends a mug down the bartender's lane from the tap. As many as you like
+// can be in flight on one bar — a crowded bar wants rapid fire — but one
+// too many, with nobody thirsty left to catch it, sails off the end and
+// breaks. Only POUR_COOLDOWN_MS between throws.
+function throwMug(sim, index) {
+  if (sim.pendingSprayDrinkType !== null || sim.continuePauseInMs !== null) return
+  if (sim.pourCooldownMs > 0) return
+  sim.selectedDrink = index
+  sim.throwingMs = C.THROW_ANIM_MS
+  sim.pourCooldownMs = C.POUR_COOLDOWN_MS
+  sim.mugs.push({
+    id: sim.nextId++,
+    lane: sim.playerLane,
+    x: C.PLAYER_X,
+    speed: (C.OFFSCREEN_X - C.PLAYER_X) / (C.MUG_TRAVEL_MS / 1000),
+    drinkType: index,
+    color: C.DRINK_TYPES[index].color,
+  })
+}
+
+function returnToBar(sim) {
+  sim.mode = 'bar'
+  for (const round of BONUS_ROUNDS) sim[round.key] = null
+  sim.glasses = []
+  sim.mugs = []
+  // The hot dog freezes mid-countdown too — a bonus round can outlast its
+  // whole 6s lifetime, so it would otherwise reappear as a stale prop with
+  // a second or two left on a timer that stopped ages ago.
+  sim.bonus = null
+  sim.nextBonusInMs = randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS)
+  startLevel(sim)
+}
+
+// Sets the bar up for sim.level from scratch: STARTING_PER_BAR of each
+// bar's crowd already standing at it, the rest waiting at the doors. Used
+// at the start of every level, and to restart one after a life is lost.
+export function startLevel(sim) {
+  const lvl = getLevel(sim.level)
+  sim.venue = venueIndexForLevel(sim.level)
+  sim.levelMs = 0
+  sim.roster = [...lvl.crowd]
+  sim.reentries = []
+  sim.laneReversed = lvl.reversed.map(Boolean)
+  sim.customers = []
+  sim.mugs = []
+  sim.glasses = []
+  for (let lane = 0; lane < C.LANE_COUNT; lane++) {
+    const n = Math.min(C.STARTING_PER_BAR, sim.roster[lane])
+    for (let i = 0; i < n; i++) {
+      // Staggered in from the door the way the arcade lines them up, with a
+      // hair of give so two levels never open identically.
+      spawnPatron(sim, lane, A.startX(lane, i) + randomBetween(-1.5, 1.5))
+      // Already standing at the bar when it opens: each sets off at their
+      // own moment, not all on the first frame.
+      const c = sim.customers[sim.customers.length - 1]
+      c.pauseMs = c.pauseTotalMs = A.startWaitMs()
+    }
+    sim.roster[lane] -= n
+  }
+  sim.nextSpawnInMs = lvl.entryMs
+}
+
+// Nobody walks in on top of someone who only just came through the same
+// door, and nobody walks into a lane with a drink already sliding down it
+// — that drink could catch them the instant they appear, off-screen past
+// the visible edge, before the player has ever seen them walk in.
+function doorClear(sim, lane) {
+  if (sim.mugs.some((m) => m.lane === lane)) return false
+  return !sim.customers.some((c) => c.lane === lane && c.x > C.OFFSCREEN_X - C.DOOR_GAP_X)
+}
+
+// `who` carries a returning patron's identity back in with them.
+// A step eases in and out: speeding up over the first STEP_EASE of it,
+// slowing to a stop over the last, steady in between. The peak is set so a
+// step still takes stepLen / speed of time in all — the level's pace is
+// unchanged, it's just no longer a lurch and a dead stop.
+function stepDurationMs(c) {
+  return (c.stepLen / c.speed) * 1000
+}
+function stepVelocity(c) {
+  const r = C.STEP_EASE
+  const peak = c.speed / (1 - r)
+  const s = Math.min(1, c.stepMs / stepDurationMs(c))
+  if (s < r) return peak * (1 - Math.cos((Math.PI * s) / r)) / 2
+  if (s > 1 - r) return peak * (1 - Math.cos((Math.PI * (1 - s)) / r)) / 2
+  return peak
+}
+function startStep(c) {
+  c.stepLeft = c.stepLen
+  c.stepMs = 0
+}
+
+// How fast the level runs compared with its first level — 1 there, smaller
+// as the levels get quicker. The arcade's cadence is the first level's; this
+// is what carries it up Soda Jerk's own difficulty curve (levels.js).
+function levelPace(sim) {
+  return getLevel(sim.level).travelMs / getLevel(1).travelMs
+}
+
+// Everyone keeps their own time, the way a real crowd does — nobody
+// steps in unison. A patron stands for the pause that belongs to their bar
+// (long on the short bottom bars, brief on the top one — see laneGait), and
+// that pause shrinks as the level wears on (see pauseRamp). Each also has a
+// stride (`gait`): a bigger step with a longer stand after it, or a quick
+// little shuffle with a short one. Step and stand scale together, so every
+// gait covers the bar in the same time on average. The jitter is small — the
+// arcade's own patrons repeat their pause exactly, and drift apart only
+// because they set off at different moments.
+function standMs(sim, c) {
+  const jitter = randomBetween(1 - C.WALK_PAUSE_JITTER, 1 + C.WALK_PAUSE_JITTER)
+  return A.rampedPauseMs(c.pauseBaseMs * c.gait * jitter, sim.levelMs, levelPace(sim))
+}
+
+function spawnPatron(sim, lane, x = C.OFFSCREEN_X, who = null) {
+  const drinkType = who ? who.drinkType : Math.floor(Math.random() * C.DRINK_TYPES.length)
+  // Patron types aren't picked evenly — see PATRON_TYPE_WEIGHTS.
+  const patronType = who ? who.patronType : pickWeightedIndex(C.PATRON_TYPE_WEIGHTS)
+  const gait = who?.gait ?? randomBetween(1 - C.GAIT_SPREAD, 1 + C.GAIT_SPREAD)
+  // A patron's sip is theirs for life — it comes back in with them.
+  const sipFrames = who?.sipFrames ?? A.rollSipFrames()
+  const g = A.laneGait(lane, levelPace(sim))
+  const walkSpeed = g.stepPct / (g.burstMs / 1000) // lane % a second through a step
+  sim.customers.push({
+    id: sim.nextId++,
+    lane,
+    x,
+    // walking -> toasting -> leaving-happy (shoved back) -> either out the
+    // door (removed, back in later) or drinking -> walking again.
+    // watching: turned round for the dachshund's show.
+    status: 'walking',
+    speed: walkSpeed,
+    walkSpeed, // restored after a shove, a drink or the show
+    pushSpeed: A.shoveSpeedPct(lane), // how fast a drink slides them back
+    pushTargetX: 0,
+    drinkMs: 0,
+    sipFrames, // how long they savour a drink — see drinkScale
+    watchMs: 0,
+    drinkType,
+    patronType, // which illustration to use
+    pauseMs: 0, // counts down while standing between steps
+    pauseTotalMs: 0, // how long this pause was, so the clamour fits it
+    pauseBaseMs: g.pauseMs, // the pause this bar gives at the level's pace
+    gait, // stride, relative to the bar's own step — see standMs
+    stepLen: g.stepPct * gait, // this patron's step, in lane %
+    stepLeft: g.stepPct * gait, // of this step, in lane %
+    stepMs: 0, // time into this step — see stepVelocity
+    vel: 0, // how fast they're actually moving right now, lane %/s
+    walked: 0, // lane % walked in all, which times the legs (Customer.jsx)
+    drinkName: C.DRINK_TYPES[drinkType].name,
+    color: C.DRINK_TYPES[drinkType].color,
+  })
+}
+
+// The wheel-throw bonus round — an entirely different mini-game from the
+// bar, so it gets its own physics tick instead of threading through the
+// lane logic above. Coordinates are all percentages of the bonus arena's
+// own square play field (see BONUS_* in constants.js and BonusLevel.jsx).
+function stepBonus(sim, dt) {
+  const b = sim.bonusLevel
+  if (!b) return
+
+  // The wheel spins continuously while a throw is live — that's the
+  // actual challenge, timing it against the spin — but holds still once
+  // one lands, so a scoop that made it into a cup stays visibly sitting
+  // there (rather than the wheel spinning on and leaving it behind) for
+  // the "HIT!"/"MISS" beat.
+  if (b.scoopState !== 'result') {
+    b.wheelAngle = (b.wheelAngle + C.BONUS_WHEEL_SPIN_DEG_PER_S * dt) % 360
+  }
+
+  if (b.scoopState === 'flying') {
+    b.scoopX += b.vx * dt
+    b.scoopY += b.vy * dt
+    b.vy += C.BONUS_GRAVITY * dt
+
+    let landedCupIndex = null
+    let landedCupX = null
+    let landedCupY = null
+    for (let i = 0; i < C.BONUS_CUP_COUNT; i++) {
+      const angleRad = ((b.wheelAngle + i * 90) * Math.PI) / 180
+      // The 4 slots aren't a perfect circle in the source art, hence the
+      // separate x/y radius — see BONUS_WHEEL_HOLE_FRACTION_* above.
+      const cupX = C.BONUS_WHEEL_CENTER.x + C.BONUS_WHEEL_RADIUS_X * Math.cos(angleRad)
+      const cupCenterY = C.BONUS_WHEEL_CENTER.y + C.BONUS_WHEEL_RADIUS_Y * Math.sin(angleRad)
+      // The cup image renders centered on that hole position, but the
+      // opening is up near its top edge — the cups always stay upright
+      // (counter-rotated against the wheel's spin, see BonusLevel.jsx),
+      // so that opening is always straight up from the center by a fixed
+      // amount, regardless of wheelAngle.
+      const cupY = cupCenterY - C.BONUS_CUP_RIM_OFFSET_Y
+      const dist = Math.hypot(b.scoopX - cupX, b.scoopY - cupY)
+      if (dist <= C.BONUS_HIT_RADIUS) {
+        landedCupIndex = i
+        landedCupX = cupX
+        landedCupY = cupY
+        break
+      }
+    }
+
+    const offArena = b.scoopX < -15 || b.scoopX > 115 || b.scoopY > 115 || b.scoopY < -25
+    if (landedCupIndex !== null) {
+      // Snap to the cup's exact center so it visually sits in the cup
+      // rather than wherever it happened to cross the hit radius — a
+      // metal cup stops the scoop either way, whether or not the color
+      // matches.
+      b.scoopX = landedCupX
+      b.scoopY = landedCupY
+      b.vx = 0
+      b.vy = 0
+      if (landedCupIndex === b.iceCreamColor) {
+        sim.score += C.BONUS_LEVEL_POINTS
+        b.resultText = `HIT! +${C.BONUS_LEVEL_POINTS}`
+      } else {
+        b.resultText = 'WRONG CUP'
+      }
+      b.scoopState = 'result'
+      b.resultHoldMs = C.BONUS_RESULT_HOLD_MS
+    } else if (offArena) {
+      b.resultText = 'MISS'
+      b.scoopState = 'result'
+      b.resultHoldMs = C.BONUS_RESULT_HOLD_MS
+    }
+  } else if (b.scoopState === 'result') {
+    b.resultHoldMs -= dt * 1000
+    if (b.resultHoldMs <= 0) {
+      b.throwsLeft -= 1
+      if (b.throwsLeft > 0) {
+        b.scoopState = 'ready'
+        b.scoopX = C.BONUS_LAUNCH_ANCHOR.x
+        b.scoopY = C.BONUS_LAUNCH_ANCHOR.y
+        b.vx = 0
+        b.vy = 0
+        b.aimDX = 0
+        b.aimDY = 0
+        b.resultText = null
+        b.iceCreamColor = Math.floor(Math.random() * C.BONUS_CUP_COUNT)
+      } else {
+        // Wheel round's over — a clean full clear sends the player to
+        // exactly one of the three bonus rounds (see the trigger in
+        // step()), so this one's done on its own, straight back to the bar.
+        returnToBar(sim)
+      }
+    }
+  }
+}
+
+// The plate-wash bonus round — a first-person shooting gallery. Plates
+// approach in 3 lanes; a click removes whichever one it lands on
+// (checked by simple screen-space distance to the plate's current
+// interpolated position, same spirit as the wheel round's cup check).
+function stepPlates(sim, dt) {
+  const p = sim.platesLevel
+  if (!p) return
+
+  if (p.ended) {
+    p.resultHoldMs -= dt * 1000
+    if (p.resultHoldMs <= 0) {
+      // Round's over — back to the bar.
+      returnToBar(sim)
+    }
+    return
+  }
+
+  p.remainingMs -= dt * 1000
+  if (p.remainingMs <= 0) {
+    p.ended = true
+    p.resultText = "TIME'S UP!"
+    p.resultHoldMs = C.PLATES_RESULT_HOLD_MS
+    return
+  }
+
+  for (const lane of C.PLATES_LANES) {
+    p.nextSpawnInMs[lane] -= dt * 1000
+    if (p.nextSpawnInMs[lane] <= 0) {
+      p.plates.push({ id: p.nextId++, lane, progress: 0, kind: pickPlateKind() })
+      p.nextSpawnInMs[lane] = randomBetween(C.PLATES_SPAWN_INTERVAL_MIN_MS, C.PLATES_SPAWN_INTERVAL_MAX_MS)
+    }
+  }
+
+  for (const plate of p.plates) {
+    plate.progress += (dt * 1000) / C.PLATES_TRAVEL_MS
+    // Reached the player without being clicked — no penalty either way,
+    // dirty/dollar or clean, it just goes by. Missing a dollar plate only
+    // costs the points you could've had, same as ignoring the hot dog.
+    if (plate.progress >= 1) plate._remove = true
+  }
+  p.plates = p.plates.filter((pl) => !pl._remove)
+}
+
+// The shaker-cup bonus round — three rows, each a belt of cups scrolling
+// past like a sushi conveyor. The throw itself is the same Angry-Birds
+// pull-back-and-release physics as the wheel round (see stepBonus
+// above): pull harder to arc higher and reach an upper row, then land
+// wherever that arc actually carries the scoop — see
+// shakerAimStart/Move/End for where a throw actually fires.
+function stepShaker(sim, dt) {
+  const s = sim.shakerLevel
+  if (!s) return
+
+  if (s.ended) {
+    s.resultHoldMs -= dt * 1000
+    if (s.resultHoldMs <= 0) {
+      returnToBar(sim)
+    }
+    return
+  }
+
+  // The belts keep scrolling no matter what the scoop's doing — a cup
+  // train that paused mid-aim would give the game away.
+  for (const cup of s.cups) {
+    cup.x += cup.dir * cup.speed * dt
+    if (cup.x > SHAKER_TRACK_MAX_X) cup.x -= SHAKER_TRACK_LENGTH
+    else if (cup.x < SHAKER_TRACK_MIN_X) cup.x += SHAKER_TRACK_LENGTH
+  }
+
+  if (s.scoopState === 'flying') {
+    const prevY = s.scoopY
+    s.scoopX += s.vx * dt
+    s.scoopY += s.vy * dt
+    s.vy += C.SHAKER_GRAVITY * dt
+
+    const offArena = s.scoopX < -15 || s.scoopX > 115 || s.scoopY > 115 || s.scoopY < -25
+    // A scoop goes IN through the mouth, from above. So the test is
+    // whether this frame's movement carried it down across a cup's rim
+    // line while it was inside the mouth's width — not how close it got
+    // to the cup overall.
+    //
+    // Requiring the descent is what keeps a throw bound for the far row
+    // from being caught by the near rows it necessarily flies through on
+    // the way up: passing a rim while still rising is the scoop sailing
+    // past the outside of the cup, not dropping into it. And testing for
+    // the crossing rather than proximity means a fast scoop can't skip
+    // over a rim between two frames.
+    const descending = s.scoopY > prevY
+    const landedCup =
+      !offArena &&
+      descending &&
+      s.cups.find((c) => {
+        const rimY = c.y - c.size * C.SHAKER_RIM_OFFSET_FACTOR
+        return (
+          prevY <= rimY &&
+          s.scoopY >= rimY &&
+          Math.abs(s.scoopX - c.x) <= c.size * C.SHAKER_RIM_HALF_WIDTH_FACTOR
+        )
+      })
+
+    if (landedCup || offArena) {
+      if (landedCup) {
+        s.scoopX = landedCup.x
+        s.scoopY = landedCup.y
+        s.vx = 0
+        s.vy = 0
+        if (landedCup.color === s.iceCreamColor) {
+          const points = SHAKER_ROW_BY_LANE[landedCup.lane].points
+          sim.score += points
+          const jargon = pick(C.SHAKER_HIT_JARGON)
+          s.resultText = `${jargon.term.toUpperCase()}! +${points}`
+          s.resultSubtext = jargon.def
+          s.resultKind = 'hit'
+        } else {
+          s.resultText = 'WRONG CUP'
+          s.resultSubtext = null
+          s.resultKind = 'wrong'
+        }
+      } else {
+        s.resultText = 'MISS'
+        s.resultSubtext = null
+        s.resultKind = 'miss'
+      }
+      s.resultHoldMs = C.SHAKER_RESULT_HOLD_MS
+      s.resolvedCount++
+      s.scoopState = 'result'
+    }
+  } else if (s.scoopState === 'result') {
+    s.resultHoldMs -= dt * 1000
+    if (s.resultHoldMs <= 0) {
+      s.throwsLeft -= 1
+      if (s.throwsLeft > 0) {
+        s.scoopState = 'ready'
+        s.scoopX = C.SHAKER_LAUNCH_ANCHOR.x
+        s.scoopY = C.SHAKER_LAUNCH_ANCHOR.y
+        s.vx = 0
+        s.vy = 0
+        s.aimDX = 0
+        s.aimDY = 0
+        s.resultText = null
+        s.resultKind = null
+        s.resultSubtext = null
+        s.iceCreamColor = Math.floor(Math.random() * C.BONUS_CUP_COUNT)
+      } else {
+        s.ended = true
+        s.resultHoldMs = C.SHAKER_ROUND_END_HOLD_MS
+      }
+    }
+  }
+}
+
+// The endless glass-slide round. Patrons come down each bar toward the
+// player; a flick sends a glass up to meet one. Several glasses can be in
+// flight at once — the round is about swiping fast, not about waiting your
+// turn. One patron reaching the near end ends it.
+function stepSlide(sim, dt) {
+  const s = sim.slideLevel
+  if (!s) return
+
+  if (s.ended) {
+    s.resultHoldMs -= dt * 1000
+    if (s.resultHoldMs <= 0) returnToBar(sim)
+    return
+  }
+
+  s.elapsedMs += dt * 1000
+
+  // Both the spawn rate AND the walking speed tighten as the round goes on,
+  // so it escalates rather than just getting more crowded, and always ends.
+  const progress = Math.min(1, s.elapsedMs / C.SLIDE_RAMP_MS)
+  const ramp = 1 - (1 - C.SLIDE_SPAWN_RAMP) * progress
+  const speedRamp = 1 + (C.SLIDE_SPEED_RAMP - 1) * progress
+  s.nextSpawnInMs -= dt * 1000
+  if (s.nextSpawnInMs <= 0) {
+    const bar = pick(C.SLIDE_BARS)
+    s.patrons.push({
+      id: s.nextId++,
+      lane: bar.lane,
+      t: 1,
+      speed: randomBetween(C.SLIDE_PATRON_SPEED_MIN, C.SLIDE_PATRON_SPEED_MAX) * speedRamp,
+      patronType: pickWeightedIndex(C.PATRON_TYPE_WEIGHTS),
+      drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
+    })
+    s.nextSpawnInMs = randomBetween(C.SLIDE_SPAWN_MIN_MS, C.SLIDE_SPAWN_MAX_MS) * ramp
+  }
+
+  for (const p of s.patrons) p.t -= p.speed * dt
+  for (const g of s.glasses) {
+    g.t += g.v * dt
+    g.v -= C.SLIDE_FRICTION * dt
+  }
+
+  // A glass meets the nearest patron on its own bar.
+  for (const g of s.glasses) {
+    if (g._done) continue
+    let best = null
+    for (const p of s.patrons) {
+      if (p._done || p.lane !== g.lane) continue
+      if (Math.abs(p.t - g.t) <= C.SLIDE_HIT_T && (!best || p.t < best.t)) best = p
+    }
+    if (best) {
+      best._done = true
+      g._done = true
+      s.served++
+      sim.score += C.SLIDE_POINTS
+    } else if (g.t > 1 || g.v <= 0) {
+      // Off the far end, or run out of steam short of anyone. Sent down a
+      // bar with nobody on it at all, it ends the round — same as a drink
+      // slid to an empty lane on the main bar.
+      g._done = true
+      if (!s.patrons.some((p) => !p._done && p.lane === g.lane)) s.wasted = true
+    }
+  }
+  s.glasses = s.glasses.filter((g) => !g._done)
+  s.patrons = s.patrons.filter((p) => !p._done)
+
+  if (s.wasted) {
+    s.ended = true
+    s.resultKind = 'no-patron'
+    s.resultText = `NOBODY THERE — ${s.served} SERVED`
+    s.resultHoldMs = C.SLIDE_END_HOLD_MS
+  } else if (s.patrons.some((p) => p.t <= 0)) {
+    s.ended = true
+    s.resultKind = 'breach'
+    s.resultText = `THEY GOT THROUGH — ${s.served} SERVED`
+    s.resultHoldMs = C.SLIDE_END_HOLD_MS
+  }
+}
+
+// Shortest way round a ring of N — going anticlockwise past 0 has to be
+// cheaper than walking all the way back through the middle indices.
+function ringDelta(from, to, n) {
+  let d = (to - from) % n
+  if (d > n / 2) d -= n
+  if (d < -n / 2) d += n
+  return d
+}
+
+// The Tempest-style round. He fires down his current spoke on a cooldown by
+// himself; the player only moves him. A patron reaching the rim ends it.
+function stepTempest(sim, dt) {
+  const s = sim.tempestLevel
+  if (!s) return
+  const N = C.TEMPEST_SPOKES
+
+  if (s.ended) {
+    s.resultHoldMs -= dt * 1000
+    if (s.resultHoldMs <= 0) returnToBar(sim)
+    return
+  }
+
+  s.elapsedMs += dt * 1000
+
+  // Run him around the rim the short way.
+  const d = ringDelta(s.spoke, s.targetSpoke, N)
+  if (Math.abs(d) > 1e-3) {
+    const stepBy = Math.sign(d) * Math.min(Math.abs(d), C.TEMPEST_JERK_SPEED * dt)
+    s.spoke = (s.spoke + stepBy + N) % N
+  }
+
+  // Spawning tightens as the round goes on.
+  const progress = Math.min(1, s.elapsedMs / C.TEMPEST_RAMP_MS)
+  const ramp = 1 - (1 - C.TEMPEST_SPAWN_RAMP) * progress
+  const speedRamp = 1 + (C.TEMPEST_SPEED_RAMP - 1) * progress
+  s.nextSpawnInMs -= dt * 1000
+  if (s.nextSpawnInMs <= 0) {
+    s.patrons.push({
+      id: s.nextId++,
+      spoke: Math.floor(Math.random() * N),
+      t: 0,
+      speed: randomBetween(C.TEMPEST_PATRON_SPEED_MIN, C.TEMPEST_PATRON_SPEED_MAX) * speedRamp,
+      patronType: pickWeightedIndex(C.PATRON_TYPE_WEIGHTS),
+      drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
+    })
+    s.nextSpawnInMs = randomBetween(C.TEMPEST_SPAWN_MIN_MS, C.TEMPEST_SPAWN_MAX_MS) * ramp
+  }
+
+  // He throws down whatever spoke he's standing on, whenever it's loaded.
+  s.fireCooldownMs -= dt * 1000
+  const onSpoke = ((Math.round(s.spoke) % N) + N) % N
+  if (s.fireCooldownMs <= 0 && Math.abs(ringDelta(s.spoke, onSpoke, N)) < 0.2) {
+    s.glasses.push({
+      id: s.nextId++,
+      spoke: onSpoke,
+      t: 1,
+      drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
+    })
+    s.fireCooldownMs = C.TEMPEST_FIRE_COOLDOWN_MS
+  }
+
+  for (const p of s.patrons) p.t += p.speed * dt
+  for (const g of s.glasses) g.t -= C.TEMPEST_GLASS_SPEED * dt
+
+  // A glass takes out the outermost patron it reaches on its own spoke.
+  for (const g of s.glasses) {
+    if (g._done) continue
+    let best = null
+    for (const p of s.patrons) {
+      if (p._done || p.spoke !== g.spoke) continue
+      if (Math.abs(p.t - g.t) <= C.TEMPEST_HIT_T && (!best || p.t > best.t)) best = p
+    }
+    if (best) {
+      best._done = true
+      g._done = true
+      s.served++
+      sim.score += C.TEMPEST_POINTS
+    } else if (g.t <= 0) {
+      g._done = true
+    }
+  }
+  s.glasses = s.glasses.filter((g) => !g._done)
+  s.patrons = s.patrons.filter((p) => !p._done)
+
+  // One of them made it all the way up — that's the round.
+  if (s.patrons.some((p) => p.t >= 1)) {
+    s.ended = true
+    s.resultKind = 'breach'
+    s.resultText = `THEY GOT THROUGH — ${s.served} SERVED`
+    s.resultHoldMs = C.TEMPEST_END_HOLD_MS
+    return
+  }
+}
+
+// Every bonus round in one table. Each entry owns its mode name, the sim
+// field its state lives in, how to build that state, and how to tick it.
+//
+// This used to be spelled out separately in seven places — the step
+// dispatch, returnToBar's teardown, the initial sim fields, the clean-clear
+// trigger, advanceStage, the skip callbacks and the mode comment — so
+// adding or removing a round meant finding all seven, and missing one
+// failed quietly. The rounds are experiments (the slide and the web
+// especially), so they need to be cheap to add and cheap to delete.
+const BONUS_ROUNDS = [
+  { mode: 'bonusWheel', key: 'bonusLevel', label: 'ICE CREAM', create: createBonusLevelState, step: stepBonus },
+  { mode: 'bonusPlates', key: 'platesLevel', label: 'PLATE', create: createPlatesLevelState, step: stepPlates },
+  { mode: 'bonusShaker', key: 'shakerLevel', label: 'SHAKER', create: createShakerLevelState, step: stepShaker },
+  { mode: 'bonusSlide', key: 'slideLevel', label: 'SLIDE', create: createSlideLevelState, step: stepSlide },
+  { mode: 'bonusTempest', key: 'tempestLevel', label: 'ROUNDS', create: createTempestLevelState, step: stepTempest },
+]
+const BONUS_BY_MODE = Object.fromEntries(BONUS_ROUNDS.map((r) => [r.mode, r]))
+export const BONUS_MODES = BONUS_ROUNDS.map((r) => r.mode)
+// What the settings menu builds its dev skip buttons from, so a new round
+// gets one for free.
+export const BONUS_ROUND_MENU = BONUS_ROUNDS.map(({ mode, label }) => ({ mode, label }))
+
+// Puts a round's freshly-built state on the sim and switches into it.
+function enterBonusRound(sim, mode) {
+  const round = BONUS_BY_MODE[mode]
+  if (!round) return
+  sim.mode = mode
+  sim[round.key] = round.create()
+}
+
+export function step(sim, dt) {
+  if (!sim.started) return
+  // Covers every mode, bonus rounds included — the settings menu opens
+  // straight over live play, and the belts/patrons kept right on moving
+  // underneath it.
+  if (sim.paused) return
+
+  // Checked here, before the mode dispatch, so it catches points from
+  // anywhere — bar serves, any of the bonus rounds, the level-clear trick.
+  // A while loop rather than an if, since a single big bonus can cross more
+  // than one threshold at once.
+  while (!sim.gameOver && sim.score >= sim.nextExtraLifeAt) {
+    sim.lives += 1
+    sim.extraLifeCount += 1
+    sim.nextExtraLifeAt += C.EXTRA_LIFE_EVERY
+  }
+
+  const bonusRound = BONUS_BY_MODE[sim.mode]
+  if (bonusRound) {
+    bonusRound.step(sim, dt)
+    return
+  }
+  if (sim.awaitingContinue) return
+  if (sim.awaitingStageAdvance) return
+
+  sim.survivalMs += dt * 1000
+  sim.levelMs += dt * 1000
+  if (sim.throwingMs > 0) {
+    sim.throwingMs = Math.max(0, sim.throwingMs - dt * 1000)
+  }
+  if (sim.pourCooldownMs > 0) {
+    sim.pourCooldownMs = Math.max(0, sim.pourCooldownMs - dt * 1000)
+  }
+  const lvl = getLevel(sim.level)
+
+  // Patrons shoved out the door come back in after a while — unless the
+  // bar's clear of the whole crowd, in which case the level's passing and
+  // they stay out.
+  const barClear = sim.roster.every((n) => n === 0) && sim.customers.length === 0
+  for (const r of sim.reentries) {
+    r.inMs -= dt * 1000
+    if (!barClear && r.inMs <= 0 && doorClear(sim, r.lane)) {
+      spawnPatron(sim, r.lane, C.OFFSCREEN_X, r)
+      r._done = true
+    }
+  }
+  sim.reentries = sim.reentries.filter((r) => !r._done)
+
+  // The level's crowd walks in one at a time, into any lane that still has
+  // someone waiting to come in. Nobody's kept waiting on an empty bar,
+  // though — if you've cleared everyone who's in, the next one comes
+  // straight through.
+  sim.nextSpawnInMs -= dt * 1000
+  if (sim.customers.length === 0) sim.nextSpawnInMs = Math.min(sim.nextSpawnInMs, 300)
+  if (sim.nextSpawnInMs <= 0 && sim.roster.some((n) => n > 0)) {
+    const lanes = []
+    for (let i = 0; i < C.LANE_COUNT; i++) if (sim.roster[i] > 0 && doorClear(sim, i)) lanes.push(i)
+    if (lanes.length) {
+      const lane = pick(lanes)
+      sim.roster[lane] -= 1
+      spawnPatron(sim, lane)
+      sim.nextSpawnInMs = lvl.entryMs
+    } else {
+      sim.nextSpawnInMs = 200 // every door's busy — try again shortly
+    }
+  }
+
+  // Running left/right along the counter — either manually, while a drag
+  // is held, or automatically toward a tapped hot dog until he arrives.
+  if (sim.runTargetX !== null) {
+    const dir = sim.runTargetX > sim.playerX ? 1 : -1
+    sim.moveDir = dir
+    sim.playerX += dir * C.PLAYER_RUN_SPEED_X * dt
+    if ((dir === 1 && sim.playerX >= sim.runTargetX) || (dir === -1 && sim.playerX <= sim.runTargetX)) {
+      sim.playerX = sim.runTargetX
+      sim.runTargetX = null
+      sim.moveDir = 0
+      // Back at the tap with a drink ordered — pour it now. (A cooldown
+      // still running just costs him the throw, same as a tap too soon.)
+      if (sim.queuedPour !== null && sim.playerX <= C.PLAYER_X) {
+        const index = sim.queuedPour
+        sim.queuedPour = null
+        throwMug(sim, index)
+      }
+    }
+  } else if (sim.moveDir !== 0) {
+    sim.playerX += sim.moveDir * C.PLAYER_RUN_SPEED_X * dt
+  }
+  if (sim.playerX < C.PLAYER_X) sim.playerX = C.PLAYER_X
+  if (sim.playerX > C.PLAYER_MAX_X) sim.playerX = C.PLAYER_MAX_X
+
+  // A spill from last frame recalls the bartender to the counter (see
+  // below) — the spray itself only fires once he's actually back, so
+  // it's never shown happening off in the middle of the bar somewhere.
+  if (sim.pendingSprayDrinkType !== null && sim.playerX <= C.PLAYER_X) {
+    sim.spillCount++
+    sim.lastSpillDrinkType = sim.pendingSprayDrinkType
+    sim.lastSpillPatronType = sim.pendingSprayPatronType
+    sim.pendingSprayDrinkType = null
+    sim.moveDir = 0
+    // Hold him there getting sprayed for a couple seconds before pausing
+    // for the "YOU MISSED" screen — the life was already lost the
+    // instant he reached the end of the bar, this is just letting it
+    // play out.
+    sim.continuePauseInMs = C.SPRAY_HOLD_MS
+    sim.pendingMissReason = 'spray'
+  }
+  if (sim.continuePauseInMs !== null) {
+    sim.continuePauseInMs -= dt * 1000
+    if (sim.continuePauseInMs <= 0) {
+      sim.continuePauseInMs = null
+      if (!sim.gameOver) {
+        sim.missReason = sim.pendingMissReason
+        sim.pendingMissReason = null
+        sim.awaitingContinue = true
+      }
+    }
+  }
+
+  // A hot dog drops on the counter now and then, within run range — grab
+  // it before it goes cold and disappears, or don't; no penalty either way.
+  sim.nextBonusInMs -= dt * 1000
+  if (!sim.bonus && sim.nextBonusInMs <= 0) {
+    sim.bonus = {
+      id: sim.nextId++,
+      lane: Math.floor(Math.random() * C.LANE_COUNT),
+      x: randomBetween(C.BONUS_MIN_X, C.PLAYER_MAX_X),
+      remainingMs: C.BONUS_LIFETIME_MS,
+    }
+    sim.nextBonusInMs = randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS)
+  }
+  if (sim.bonus) {
+    sim.bonus.remainingMs -= dt * 1000
+    if (sim.bonus.remainingMs <= 0) {
+      sim.bonus = null
+      // If he was running for it, he stops where he is — clearing only the
+      // target left him running on into the end of the bar, stuck there
+      // until the next pour reset him.
+      // A run back to the tap to pour carries on regardless.
+      if (sim.queuedPour === null) {
+        if (sim.runTargetX !== null) sim.moveDir = 0
+        sim.runTargetX = null
+      }
+    }
+  }
+
+  // Running right up to the hot dog auto-grabs it too — no need to stop
+  // and press anything, same as tapping it directly. This is also how a
+  // tap on the hot dog itself resolves, once the auto-run above gets him
+  // there (see grabBonus) — it vanishes instantly and he jumps straight
+  // back to the counter, same as picking a drink.
+  if (sim.bonus && sim.bonus.lane === sim.playerLane && Math.abs(sim.bonus.x - sim.playerX) <= C.BONUS_REACH_X) {
+    sim.score += C.POINTS_PER_BONUS
+    sim.lastCelebrate = { lane: sim.bonus.lane, x: sim.bonus.x }
+    sim.celebrateCount++
+    // The dachshund's show: some of the patrons walking in turn round to
+    // watch it — always at least one, if anyone's walking at all.
+    // Only patrons already in through the door — one still in the
+    // doorway can't see the show (and couldn't be seen watching it).
+    const walkers = sim.customers.filter((c) => c.status === 'walking' && c.x < C.SHOW_MIN_WATCHER_X)
+    const watchers = walkers.filter(() => Math.random() < C.SHOW_WATCH_CHANCE)
+    if (watchers.length === 0 && walkers.length > 0) watchers.push(pick(walkers))
+    for (const c of watchers) {
+      c.status = 'watching'
+      c.watchMs = C.SHOW_MS * randomBetween(C.SHOW_MIN_WATCH_FRACTION, 1)
+      c.pauseMs = 0
+    }
+    // He stays where he grabbed it — getting back to the tap is up to
+    // him, and that walk is the price of going for it. Unless he was
+    // already running home to pour, in which case he keeps going.
+    sim.bonus = null
+    if (sim.queuedPour === null) {
+      sim.runTargetX = null
+      sim.moveDir = 0
+    }
+  }
+
+  // Customers move first. Removal is decided afterward (below), once mugs
+  // have had a chance to resolve against these fresh positions — otherwise
+  // a customer served on the same frame they cross the end of the bar could
+  // still get counted as unserved (mug resolution would be checking last
+  // frame's stale position, one step behind).
+  for (const c of sim.customers) {
+    if (c.status === 'walking') {
+      if (c.pauseMs > 0) {
+        c.pauseMs -= dt * 1000
+        c.vel = 0
+      } else {
+        // Each step eases in and out (see stepVelocity) — same distance in
+        // the same time as walking it flat out, just without lurching off
+        // and stopping dead.
+        c.stepMs += dt * 1000
+        const v = stepVelocity(c)
+        const d = Math.min(v * dt, c.stepLeft)
+        c.x -= d
+        c.walked += d
+        c.stepLeft -= d
+        c.vel = v
+        // A step's done: stand a moment, then take the next one (see
+        // WALK_STEP_* in constants.js).
+        if (c.stepLeft <= 1e-6 || c.stepMs >= stepDurationMs(c)) {
+          c.x -= c.stepLeft
+          c.walked += c.stepLeft
+          startStep(c)
+          c.vel = 0
+          // No standing about in the doorway: until he's through the door he
+          // can't be seen, and the level waits on him — a long stand there
+          // reads as a clear bar that won't advance. The stands start once
+          // he's on the bar.
+          c.pauseMs = c.x > C.DOOR_X ? 0 : standMs(sim, c)
+          c.pauseTotalMs = c.pauseMs
+        }
+      }
+    } else if (c.status === 'toasting') {
+      // A beat standing still to show off the drink they just caught,
+      // before turning around and walking out. Held still on purpose —
+      // the held-drink art is a single pose, so sliding it along the
+      // counter would moonwalk exactly the way the old static walk-out
+      // did.
+      c.toastMs -= dt * 1000
+      if (c.toastMs <= 0) {
+        c.status = 'leaving-happy'
+        c.speed = c.pushSpeed
+      }
+    } else if (c.status === 'leaving-happy') {
+      // Sliding back from the shove, easing off as they approach where it
+      // runs out. Eased on remaining distance rather than on a timer, so
+      // the stop lands exactly on pushTargetX however far the shove was.
+      const remaining = c.pushTargetX - c.x
+      if (remaining <= 0.2) {
+        // The shove is spent. Off the end means out the door — that's what
+        // scores — and back in a while later; short of that, they stop and
+        // drink up.
+        if (c.x >= C.OFFSCREEN_X) {
+          c._remove = true
+          sim.score += C.OUST_POINTS_BY_STAGE[Math.min(sim.stage, C.OUST_POINTS_BY_STAGE.length) - 1]
+          sim.reentries.push({ lane: c.lane, inMs: lvl.reenterMs, patronType: c.patronType, drinkType: c.drinkType, gait: c.gait, sipFrames: c.sipFrames })
+        } else {
+          c.status = 'drinking'
+          c.drinkMs = lvl.drinkMs * A.drinkScale(c.sipFrames)
+        }
+      } else {
+        c.speed = Math.max(C.CUSTOMER_PUSH_MIN_SPEED, Math.min(c.pushSpeed, remaining * 3.2))
+        c.x += c.speed * dt
+      }
+    } else if (c.status === 'drinking') {
+      // Standing still, drinking. When it's gone the empty slides back
+      // down the bar for the jerk to catch, and they come on again.
+      c.drinkMs -= dt * 1000
+      if (c.drinkMs <= 0) {
+        sim.glasses.push({
+          id: sim.nextId++,
+          lane: c.lane,
+          x: c.x,
+          speed: (C.OFFSCREEN_X - C.PLAYER_X) / (lvl.glassMs / 1000),
+        })
+        c.status = 'walking'
+        c.speed = c.walkSpeed
+        startStep(c)
+        // The empty's gone back: he holds the throw, recovers, and only
+        // then stands his usual pause before the next step. Still servable
+        // all the while — he's 'walking', just not moving.
+        c.pauseMs = c.pauseTotalMs = A.afterThrowMs() + standMs(sim, c)
+      }
+    } else if (c.status === 'watching') {
+      c.watchMs -= dt * 1000
+      if (c.watchMs <= 0) {
+        c.status = 'walking'
+        c.speed = c.walkSpeed
+        startStep(c)
+        // Turning back round to the bar takes a moment, standing still —
+        // long enough for the turn to be seen (Customer.jsx plays it).
+        c.pauseMs = c.pauseTotalMs = C.SHOW_TURN_MS
+      }
+    }
+  }
+
+  // Nobody but watchers left, and no one still to walk in: there's nothing
+  // to do but wait for the act to end, and the level can't pass until they've
+  // been served. Wrap the show up rather than make the player stand about.
+  if (
+    sim.customers.length > 0 &&
+    sim.roster.every((n) => n === 0) &&
+    sim.customers.every((c) => c.status === 'watching')
+  ) {
+    for (const c of sim.customers) c.watchMs = Math.min(c.watchMs, C.SHOW_WRAP_MS)
+  }
+
+  // Mugs in flight — thrown toward whichever customer is still walking in
+  // that lane. Resolves the instant it reaches them; if it sails all the
+  // way past the far edge without hitting anyone, it breaks and costs a
+  // life — including a mug that doesn't match what the customer ordered:
+  // it just sails through them uncaught, same as if no one were there.
+  for (const m of sim.mugs) {
+    m.x += m.speed * dt
+  }
+  for (const m of sim.mugs) {
+    // The nearest one it'll reach — with several mugs on a bar, list order
+    // isn't bar order (patrons coming back in join the end of the list).
+    let target = null
+    for (const c of sim.customers) {
+      if (c.lane !== m.lane || c.status !== 'walking' || c.drinkType !== m.drinkType) continue
+      if (!target || c.x < target.x) target = c
+    }
+    if (target && m.x >= target.x) {
+      // Every drink shoves. Whether that's the last one
+      // depends on where it leaves them, not on a per-customer counter.
+      target.status = 'toasting'
+      target.toastMs = C.CUSTOMER_TOAST_MS
+      // How far is the arcade's own dice: a different shove every time, and
+      // a bigger share of the shorter bars (see shovePct).
+      const resistance = C.CUSTOMER_PUSH_RESISTANCE[target.patronType] ?? 1
+      target.pushTargetX = target.x + A.shovePct(target.lane) * resistance
+      // Past the doors is out the door.
+      if (target.pushTargetX >= C.DOOR_X) target.pushTargetX = C.OFFSCREEN_X + 1
+
+      // The empty comes back once they've drunk up — see 'drinking' above.
+      m._arrived = true
+    } else if (m.x >= C.OFFSCREEN_X) {
+      m._missed = true
+      // Why nobody caught it, for the miss screen: someone thirsty there
+      // but wanting the other drink; someone there who isn't taking one
+      // right now; or an empty lane.
+      const inLane = sim.customers.filter((c) => c.lane === m.lane && (c.status !== 'walking' || c.x <= C.DOOR_X))
+      m._reason = inLane.some((c) => c.status === 'walking')
+        ? 'mug'
+        : inLane.some((c) => c.status === 'watching')
+          ? 'watching'
+          : inLane.length > 0
+            ? 'drinking'
+            : 'no-patron'
+    }
+  }
+  const missedMugCount = sim.mugs.filter((m) => m._missed).length
+  if (missedMugCount > 0) {
+    sim.mugCrashCount++
+    loseLife(sim, missedMugCount)
+    if (!sim.gameOver) {
+      sim.missReason = sim.mugs.find((m) => m._missed)._reason
+      sim.awaitingContinue = true
+    }
+  }
+  sim.mugs = sim.mugs.filter((m) => !m._arrived && !m._missed)
+
+  // Now decide removals. An unserved (still 'walking') customer who reached
+  // the end of the bar costs a life; a served one who made it back offscreen
+  // just leaves.
+  for (const c of sim.customers) {
+    if (c.status === 'walking' && c.x <= C.END_OF_BAR_X) {
+      c.x = C.END_OF_BAR_X
+      c._remove = true
+      loseLife(sim)
+      // Only the bartender's own lane gets the in-game seltzer-in-the-face
+      // recall animation — the player isn't even standing in the others,
+      // so there's nothing to visibly run back for. Either way it's a
+      // spray as far as the "YOU GOT SPRAYED!" pause screen is concerned,
+      // and either way the spray sound plays and there's a beat before
+      // that screen shows up — in his own lane that beat is the recall
+      // actually playing out (see the pending-spray check above), but
+      // elsewhere it's just a short pause since there's no animation to
+      // wait for.
+      if (c.lane === sim.playerLane) {
+        sim.pendingSprayDrinkType = c.drinkType
+        sim.pendingSprayPatronType = c.patronType
+        sim.moveDir = -1
+      } else if (!sim.gameOver) {
+        sim.spillCount++
+        sim.lastSpillDrinkType = c.drinkType
+        sim.lastSpillPatronType = c.patronType
+        sim.continuePauseInMs = C.SPRAY_OTHER_LANE_HOLD_MS
+        sim.pendingMissReason = 'spray'
+      }
+    }
+  }
+  sim.customers = sim.customers.filter((c) => !c._remove)
+
+  // Returning glasses — missed if one slides all the way back to the
+  // counter's edge uncaught, but running over one anywhere along the way
+  // auto-grabs it, same as tapping it directly. A missed one stops right
+  // there and plays a tumble-off-the-counter animation (see Lane.jsx)
+  // for GLASS_FALL_HOLD_MS before it's actually cleared out, instead of
+  // just vanishing the instant it's missed.
+  for (const g of sim.glasses) {
+    if (g._missed || g._caught) continue
+    g.x -= g.speed * dt
+    if (g.lane === sim.playerLane && Math.abs(g.x - sim.playerX) <= C.GLASS_REACH_X) {
+      g._caught = true
+    } else if (g.x <= C.PLAYER_X) {
+      g._missed = true
+      g.x = C.PLAYER_X
+      g.fallMs = C.GLASS_FALL_HOLD_MS
+    }
+  }
+  for (const g of sim.glasses) {
+    if (g._missed) g.fallMs -= dt * 1000
+  }
+  const newlyMissed = sim.glasses.filter((g) => g._missed && !g._consequenceApplied)
+  for (const g of newlyMissed) g._consequenceApplied = true
+  if (newlyMissed.length > 0) {
+    sim.missedGlassCount++
+    loseLife(sim, newlyMissed.length)
+    if (!sim.gameOver) {
+      sim.continuePauseInMs = C.GLASS_FALL_HOLD_MS
+      sim.pendingMissReason = 'glass'
+    }
+  }
+  const autoCaughtCount = sim.glasses.filter((g) => g._caught).length
+  if (autoCaughtCount > 0) sim.score += autoCaughtCount * C.POINTS_PER_CAUGHT_GLASS
+  sim.glasses = sim.glasses.filter((g) => !g._caught && !(g._missed && g.fallMs <= 0))
+
+  // Passing the level: the whole crowd has come in and been shoved out the
+  // door — the bar's clear — and the last glass or drink still sliding has
+  // been dealt with. Held off while a miss is still playing out, so the two
+  // screens can't collide.
+  const missPending = sim.continuePauseInMs !== null || sim.pendingSprayDrinkType !== null
+  if (!sim.gameOver && !sim.awaitingContinue && !missPending && !sim.awaitingStageAdvance) {
+    const levelClear = sim.roster.every((n) => n === 0) && sim.customers.length === 0
+    if (levelClear && sim.mugs.length === 0 && sim.glasses.length === 0) {
+      sim.clearCount += 1
+      sim.awaitingStageAdvance = true
+      sim.pendingBonusMode = sim.clearCount % C.BONUS_EVERY_LEVELS === 0 ? pick(BONUS_MODES) : null
+    }
+  }
+}
+
+// ---------------------------------------------------------------- actions
+// Everything a player (or a screen) can do to the sim. Each takes the sim
+// as its first argument and changes it in place; the web game calls these
+// through useGameEngine.js, the iOS and tvOS apps through the bundled
+// engine (see apple/README.md).
+
+export function changeLane(sim, direction) {
+  if (sim.gameOver) return
+  let newLane = sim.playerLane + direction
+  if (newLane < 0) newLane = C.LANE_COUNT - 1
+  if (newLane >= C.LANE_COUNT) newLane = 0
+  moveToLane(sim, newLane)
+}
+
+// Tapping a lane directly jumps straight to it — no need to swipe
+// through the ones in between.
+export function goToLane(sim, laneIndex) {
+  if (sim.gameOver) return
+  if (laneIndex < 0 || laneIndex >= C.LANE_COUNT) return
+  moveToLane(sim, laneIndex)
+}
+
+// Tapping a drink both picks it and pours it in one motion — no
+// separate JERK press. Pouring happens at the tap: if he's off down the
+// bar (after a glass or the hot dog) he runs back first and pours when he
+// gets there, so straying from the tap costs real time.
+export function pourDrink(sim, index) {
+  if (sim.gameOver) return
+  // A life was already lost and the "YOU GOT SPRAYED!" pause is on its
+  // way (the recall/spray sequence, or the short sound-and-pause beat
+  // for a different lane) — block pouring until it actually shows,
+  // otherwise a second mistake in that window can cost a second life
+  // before the player has even seen the first one land.
+  if (sim.pendingSprayDrinkType !== null || sim.continuePauseInMs !== null) return
+
+  sim.selectedDrink = index
+  if (sim.playerX > C.PLAYER_X) {
+    sim.queuedPour = index
+    sim.runTargetX = C.PLAYER_X
+    return
+  }
+  sim.moveDir = 0
+  sim.runTargetX = null
+  throwMug(sim, index)
+}
+
+// Tapping a returning glass directly catches it, wherever it is — no
+// need to be standing in that lane first.
+export function grabGlass(sim, glassId) {
+  if (sim.gameOver) return
+  const idx = sim.glasses.findIndex((g) => g.id === glassId)
+  if (idx === -1) return
+  sim.glasses.splice(idx, 1)
+  sim.score += C.POINTS_PER_CAUGHT_GLASS
+}
+
+// Tapping the hot dog sends the bartender running down the bar to it —
+// the run-over auto-catch above is what actually grabs it once he's
+// close enough.
+export function grabBonus(sim) {
+  if (sim.gameOver || !sim.bonus) return
+  if (sim.bonus.lane !== sim.playerLane) moveToLane(sim, sim.bonus.lane)
+  sim.queuedPour = null
+  sim.runTargetX = sim.bonus.x
+}
+
+export function startRun(sim, direction) {
+  if (sim.gameOver) return
+  // Can't fight your way out of being marched back to the counter for
+  // the spray — otherwise dragging to run the instant it starts just
+  // overwrites the forced recall's moveDir and he never gets there,
+  // so the spray (and the pause after it) never actually fires.
+  if (sim.pendingSprayDrinkType !== null) return
+  sim.runTargetX = null // manual control cancels any auto-run to the hot dog
+  sim.queuedPour = null // ...or back to the tap to pour
+  // `direction` is on screen; a flipped bar runs the other way along it
+  sim.moveDir = sim.laneReversed[sim.playerLane] ? -direction : direction
+}
+
+export function stopRun(sim) {
+  sim.moveDir = 0
+}
+
+// Points from the between-level trick (see tricks.js) — the flourish is
+// a victory lap, so this only ever adds.
+export function addTrickBonus(sim, points) {
+  if (sim.gameOver || points <= 0) return
+  sim.score += Math.round(points)
+  sim.trickBonus = Math.round(points) // App/StagePassedScreen shows what was earned
+}
+
+// Freezes the whole sim while the settings menu is up. The rAF loop
+// keeps running (so dt never accumulates into one huge catch-up step
+// on resume), step() just returns early.
+export function setPaused(sim, paused) {
+  sim.paused = paused
+  if (paused) {
+    // Don't leave him jogging on the spot behind the menu, or still
+    // running the instant it closes.
+    sim.moveDir = 0
+    sim.runTargetX = null
+    sim.queuedPour = null
+  }
+}
+
+// "YOU DIED" continue button — clears the board for the next life,
+// keeping score, lives, and difficulty progress as they were.
+export function continueAfterDeath(sim) {
+  if (sim.gameOver || !sim.awaitingContinue) return
+  sim.awaitingContinue = false
+  sim.customers = []
+  sim.mugs = []
+  sim.glasses = []
+  sim.bonus = null
+  sim.playerLane = 0
+  sim.playerX = C.PLAYER_X
+  sim.moveDir = 0
+  sim.runTargetX = null
+  sim.queuedPour = null
+  sim.pendingSprayDrinkType = null
+  // A spray sequence's hold timer can still be silently ticking down in
+  // the background if a faster miss (glass/mug) showed its screen
+  // first — without clearing it here, it survives this reset and later
+  // fires a second, unprompted "YOU GOT SPRAYED!" screen once it hits
+  // zero, well after the player already continued from the first one.
+  sim.continuePauseInMs = null
+  sim.missReason = null
+  // The level starts over with its whole crowd — your score and the
+  // levels already passed stay as they were.
+  startLevel(sim)
+  sim.nextBonusInMs = randomBetween(C.BONUS_SPAWN_INTERVAL_MIN_MS, C.BONUS_SPAWN_INTERVAL_MAX_MS)
+}
+
+// "LEVEL PASSED" continue button — on to the next level (by way of a
+// bonus round every few), keeping score and lives.
+export function advanceStage(sim) {
+  if (sim.gameOver || !sim.awaitingStageAdvance) return
+  sim.awaitingStageAdvance = false
+  const bonusMode = sim.pendingBonusMode
+  sim.pendingBonusMode = null
+  sim.level = sim.clearCount + 1
+  sim.stage = Math.min(C.STAGE_COUNT, sim.stage + 1)
+  // A bonus round sets the next level up itself when it hands back to
+  // the bar (returnToBar).
+  if (bonusMode) enterBonusRound(sim, bonusMode)
+  else startLevel(sim)
+}
+
+// Bonus-round aiming — pull back from the launch anchor, then release
+// to throw. Distances in are all arena-relative percentages, computed
+// by BonusLevel.jsx from its own bounding box.
+export function bonusAimStart(sim) {
+  const b = sim.bonusLevel
+  if (!b || b.scoopState !== 'ready') return
+  b.scoopState = 'aiming'
+}
+
+export function bonusAimMove(sim, dx, dy) {
+  const b = sim.bonusLevel
+  if (!b || b.scoopState !== 'aiming') return
+  const pull = Math.hypot(dx, dy)
+  const clampScale = pull > C.BONUS_MAX_PULL ? C.BONUS_MAX_PULL / pull : 1
+  b.aimDX = dx * clampScale
+  b.aimDY = dy * clampScale
+}
+
+export function bonusAimEnd(sim) {
+  const b = sim.bonusLevel
+  if (!b || b.scoopState !== 'aiming') return
+  const pull = Math.hypot(b.aimDX, b.aimDY)
+  if (pull < C.BONUS_MIN_PULL) {
+    // Barely pulled — treat as a cancel, snap back to rest instead of
+    // a limp, accidental throw.
+    b.scoopState = 'ready'
+    b.aimDX = 0
+    b.aimDY = 0
+    return
+  }
+  // A slingshot launches opposite the pull direction, at a speed
+  // proportional to how far back it was drawn.
+  b.vx = -b.aimDX * C.BONUS_LAUNCH_POWER
+  b.vy = -b.aimDY * C.BONUS_LAUNCH_POWER
+  b.scoopX = C.BONUS_LAUNCH_ANCHOR.x + b.aimDX
+  b.scoopY = C.BONUS_LAUNCH_ANCHOR.y + b.aimDY
+  b.scoopState = 'flying'
+}
+
+// Tapping a plate sprays it clean (dirty/dollar — scores and removes
+// it) or, if it's a clean one, ends the round on the spot — a metal
+// cup's forgiving if you miss the color, but a clean plate never is.
+export function plateClick(sim, plateId) {
+  const p = sim.platesLevel
+  if (!p || p.ended) return
+  const idx = p.plates.findIndex((pl) => pl.id === plateId)
+  if (idx === -1) return
+  const plate = p.plates[idx]
+  p.plates.splice(idx, 1)
+  if (plate.kind === 'clean') {
+    p.ended = true
+    p.resultText = 'THAT ONE WAS CLEAN!'
+    p.resultHoldMs = C.PLATES_RESULT_HOLD_MS
+    return
+  }
+  const points = plate.kind === 'dollar' ? C.PLATES_DOLLAR_POINTS : C.PLATES_DIRTY_POINTS
+  sim.score += points
+  p.popCount++
+  p.lastPopKind = plate.kind
+}
+
+// Shaker-round aiming — pull back from the launch anchor, then release
+// to throw. Identical shape to bonusAimStart/Move/End above; distances
+// are percentages of the full phone-frame (ShakerLevel.jsx is a
+// full-screen arena, unlike the wheel round's own square sub-arena).
+export function shakerAimStart(sim) {
+  const s = sim.shakerLevel
+  if (!s || s.scoopState !== 'ready') return
+  s.scoopState = 'aiming'
+}
+
+export function shakerAimMove(sim, dx, dy) {
+  const s = sim.shakerLevel
+  if (!s || s.scoopState !== 'aiming') return
+  const pull = Math.hypot(dx, dy)
+  const clampScale = pull > C.SHAKER_MAX_PULL ? C.SHAKER_MAX_PULL / pull : 1
+  s.aimDX = dx * clampScale
+  s.aimDY = dy * clampScale
+}
+
+export function shakerAimEnd(sim) {
+  const s = sim.shakerLevel
+  if (!s || s.scoopState !== 'aiming') return
+  const pull = Math.hypot(s.aimDX, s.aimDY)
+  if (pull < C.SHAKER_MIN_PULL) {
+    s.scoopState = 'ready'
+    s.aimDX = 0
+    s.aimDY = 0
+    return
+  }
+  s.vx = -s.aimDX * C.SHAKER_LAUNCH_POWER
+  s.vy = -s.aimDY * C.SHAKER_LAUNCH_POWER
+  s.scoopX = C.SHAKER_LAUNCH_ANCHOR.x + s.aimDX
+  s.scoopY = C.SHAKER_LAUNCH_ANCHOR.y + s.aimDY
+  s.scoopState = 'flying'
+}
+
+// A flick up one of the bars sends a glass sliding. `flick` is the swipe's
+// length along that bar's own direction, as a fraction of the frame's
+// height, so the same gesture behaves the same on every bar. There's no
+// throw limit and no waiting for the last one to land — the round is about
+// swiping as fast as you can.
+export function slideFlick(sim, lane, flick) {
+  const s = sim.slideLevel
+  if (!s || s.ended) return
+  if (flick < C.SLIDE_MIN_FLICK) return // a tap, not a throw
+
+  const n = Math.min(1, (flick - C.SLIDE_MIN_FLICK) / (C.SLIDE_MAX_FLICK - C.SLIDE_MIN_FLICK))
+  const dist = C.SLIDE_MIN_DIST + (C.SLIDE_MAX_DIST - C.SLIDE_MIN_DIST) * n
+  s.glasses.push({
+    id: s.nextId++,
+    lane,
+    t: 0,
+    // Derived from the distance so the control stays linear — see the
+    // SLIDE_* notes in constants.js.
+    v: Math.sqrt(2 * C.SLIDE_FRICTION * dist),
+    drinkType: Math.floor(Math.random() * C.DRINK_TYPES.length),
+  })
+}
+
+// The only input the Tempest round takes: send him round the rim to a
+// spoke. He fires down whichever one he's standing on by himself.
+export function tempestMoveTo(sim, spoke) {
+  const s = sim.tempestLevel
+  if (!s || s.ended) return
+  s.targetSpoke = ((spoke % C.TEMPEST_SPOKES) + C.TEMPEST_SPOKES) % C.TEMPEST_SPOKES
+}
+
+// Dev/test shortcut — jump straight into any bonus round from anywhere
+// mid-game, no need to actually clear a full stage first. One function
+// for all of them; the settings menu passes the mode it wants.
+export function skipToBonusRound(sim, mode) {
+  if (sim.gameOver || !sim.started) return
+  enterBonusRound(sim, mode)
+}
+
+// Dev shortcut — jumps straight to the first level of the next venue
+// (see venues.js) without having to clear the levels and bonus round
+// in between.
+export function skipToNewVenue(sim) {
+  if (sim.gameOver || !sim.started || sim.mode !== 'bar') return
+  sim.level = firstLevelOfNextVenue(sim.level)
+  sim.clearCount = sim.level - 1
+  sim.awaitingContinue = false
+  sim.awaitingStageAdvance = false
+  startLevel(sim)
+}
+
+// Leaves a bonus round straight away, back to the bar for the next level —
+// for the iOS/tvOS apps, which can't draw the bonus rounds yet.
+export function finishBonusRound(sim) {
+  if (sim.mode === 'bar') return
+  returnToBar(sim)
+}
+
+export function startGame(sim) {
+  sim.started = true
+  startLevel(sim) // puts level 1's opening patrons at the bar
+}
+
+// A fresh game, straight onto the bar — reopening after game-over skips
+// the splash.
+export function newGame() {
+  const sim = createInitialSim()
+  sim.started = true
+  startLevel(sim)
+  return sim
+}

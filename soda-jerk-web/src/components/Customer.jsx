@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PLAYER_X, COUNTER_HEIGHT_PX, STEP_EASE, SHOW_TURN_MS } from '../game/constants.js'
 import { patronPortrait, patronHeld, patronWalkSheet, patronBack, BACK_VIEW_TYPES } from '../game/art.js'
+import { PATRON_ART, PATRON_CANVAS_HEIGHT } from '../game/patronArt.js'
 
 // Glows red once a still-walking customer gets close to the end of
 // the bar, as a warning — replaces the old patience-timer bar since
@@ -11,48 +12,20 @@ const DANGER_X = PLAYER_X + 22
 // PATRON_TYPE_WEIGHTS in constants.js) and one column per drink type.
 // They face left, the direction they walk in, and keep facing that way
 // throughout — a served customer is shoved backwards by the drink rather
-// than turning round, so nothing is ever mirrored.
-//
-// Every patron's art is built by tools/patron_rig from ONE source portrait:
-// the walk is that portrait with its legs swung by a cut-out rig, pink is a
-// recolour of the same pixels, and the held-drink pose is the same figure
-// with the glass in its hand. So the orange and pink versions are always
-// the same person, and every file shares one canvas — swapping walk for
-// held never jogs the figure.
-//
-// To add a patron: add them to tools/patron_rig/characters.py, run its
-// build.py, add a row here with the canvas size and ground it prints, and
-// add a weight to PATRON_TYPE_WEIGHTS in constants.js.
-//
-// Every figure is drawn 267px tall on a 279px canvas, so one height puts
-// the whole roster at the same scale.
+// than turning round, so nothing is ever mirrored. Their measurements live
+// in patronArt.js, shared with the iOS/tvOS apps.
 const PATRON_HEIGHT = 89
 
-// Each entry's aspectRatio (canvas width / height) keeps the sprite from
-// stretching at PATRON_HEIGHT.
-//
-// `ground` is how far one walk cycle carries the figure, as a fraction of
-// its height: the backward travel of whichever foot is planted, added up
-// over the cycle. tools/patron_rig/build.py measures it off the rig and
-// prints it. It's what times the legs — see strideOf().
-const sheets = (patronType, width, ground) => [
-  { src: patronWalkSheet(patronType, 0), aspectRatio: width / 279, ground },
-  { src: patronWalkSheet(patronType, 1), aspectRatio: width / 279, ground },
-]
-const PATRON_WALK_SHEETS = {
-  0: sheets(0, 191, 0.436),
-  1: sheets(1, 294, 0.237),
-  2: sheets(2, 201, 0.427),
-  3: sheets(3, 202, 0.251),
-  4: sheets(4, 196, 0.471),
-  5: sheets(5, 171, 0.496),
-  6: sheets(6, 187, 0.456),
-  7: sheets(7, 200, 0.357),
-  8: sheets(8, 227, 0.192),
-  9: sheets(9, 206, 0.537),
-  10: sheets(10, 192, 0.211),
-  11: sheets(11, 158, 0.32),
-}
+const PATRON_WALK_SHEETS = Object.fromEntries(
+  PATRON_ART.map(({ width, ground }, patronType) => [
+    patronType,
+    [0, 1].map((drinkType) => ({
+      src: patronWalkSheet(patronType, drinkType),
+      aspectRatio: width / PATRON_CANVAS_HEIGHT,
+      ground,
+    })),
+  ])
+)
 
 // Body movement while walking: a lean into the bar at full stride, and a
 // rock from foot to foot with each step. Both scale with how fast they're

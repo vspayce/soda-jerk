@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist",
-    "test": "node --test src/game/"
+    "test": "node --test src/game/",
+    "build:engine": "node scripts/build-engine.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

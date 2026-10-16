@@ -1,0 +1,72 @@
+# Soda Jerk for iPhone and Apple TV. Generate the Xcode project with:
+#
+#   cd apple && xcodegen
+#
+# Both apps share Shared/ (the Swift that draws the game and reads the
+# controls) and run the same rules as the web game: Shared/engine.js is
+# bundled from soda-jerk-web/src/game by its `npm run build:engine`, which
+# the pre-build step below runs on every build. The art is the web game's
+# own public/art folder, copied in as-is.
+name: SodaJerk
+options:
+  bundleIdPrefix: com.spayce
+  deploymentTarget:
+    iOS: "17.0"
+    tvOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: 2TJY362VLX
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "1"
+    PRODUCT_BUNDLE_IDENTIFIER: com.spayce.sodajerk
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: Soda Jerk
+    INFOPLIST_KEY_GCSupportsControllerUserInteraction: YES
+    INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.arcade-games
+
+targetTemplates:
+  SodaJerkApp:
+    type: application
+    sources:
+      - path: Shared
+      - path: ../soda-jerk-web/public/art
+        type: folder
+        buildPhase: resources
+    preBuildScripts:
+      - name: Bundle the shared rules
+        basedOnDependencyAnalysis: false
+        script: |
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          if command -v node >/dev/null; then
+            cd "$SRCROOT/../soda-jerk-web" && node scripts/build-engine.mjs
+          else
+            echo "warning: node not found — using the committed Shared/engine.js"
+          fi
+
+targets:
+  SodaJerk-iOS:
+    templates: [SodaJerkApp]
+    platform: iOS
+    sources:
+      - path: iOS
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIStatusBarHidden: YES
+        INFOPLIST_KEY_UIRequiresFullScreen: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
+
+  SodaJerk-tvOS:
+    templates: [SodaJerkApp]
+    platform: tvOS
+    sources:
+      - path: tvOS
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "3"
